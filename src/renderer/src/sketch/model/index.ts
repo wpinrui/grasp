@@ -14,15 +14,172 @@
  * and lines put it where it is. Parents always come earlier in the list than
  * what hangs off them, so one pass down settles the whole page.
  */
-export * from "./create";
-export * from "./edit";
-export * from "./figures";
-export * from "./geometry";
-export * from "./guards";
-export * from "./look";
-export * from "./marks";
-export * from "./naming";
-export * from "./paths";
-export * from "./pick";
-export * from "./settle";
-export * from "./values";
+
+export {
+  createArc,
+  createButton,
+  createCalculation,
+  createCaption,
+  createCircle,
+  createCustomTransform,
+  createFill,
+  createFunction,
+  createInterior,
+  createLine,
+  createLocus,
+  createMeasurement,
+  createParameter,
+  createPoint,
+  createTable,
+  createWedge,
+  lineThrough,
+  pointOnPath,
+} from "./create";
+export { asDuplicated, asPasted, kinOf, PASTE_STEP, sharedPointSize, withFamily } from "./edit";
+export type {
+  ArcSpan,
+  CaptionAlign,
+  CircleSpan,
+  Derivation,
+  Labelled,
+  LabelState,
+  LineForm,
+  LinePattern,
+  LineSpan,
+  LineWidth,
+  MarkedAngle,
+  MarkedRatio,
+  MarkedVector,
+  PointSize,
+  SketchArc,
+  SketchCaption,
+  SketchCircle,
+  SketchInterior,
+  SketchLine,
+  SketchLocus,
+  SketchPoint,
+} from "./figures";
+export {
+  cornersOf,
+  DEFAULT_LABEL,
+  DEFAULT_POINT_SIZE,
+  filledPath,
+  LINE_FORMS,
+  LINE_PATTERNS,
+  LINE_WIDTHS,
+  POINT_RADII,
+  POINT_SIZES,
+  PX_PER_CM,
+  parentsOf,
+  parentsOfArc,
+  parentsOfCircle,
+  parentsOfSpan,
+  partsOfAngle,
+  partsOfRatio,
+  partsOfVector,
+  radiusOf,
+  wedgeOf,
+} from "./figures";
+export type {
+  ArcGeometry,
+  CircleGeometry,
+  LineGeometry,
+  LocusShape,
+  PathGeometry,
+  Position,
+  Rect,
+  Settled,
+} from "./geometry";
+export {
+  clipToRect,
+  distance,
+  distanceToLine,
+  insideShape,
+  isArcPath,
+  isRound,
+  MAX_SAMPLES,
+  MIN_SAMPLES,
+  POINT_SAMPLES,
+  pathIn,
+  SAMPLE_STEP,
+  SHAPE_SAMPLES,
+  slackAt,
+  toSheet,
+  union,
+} from "./geometry";
+export type { SketchState, SketchWriting, View } from "./guards";
+export {
+  bodyOf,
+  DEFAULT_VIEW,
+  EMPTY_SKETCH,
+  familyOf,
+  isArc,
+  isButton,
+  isCalculation,
+  isCaption,
+  isCircle,
+  isFunction,
+  isInterior,
+  isLine,
+  isLocus,
+  isMark,
+  isMeasurement,
+  isParameter,
+  isPoint,
+  isTable,
+  isTransform,
+  isValue,
+  isWriting,
+  linkedIn,
+  markPath,
+  movedBy,
+  pointsOf,
+} from "./guards";
+export { fillLook, strokeLook } from "./look";
+export type { MarkShape } from "./marks";
+export {
+  ANGLE_RADIUS,
+  createAngleMark,
+  createTick,
+  isRightAngle,
+  LEAST_ANGLE_RADIUS,
+  markAlong,
+  markReach,
+  markShape,
+  markStrokes,
+  markSweep,
+  nearMark,
+  tangentOnPath,
+} from "./marks";
+export { namesFor } from "./naming";
+export {
+  alongPath,
+  arcAt,
+  circleAt,
+  crossing,
+  crossings,
+  distanceToPath,
+  imageOf,
+  insideWedge,
+  lineAlong,
+  spotOnPath,
+} from "./paths";
+export { endsById, objectAt, objectsTouching, rectBetween } from "./pick";
+export { contentBounds, readValuesWith, resolve, settle, withDependents } from "./settle";
+export type {
+  ButtonAction,
+  MarkForm,
+  MeasureKind,
+  ParameterUnit,
+  SketchButton,
+  SketchCalculation,
+  SketchFunction,
+  SketchMark,
+  SketchMeasurement,
+  SketchObject,
+  SketchParameter,
+  SketchTable,
+  SketchTransform,
+  TextLook,
+} from "./values";
+export { MEASURES, MOST_STROKES, PARAMETER_UNITS } from "./values";
