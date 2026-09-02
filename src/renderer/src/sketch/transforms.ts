@@ -177,14 +177,22 @@ function translation(
  * How the dialog would place the image of one point, or null while it cannot be
  * answered yet. Null is what greys the action button and hides the preview.
  */
+/** What the transform dialog was left holding, which is what its maker follows. */
+export interface TransformAnswer {
+  values: TransformValues;
+  objects: SketchObject[];
+  /** What a rotation or a dilation turns about. */
+  centre: string | null;
+  /** What a reflection is across. */
+  mirror: string | null;
+  marks?: Marks;
+}
+
 export function makerFor(
   kind: TransformKind,
-  values: TransformValues,
-  objects: SketchObject[],
-  centre: string | null,
-  mirror: string | null,
-  marks: Marks = NO_MARKS,
+  answer: TransformAnswer,
 ): ((of: string) => Derivation) | null {
+  const { values, objects, centre, mirror, marks = NO_MARKS } = answer;
   if (kind === "translate") {
     const vector = translation(values.translate, objects, marks);
     return vector ? (of) => ({ kind: "translate", of, ...vector }) : null;
@@ -294,10 +302,10 @@ export type Imager = (
 
 export function transformed(
   selection: string[],
-  objects: SketchObject[],
-  size: PointSize,
   make: (of: string) => Derivation,
+  page: { objects: SketchObject[]; size: PointSize },
 ): SketchObject[] {
+  const { objects, size } = page;
   return imagedBy(selection, objects, (id, settled) => {
     const from = make(id);
     const at = imageOf(from, settled);

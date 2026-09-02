@@ -235,13 +235,13 @@ function locus(page: Building): SketchObject[] {
   const found = locusParts(page);
   if (!found) return [];
   return [
-    createLocus(
-      found.driver.id,
-      found.domain.id,
-      found.driven.id,
-      spanOver(page, found.domain, found.along),
-      isPoint(found.driven) ? POINT_SAMPLES : SHAPE_SAMPLES,
-    ),
+    createLocus({
+      driver: found.driver.id,
+      domain: found.domain.id,
+      driven: found.driven.id,
+      span: spanOver(page, found.domain, found.along),
+      samples: isPoint(found.driven) ? POINT_SAMPLES : SHAPE_SAMPLES,
+    }),
   ];
 }
 

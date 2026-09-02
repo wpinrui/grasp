@@ -171,9 +171,9 @@ function dependsOnPoint(objects: SketchObject[], of: string, on: string): boolea
 export function splitMerged(
   objects: SketchObject[],
   what: SplitMerge,
-  settled: Settled,
-  paths: (id: string) => PathGeometry | undefined,
+  page: { settled: Settled; paths: (id: string) => PathGeometry | undefined },
 ): SketchObject[] {
+  const { settled, paths } = page;
   if (what.kind === "free") {
     // It stays where it stands. The page is already settled, so the place it
     // was worked out at is the place it is written at.

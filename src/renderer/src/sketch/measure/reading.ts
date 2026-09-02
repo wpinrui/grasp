@@ -57,9 +57,9 @@ export interface Reading {
 export function readingOfValue(
   object: SketchParameter | SketchCalculation | SketchFunction,
   quantity: Quantity | null,
-  names: Map<string, string>,
-  objects: SketchObject[] = [],
+  page: { names: Map<string, string>; objects?: SketchObject[] },
 ): Reading {
+  const { names, objects = [] } = page;
   const name = names.get(object.id) ?? "";
   // A function says what it is rather than what it comes to, since it comes to
   // nothing until something is put into it.
@@ -134,12 +134,15 @@ readValuesWith((object, objects, settled) => {
   return worked ? inSheetTerms(worked) : null;
 });
 
-export function readingOf(
-  measurement: SketchMeasurement,
-  objects: SketchObject[],
-  names: Map<string, string>,
-  settled: Settled,
-): Reading {
+/** The page a reading is read off: what is on it, what things are called, and where they settled. */
+export interface Reading0n {
+  objects: SketchObject[];
+  names: Map<string, string>;
+  settled: Settled;
+}
+
+export function readingOf(measurement: SketchMeasurement, page: Reading0n): Reading {
+  const { objects, names, settled } = page;
   const measure = measurement.measure;
   const value = sayQuantity(quantityOf(measurement, objects, settled), measurement.places);
   // Its label showing, a measurement says its own name in front of the value

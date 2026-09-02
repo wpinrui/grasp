@@ -191,14 +191,21 @@ function marking({ held, put, point }: PageOps) {
   return {
     /** Equal-side ticks on a path, `at` being the fraction of the way along it. */
     tick: (path: string, at = 0.5, strokes = STROKES) =>
-      put(createTick("equal", path, at, strokes, false)),
+      put(createTick({ form: "equal", path, at, strokes, flipped: false })),
     parallelMark: (path: string, at = 0.5, strokes = STROKES) =>
-      put(createTick("parallel", path, at, strokes, false)),
+      put(createTick({ form: "parallel", path, at, strokes, flipped: false })),
     angleMark: (corner: string, a: string, b: string, strokes = STROKES, reflex = false) => {
       const arms: [string, string] = [point(a), point(b)];
       const sides = arms.map((arm) => sideJoining(held, point(corner), arm));
       return put(
-        createAngleMark(point(corner), arms, [sides[0], sides[1]], strokes, reflex, MARK_RADIUS),
+        createAngleMark({
+          corner: point(corner),
+          arms,
+          sides: [sides[0], sides[1]],
+          strokes,
+          reflex,
+          radius: MARK_RADIUS,
+        }),
       );
     },
   };

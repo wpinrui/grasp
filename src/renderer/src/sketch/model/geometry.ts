@@ -117,14 +117,12 @@ export const SAMPLE_STEP = 5;
 /** Where a point on screen lands on the sheet. */
 export function toSheet(
   bounds: DOMRect,
-  clientX: number,
-  clientY: number,
-  view: Position,
-  scale: number,
+  pointer: { clientX: number; clientY: number },
+  at: { view: Position; scale: number },
 ): Position {
   return {
-    x: view.x + (clientX - bounds.left) / scale,
-    y: view.y + (clientY - bounds.top) / scale,
+    x: at.view.x + (pointer.clientX - bounds.left) / at.scale,
+    y: at.view.y + (pointer.clientY - bounds.top) / at.scale,
   };
 }
 

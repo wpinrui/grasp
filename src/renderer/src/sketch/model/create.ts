@@ -87,13 +87,15 @@ export function createCaption(
 }
 
 /** A number the sketch holds, which the New Parameter dialog sets. */
-export function createParameter(
-  value: number,
-  unit: ParameterUnit,
-  places: number,
-  at: Position,
-): SketchParameter {
-  return { id: nextId("param"), kind: "parameter", value, unit, places, x: at.x, y: at.y };
+/** What a parameter holds: a number, what it is a number of, and how far it is written. */
+export interface ParameterWanted {
+  value: number;
+  unit: ParameterUnit;
+  places: number;
+}
+
+export function createParameter(wanted: ParameterWanted, at: Position): SketchParameter {
+  return { id: nextId("param"), kind: "parameter", ...wanted, x: at.x, y: at.y };
 }
 
 /** A number worked out from the sketch's other numbers. */
@@ -143,14 +145,18 @@ export function createWedge(of: string, wedge: "sector" | "segment"): SketchInte
   return { id: nextId("shape"), kind: "interior", of, wedge };
 }
 
-export function createLocus(
-  driver: string,
-  domain: string,
-  driven: string,
-  span: [number, number],
-  samples: number,
-): SketchLocus {
-  return { id: nextId("locus"), kind: "locus", driver, domain, driven, span, samples };
+/** What a locus is: the point that drives it, what it slides along, and what it draws. */
+export interface LocusWanted {
+  driver: string;
+  domain: string;
+  driven: string;
+  /** How far along the domain the driver is walked, as two fractions. */
+  span: [number, number];
+  samples: number;
+}
+
+export function createLocus(wanted: LocusWanted): SketchLocus {
+  return { id: nextId("locus"), kind: "locus", ...wanted };
 }
 
 /** The common case: a line through two points. */
@@ -160,11 +166,11 @@ export function lineThrough(form: LineForm, ends: [string, string]): SketchLine 
 
 /** A point sitting somewhere along a path, which it can then be dragged along. */
 export function pointOnPath(
-  path: SketchObject,
-  where: PathGeometry,
+  on: { path: SketchObject; where: PathGeometry },
   at: Position,
   size: PointSize,
 ): SketchPoint | null {
+  const { path, where } = on;
   const from: Derivation = { kind: "on", path: path.id, at: alongPath(where, at) };
   return createPoint(spotOnPath(where, from.at), size, from);
 }

@@ -1,4 +1,5 @@
 import { filledPath, radiusOf, type SketchPoint, wedgeOf } from "./figures";
+import type { Settled } from "./geometry";
 import {
   type ArcGeometry,
   type CircleGeometry,
@@ -34,12 +35,16 @@ import type { SketchObject } from "./values";
  * two overlap, since a line always has points sitting on it; among their own
  * kind, later objects sit on top.
  */
-export function objectAt(
-  objects: SketchObject[],
-  at: Position,
-  scale: number,
-  settled = settle(objects).settled,
-): SketchObject | null {
+/** The page a pick reads: what is on it, at what zoom, and where it all settled. */
+export interface Picking {
+  objects: SketchObject[];
+  scale: number;
+  settled?: Settled;
+}
+
+export function objectAt(at: Position, page: Picking): SketchObject | null {
+  const { objects, scale } = page;
+  const settled = page.settled ?? settle(objects).settled;
   const slack = slackAt(scale);
   for (let index = objects.length - 1; index >= 0; index -= 1) {
     const object = objects[index];
@@ -51,7 +56,7 @@ export function objectAt(
   // tick catches the tick rather than the side it sits on.
   for (let index = objects.length - 1; index >= 0; index -= 1) {
     const object = objects[index];
-    if (isMark(object) && nearMark(object, at, scale, settled, objects)) return object;
+    if (isMark(object) && nearMark(object, at, { scale, settled, objects })) return object;
   }
   for (let index = objects.length - 1; index >= 0; index -= 1) {
     const object = objects[index];
@@ -137,12 +142,9 @@ function arcTouches(arc: ArcGeometry, rect: Rect): boolean {
  * Marquee catch. Touching is enough: an object does not have to sit inside the
  * rectangle, so a point counts as soon as its dot overlaps.
  */
-export function objectsTouching(
-  objects: SketchObject[],
-  rect: Rect,
-  scale: number,
-  settled = settle(objects).settled,
-): SketchObject[] {
+export function objectsTouching(rect: Rect, page: Picking): SketchObject[] {
+  const { objects, scale } = page;
+  const settled = page.settled ?? settle(objects).settled;
   return objects.filter((object) => {
     if (isLocus(object)) {
       const shape = settled.loci.get(object.id);
@@ -221,7 +223,7 @@ export function objectsTouching(
     // A mark is caught where it is drawn: the spot a tick rides, or the corner
     // an angle mark turns about.
     if (isMark(object)) {
-      const shape = markShape(object, settled, objects, scale);
+      const shape = markShape(object, { settled, objects, scale });
       if (!shape) return false;
       return (
         shape.at.x >= rect.x &&

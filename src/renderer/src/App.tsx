@@ -662,11 +662,11 @@ export function App() {
   const transform = dialog === "iterate" ? null : dialog;
   const maker =
     transform && transformable(selection, objects)
-      ? makerFor(transform, values, objects, centre, mirror, follows)
+      ? makerFor(transform, { values, objects, centre, mirror, marks: follows })
       : null;
-  const orbit = dialog === "iterate" ? iterated(objects, seeds, targets, depth) : [];
+  const orbit = dialog === "iterate" ? iterated(objects, { seeds, targets, depth }) : [];
   const preview: SketchObject[] = maker
-    ? transformed(selection, objects, pointSize, maker)
+    ? transformed(selection, maker, { objects, size: pointSize })
     : dialog
       ? orbit
       : // No dialog: the sheet shows what the Construct entry under the pointer
@@ -1198,7 +1198,10 @@ export function App() {
     const before = sketch.read();
     sketch.commit({
       ...before,
-      objects: splitMerged(before.objects, splitMerge, geometry, (id) => pathIn(geometry, id)),
+      objects: splitMerged(before.objects, splitMerge, {
+        settled: geometry,
+        paths: (id: string) => pathIn(geometry, id),
+      }),
       // The point it acted on stays picked, since it is what you are working
       // on. Merging two leaves the one that survived.
       selection: [splitMerge.kind === "join" ? splitMerge.to : splitMerge.point],
@@ -1480,7 +1483,7 @@ export function App() {
       setParameterDialog(null);
       return;
     }
-    const made = createParameter(value, unit, places, valueSpot());
+    const made = createParameter({ value, unit, places }, valueSpot());
     // Made from inside the Calculator, it goes into the expression rather than
     // taking the selection over, since the Calculator is still what is in hand.
     if (parameterDialog?.fromCalculator) {
@@ -1666,7 +1669,9 @@ export function App() {
    * Give one object a name, and optionally hand it over from whatever held it,
    * which puts that one back on the automatic run. An empty name unpins.
    */
-  function pinName(id: string, name: string, freed?: string, kept?: string) {
+  function pinName(id: string, name: string, swap?: { freed?: string; kept?: string }) {
+    const freed = swap?.freed;
+    const kept = swap?.kept;
     const before = sketch.read();
     const names = namesFor(before.objects);
     sketch.commit({
@@ -1730,7 +1735,7 @@ export function App() {
       const name = isCaption(object)
         ? captionRowName(object.html)
         : isMeasurement(object)
-          ? readingText(readingOf(object, objects, names, geometry))
+          ? readingText(readingOf(object, { objects, names, settled: geometry }))
           : names.get(object.id);
       return name
         ? [{ id: object.id, name, kind: kindOf(object).replace(/^(a|an|another) /, "") }]
@@ -1848,7 +1853,7 @@ export function App() {
 
   function applyDialog() {
     if (!maker) return;
-    sketch.addObjects(transformed(selection, objects, pointSize, maker));
+    sketch.addObjects(transformed(selection, maker, { objects, size: pointSize }));
     setDialog(null);
   }
 
@@ -2400,14 +2405,14 @@ export function App() {
             const holder = objects.find(
               (object) => namesFor(objects).get(object.id) === clash.name,
             );
-            pinName(clash.id, clash.name, holder?.id);
+            pinName(clash.id, clash.name, { freed: holder?.id });
             setClash(null);
           }}
           onBoth={() => {
             const holder = objects.find(
               (object) => namesFor(objects).get(object.id) === clash.name,
             );
-            pinName(clash.id, clash.name, undefined, holder?.id);
+            pinName(clash.id, clash.name, { kept: holder?.id });
             setClash(null);
           }}
           onCancel={() => setClash(null)}

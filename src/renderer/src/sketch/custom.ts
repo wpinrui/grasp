@@ -66,12 +66,11 @@ export function canDefine(objects: SketchObject[], selection: string[]): boolean
  * is the working rather than the answer.
  */
 function replay(
-  chain: SketchObject[],
-  image: string,
-  seed: string,
+  example: { chain: SketchObject[]; image: string; seed: string },
   at: string,
   settled: Settled,
 ): { image: SketchPoint; along: SketchObject[] } | null {
+  const { chain, image, seed } = example;
   const stands = new Map<string, string>([[seed, at]]);
   const along: SketchObject[] = [];
   let landed: SketchPoint | null = null;
@@ -118,5 +117,7 @@ export function customImager(
 ): (id: string, settled: Settled) => { image: SketchPoint; along: SketchObject[] } | null {
   const chain = chainOf(objects, transform.seed, transform.image);
   return (id, settled) =>
-    chain.length === 0 ? null : replay(chain, transform.image, transform.seed, id, settled);
+    chain.length === 0
+      ? null
+      : replay({ chain, image: transform.image, seed: transform.seed }, id, settled);
 }

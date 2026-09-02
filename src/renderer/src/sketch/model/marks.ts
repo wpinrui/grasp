@@ -143,12 +143,15 @@ function groupOf(mark: SketchMark, objects: SketchObject[]): SketchMark[] {
 }
 
 /** Where a mark lands once the figure it marks has settled. */
-export function markShape(
-  mark: SketchMark,
-  settled: Settled,
-  objects: SketchObject[] = [],
-  scale = 1,
-): MarkShape | null {
+/** The settled page a mark is shaped against, and the zoom it is drawn at. */
+export interface MarkedOn {
+  settled: Settled;
+  objects?: SketchObject[];
+  scale?: number;
+}
+
+export function markShape(mark: SketchMark, on: MarkedOn): MarkShape | null {
+  const { settled, objects = [], scale = 1 } = on;
   if ("path" in mark) {
     const path = pathIn(settled, mark.path);
     if (!path) return null;
@@ -269,14 +272,9 @@ export function markReach(mark: SketchMark): number {
 }
 
 /** Whether a spot catches a mark, which is how the Marker tool picks one up. */
-export function nearMark(
-  mark: SketchMark,
-  at: Position,
-  scale: number,
-  settled: Settled,
-  objects: SketchObject[] = [],
-): boolean {
-  const shape = markShape(mark, settled, objects, scale);
+export function nearMark(mark: SketchMark, at: Position, on: MarkedOn): boolean {
+  const { scale = 1 } = on;
+  const shape = markShape(mark, on);
   if (!shape) return false;
   if (shape.form !== "angle") {
     const spread = ((shape.strokes - 1) / 2) * (TICK_GAP / scale);
@@ -298,36 +296,41 @@ export function nearMark(
   return shape.sweep < 0 ? turn <= 0 && turn >= shape.sweep : turn >= 0 && turn <= shape.sweep;
 }
 
+/** What a tick is: which path it rides, where along it, and how it is drawn. */
+export interface TickWanted {
+  form: "equal" | "parallel";
+  path: string;
+  /** The fraction of the way along the path it sits. */
+  at: number;
+  strokes: number;
+  flipped: boolean;
+}
+
 /** A tick riding a path, put down a given fraction of the way along it. */
-export function createTick(
-  form: "equal" | "parallel",
-  path: string,
-  at: number,
-  strokes: number,
-  flipped: boolean,
-): SketchMark {
-  return { id: nextId("mark"), kind: "mark", form, path, at, strokes, flipped };
+export function createTick(wanted: TickWanted): SketchMark {
+  return { id: nextId("mark"), kind: "mark", ...wanted };
+}
+
+/** What an angle mark is: the corner, its two arms, and how it is drawn. */
+export interface AngleMarkWanted {
+  corner: string;
+  arms: [string, string];
+  /** The two straight objects the arms run along. */
+  sides: [string, string];
+  strokes: number;
+  /** Whether it marks the angle the long way round. */
+  reflex: boolean;
+  /** How far the arcs stand from the corner, in sheet units. */
+  radius: number;
 }
 
 /** A mark on one of the angles the sides make where they meet. */
-export function createAngleMark(
-  corner: string,
-  arms: [string, string],
-  sides: [string, string],
-  strokes: number,
-  reflex: boolean,
-  radius: number,
-): SketchMark {
+export function createAngleMark(wanted: AngleMarkWanted): SketchMark {
   return {
     id: nextId("mark"),
     kind: "mark",
     form: "angle",
-    corner,
-    arms,
-    sides,
-    strokes,
-    reflex,
-    radius,
+    ...wanted,
   };
 }
 

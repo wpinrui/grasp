@@ -182,7 +182,12 @@ function inFill(page: Labelling, object: SketchObject, at: Position): boolean {
 }
 
 /** The first of these ways out that keeps the label clear of every fill. */
-function clearOf(page: Labelling, object: SketchObject, at: Position, ways: number[]): number {
+function clearOf(
+  page: Labelling,
+  hung: { object: SketchObject; at: Position },
+  ways: number[],
+): number {
+  const { object, at } = hung;
   return ways.find((way) => !inFill(page, object, labelSpot(page, at, way))) ?? ways[0];
 }
 
@@ -208,23 +213,23 @@ export function labelOff(page: Labelling, object: SketchObject, at: Position): P
     // Beside the line rather than across it, on the upper side unless that
     // side is the one filled, in which case the other one.
     const span = page.spanOf(object);
-    if (!span) return out(clearOf(page, object, at, around(LABEL_LEAN)));
+    if (!span) return out(clearOf(page, { object, at }, around(LABEL_LEAN)));
     const angle = Math.atan2(span[1].y - span[0].y, span[1].x - span[0].x) - Math.PI / 2;
     const upper = Math.sin(angle) > 0 ? angle + Math.PI : angle;
-    return out(clearOf(page, object, at, [upper, upper + Math.PI]));
+    return out(clearOf(page, { object, at }, [upper, upper + Math.PI]));
   }
   if (isCircle(object) || isArc(object)) {
     // Outside the rim, straight out from the middle.
     const round = page.settled.circles.get(object.id) ?? page.settled.arcs.get(object.id);
     if (!round || (isArc(object) && page.settled.arcs.get(object.id)?.flat)) {
-      return out(clearOf(page, object, at, around(LABEL_LEAN)));
+      return out(clearOf(page, { object, at }, around(LABEL_LEAN)));
     }
     const away = Math.atan2(at.y - round.at.y, at.x - round.at.x);
-    return out(clearOf(page, object, at, around(away)));
+    return out(clearOf(page, { object, at }, around(away)));
   }
-  if (!isPoint(object)) return out(clearOf(page, object, at, around(LABEL_LEAN)));
+  if (!isPoint(object)) return out(clearOf(page, { object, at }, around(LABEL_LEAN)));
   const ways = throughSpot(page, at);
-  if (ways.length === 0) return out(clearOf(page, object, at, around(LABEL_LEAN)));
+  if (ways.length === 0) return out(clearOf(page, { object, at }, around(LABEL_LEAN)));
   // The widest gap between what runs through here, less any gap that leads
   // into a fill, with the lean breaking any tie so a plain figure still
   // labels itself the same way throughout.

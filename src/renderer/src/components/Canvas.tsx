@@ -842,7 +842,7 @@ export function Canvas({
     event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>,
   ): Position | null {
     const bounds = sheet.current?.getBoundingClientRect();
-    return bounds ? toSheet(bounds, event.clientX, event.clientY, view, scale) : null;
+    return bounds ? toSheet(bounds, event, { view, scale }) : null;
   }
 
   /** Zoom, holding the sheet still under one point of the canvas. */
@@ -1267,7 +1267,7 @@ export function Canvas({
     // being written, and clicking bare sheet finishes the caption. The default
     // is stopped so the caret is not lost on the way.
     if (editing && !picking) {
-      const hit = objectAt(objects, at, scale, settled);
+      const hit = objectAt(at, { objects: objects, scale, settled });
       if (hit && hit.id !== editing) {
         event.preventDefault();
         insertLink(hit.id);
@@ -1278,7 +1278,7 @@ export function Canvas({
     // A press on bare sheet puts away whatever panel is open, whatever tool is
     // up and whichever object the panel is about. A press on a panel itself
     // never reaches here: the panel keeps it.
-    if (!objectAt(objects, at, scale, settled)) {
+    if (!objectAt(at, { objects: objects, scale, settled })) {
       setPanel(null);
       setReadingPanel(null);
     }
@@ -1288,7 +1288,7 @@ export function Canvas({
     if (picking) {
       // Whatever is under the pointer goes to the dialog, which knows whether
       // it wanted a point or a straight object and ignores the rest.
-      const hit = objectAt(objects, at, scale, settled);
+      const hit = objectAt(at, { objects: objects, scale, settled });
       if (hit) onPick(hit.id);
       return;
     }
@@ -1358,7 +1358,7 @@ export function Canvas({
     // and hides labels, and only over bare sheet does it drag out a caption.
     const hit =
       (tool === "arrow" || tool === "text") && !held
-        ? objectAt(tool === "arrow" ? pickable : objects, at, scale, settled)
+        ? objectAt(at, { objects: tool === "arrow" ? pickable : objects, scale, settled })
         : null;
     // Pressing empty canvas clears at once, it does not wait for the release.
     // That is why a marquee, which starts from empty canvas, replaces the
@@ -1388,7 +1388,7 @@ export function Canvas({
   function markUnder(at: Position): SketchMark | null {
     for (let index = objects.length - 1; index >= 0; index -= 1) {
       const object = objects[index];
-      if (isMark(object) && nearMark(object, at, scale, settled, objects)) return object;
+      if (isMark(object) && nearMark(object, at, { scale, settled, objects })) return object;
     }
     return null;
   }
@@ -1572,7 +1572,7 @@ export function Canvas({
    * not covered by the number taken off it.
    */
   function readingFrom(at: Position): Written | null {
-    const hit = objectAt(objects, at, scale, settled);
+    const hit = objectAt(at, { objects: objects, scale, settled });
     if (!hit) return null;
     const off = (spot: Position, way: Position, far: number) => ({
       x: spot.x + way.x * (far / scale),
@@ -1619,7 +1619,7 @@ export function Canvas({
       const at3 =
         isMark(hit) && !("path" in hit) ? [hit.arms[0], corner, hit.arms[1]] : cornerArms(corner);
       if (!at3) return null;
-      return angleWritten(corner, [at3[0], at3[2]], hit);
+      return angleWritten({ corner, arms: [at3[0], at3[2]] }, hit);
     }
     return null;
   }
@@ -1631,11 +1631,11 @@ export function Canvas({
    * dialog named the arms itself.
    */
   function angleWritten(
-    corner: string,
-    arms: [string, string],
+    angle: { corner: string; arms: [string, string] },
     hit: SketchObject | null,
     named = false,
   ): Written | null {
+    const { corner, arms } = angle;
     {
       const at3 = [arms[0], corner, arms[1]];
       const spot = settled.points.get(corner);
@@ -1661,7 +1661,7 @@ export function Canvas({
       // An angle has to be marked before it can be read: the arcs say which of
       // the angles at that corner the number is about. One already there is
       // used as it is, and the number goes outside it.
-      const mark = angleMarkOn(corner, arms, hit, reflex);
+      const mark = angleMarkOn({ corner, arms, reflex }, hit);
       const made = { ...newReading("angle", at3, spot), reflex };
       const hangs = angleReadingSpot(made, mark, reflex);
       return {
@@ -1715,11 +1715,10 @@ export function Canvas({
 
   /** The mark on an angle, made where that way round is not marked already. */
   function angleMarkOn(
-    corner: string,
-    arms: [string, string],
+    angle: { corner: string; arms: [string, string]; reflex: boolean },
     hit: SketchObject | null,
-    reflex: boolean,
   ): SketchMark {
+    const { corner, arms, reflex } = angle;
     if (hit && isMark(hit) && !("path" in hit) && (hit.reflex === true) === reflex) return hit;
     const already = objects.find(
       (object) =>
@@ -1733,14 +1732,14 @@ export function Canvas({
     const sides = armsAt(corner, objects, settled)
       .filter((arm) => arms.includes(arm.end))
       .map((arm) => arm.side);
-    return createAngleMark(
+    return createAngleMark({
       corner,
       arms,
-      [sides[0], sides[1]] as [string, string],
-      lastMark.current.angle,
+      sides: [sides[0], sides[1]] as [string, string],
+      strokes: lastMark.current.angle,
       reflex,
-      clearOfCorner(corner),
-    );
+      radius: clearOfCorner(corner),
+    });
   }
 
   /**
@@ -2099,7 +2098,7 @@ export function Canvas({
   function panelSpotOf(id: string): Position | null {
     const mark = objects.find((object) => object.id === id);
     if (!mark || !isMark(mark)) return null;
-    const shape = markShape(mark, settled, objects, scale);
+    const shape = markShape(mark, { settled, objects, scale });
     if (!shape) return null;
     // An angle mark turns about its corner, so its panel clears the arcs.
     const lift = shape.form === "angle" ? shape.radius + 16 : 12;
@@ -2122,7 +2121,7 @@ export function Canvas({
 
   /** Which way a tick's arrowheads point on the sheet, once it is drawn. */
   function wayOf(mark: SketchMark): Position | null {
-    const shape = markShape(mark, settled, objects, scale);
+    const shape = markShape(mark, { settled, objects, scale });
     return shape && shape.form !== "angle" ? shape.way : null;
   }
 
@@ -2226,7 +2225,11 @@ export function Canvas({
    * mark's panel instead of laying a second one, so a click is either making
    * the mark or getting at the one that is there, and never both.
    */
-  function layTick(path: SketchObject, along: PathGeometry, spot: Position, beside?: SketchMark) {
+  function layTick(
+    on: { path: SketchObject; along: PathGeometry; spot: Position },
+    beside?: SketchMark,
+  ) {
+    const { path, along, spot } = on;
     const form = marking as "equal" | "parallel";
     const already = objects.find(
       (object) =>
@@ -2240,7 +2243,13 @@ export function Canvas({
     const way = tangentOnPath(along, at);
     const last = lastMark.current.way;
     const flipped = form === "parallel" && last !== null && way.x * last.x + way.y * last.y < 0;
-    const tick = createTick(form, path.id, at, lastMark.current[form], flipped);
+    const tick = createTick({
+      form,
+      path: path.id,
+      at,
+      strokes: lastMark.current[form],
+      flipped,
+    });
     lastMark.current.way = flipped ? { x: -way.x, y: -way.y } : way;
     const before = sketch.read();
     sketch.commit({
@@ -2305,14 +2314,14 @@ export function Canvas({
       setPanel(already.id);
       return;
     }
-    const mark = angleMarkOn(corner, arms, null, reflex);
+    const mark = angleMarkOn({ corner, arms, reflex }, null);
     addMark(mark);
     setPanel(mark.id);
   }
 
   /** Write the number for one angle, by the two arms it runs between. */
   function readAngle(corner: string, arms: [string, string]) {
-    const written = angleWritten(corner, arms, null, true);
+    const written = angleWritten({ corner, arms }, null, true);
     if (!written) return;
     const already = readingAlready(written);
     if (already) {
@@ -2368,14 +2377,14 @@ export function Canvas({
     // tells one armed for points from one armed for markings without a click.
     if (tool === "arrow" && !picking && !grab.current) {
       const over = positionOf(event);
-      const found = over ? objectAt(pickable, over, scale, settled) : null;
+      const found = over ? objectAt(over, { objects: pickable, scale, settled }) : null;
       if ((found?.id ?? null) !== under) setUnder(found?.id ?? null);
     } else if (under !== null) {
       setUnder(null);
     }
     if (tool === "text" && !picking && !grab.current) {
       const over = positionOf(event);
-      const found = over ? objectAt(objects, over, scale, settled) : null;
+      const found = over ? objectAt(over, { objects: objects, scale, settled }) : null;
       const named = found !== null && names.has(found.id);
       if (named !== overNamed) setOverNamed(named);
     }
@@ -2565,7 +2574,7 @@ export function Canvas({
     // The protractor asks the same question the same way: short of the arcs the
     // press is on the corner, and a corner with several angles is asked about.
     if (measuring === "angle" && distance(at, state.origin) < ANGLE_AIM / scale) {
-      const spot = objectAt(objects, at, scale, settled);
+      const spot = objectAt(at, { objects: objects, scale, settled });
       if (spot && isPoint(spot) && anglesAt(spot.id, objects, settled).length > 1) {
         setChoosing({
           corner: spot.id,
@@ -2619,7 +2628,7 @@ export function Canvas({
         }
         const path = "path" in held ? objects.find((object) => object.id === held.path) : undefined;
         const along = path ? pathIn(settled, path.id) : null;
-        if (path && along) layTick(path, along, at, held);
+        if (path && along) layTick({ path, along, spot: at }, held);
         return;
       }
       if (marking === "angle") {
@@ -2668,14 +2677,14 @@ export function Canvas({
           setPanel(already.id);
           return;
         }
-        const mark = createAngleMark(
-          armed.corner,
-          wanted.arms,
-          wanted.sides,
-          lastMark.current.angle,
-          wanted.reflex,
-          clearOfCorner(armed.corner),
-        );
+        const mark = createAngleMark({
+          corner: armed.corner,
+          arms: wanted.arms,
+          sides: wanted.sides,
+          strokes: lastMark.current.angle,
+          reflex: wanted.reflex,
+          radius: clearOfCorner(armed.corner),
+        });
         addMark(mark);
         setPanel(mark.id);
         return;
@@ -2688,7 +2697,7 @@ export function Canvas({
         setPanel(null);
         return;
       }
-      layTick(path, along, at);
+      layTick({ path, along, spot: at });
       return;
     }
 
@@ -2714,7 +2723,7 @@ export function Canvas({
       }
       // A click instead: on a thing it shows what that thing is called, and
       // clicking it again puts the label away.
-      const hit = objectAt(objects, at, scale, settled);
+      const hit = objectAt(at, { objects: objects, scale, settled });
       if (hit && names.has(hit.id)) onToggleLabel(hit.id);
       return;
     }
@@ -2803,7 +2812,7 @@ export function Canvas({
       return;
     }
     if (tool !== "arrow") return;
-    const hit = objectAt(objects, at, scale, settled);
+    const hit = objectAt(at, { objects: objects, scale, settled });
     if (hit && isLine(hit)) onMarkMirror(hit.id);
   }
 
@@ -2856,7 +2865,7 @@ export function Canvas({
    * the pointer, which a new point would belong to.
    */
   function snapAt(at: Position): Snap | null {
-    const over = objectAt(objects, at, scale, settled);
+    const over = objectAt(at, { objects: objects, scale, settled });
     if (over && isPoint(over))
       return { kind: "point", ids: [over.id], at: { x: over.x, y: over.y } };
     // The paths the pointer is on, the newest first, as picking has them.
@@ -2904,7 +2913,7 @@ export function Canvas({
       const path = objects.find((object) => object.id === found.ids[0]);
       const along = pathIn(settled, found.ids[0]);
       if (path && along) {
-        const on = pointOnPath(path, along, at, pointSize);
+        const on = pointOnPath({ path, where: along }, at, pointSize);
         if (on) return on;
       }
     }
@@ -2981,8 +2990,8 @@ export function Canvas({
     value: SketchMeasurement | SketchParameter | SketchCalculation | SketchFunction,
   ) =>
     isMeasurement(value)
-      ? readingOf(value, everything, names, settled)
-      : readingOfValue(value, quantities.get(value.id) ?? null, names, everything);
+      ? readingOf(value, { objects: everything, names, settled })
+      : readingOfValue(value, quantities.get(value.id) ?? null, { names, objects: everything });
 
   /**
    * What a marquee has caught: the geometry, and any writing it ran over.
@@ -2990,7 +2999,9 @@ export function Canvas({
    * drawn into rather than worked out.
    */
   function caughtBy(rect: Rect): string[] {
-    const caught = objectsTouching(pickable, rect, scale, settled).map((object) => object.id);
+    const caught = objectsTouching(rect, { objects: pickable, scale, settled }).map(
+      (object) => object.id,
+    );
     for (const writing of takesWriting ? [...captions, ...readings, ...tables, ...buttons] : []) {
       const box = boxes.current.get(writing.id);
       if (!box) continue;
@@ -3524,7 +3535,7 @@ export function Canvas({
   const onPanel = panel ? objects.find((object) => object.id === panel) : undefined;
   const panelMark = onPanel && isMark(onPanel) ? onPanel : null;
   const panelSpot = panelMark ? panelSpotOf(panelMark.id) : null;
-  const panelShape = panelMark ? markShape(panelMark, settled, objects, scale) : null;
+  const panelShape = panelMark ? markShape(panelMark, { settled, objects, scale }) : null;
   // The panel on a reading sits just above it, the way a mark's panel does.
   const onReading = readingPanel ? objects.find((object) => object.id === readingPanel) : undefined;
   const readingOpen = onReading && isMeasurement(onReading) ? onReading : null;
@@ -3758,7 +3769,7 @@ export function Canvas({
             )}
             {objects.map((object) => {
               if (!isMark(object)) return null;
-              const shape = markShape(object, settled, objects, scale);
+              const shape = markShape(object, { settled, objects, scale });
               if (!shape) return null;
               const strokes = markStrokes(shape, scale);
               return (
@@ -3790,7 +3801,7 @@ export function Canvas({
                 that click would put on it are part of what it would do. */}
             {previewReading?.mark &&
               (() => {
-                const shape = markShape(previewReading.mark, settled, objects, scale);
+                const shape = markShape(previewReading.mark, { settled, objects, scale });
                 if (!shape) return null;
                 return markStrokes(shape, scale).map((stroke) => (
                   <path
