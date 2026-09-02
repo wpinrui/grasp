@@ -128,21 +128,10 @@ export function useSketch() {
 
   const read = useCallback(() => activePage().state, [activePage]);
 
-  /**
-   * Every change goes through here, so an image is never left behind by the
-   * point it came from: `resolve` settles them all before anything is shown.
-   */
-  const apply = useCallback(
-    (next: SketchState, arm = true) => {
-      const objects = arm ? armed(namedIfWanted(next.objects)) : next.objects;
-      const settled = { ...next, objects: resolve(objects) };
-      replacePages(
-        current.current.map((page) =>
-          page.id === active.current ? { ...page, state: settled } : page,
-        ),
-      );
-    },
-    [replacePages],
+  /** The ids already on the page, so a pass can tell what has just landed. */
+  const alreadyThere = useCallback(
+    () => new Set(activePage().state.objects.map((object) => object.id)),
+    [activePage],
   );
 
   /**
@@ -151,12 +140,9 @@ export function useSketch() {
    * back is restored, not drawn.
    */
   const armed = useCallback(
-    (objects: SketchObject[]): SketchObject[] => {
-      if (!arming.current) return objects;
-      const already = new Set(activePage().state.objects.map((object) => object.id));
-      return armedOnto(objects, already, arming.current);
-    },
-    [activePage],
+    (objects: SketchObject[]): SketchObject[] =>
+      arming.current ? armedOnto(objects, alreadyThere(), arming.current) : objects,
+    [alreadyThere],
   );
 
   const armStyle = useCallback((wanted: Arming | null) => {
@@ -172,14 +158,31 @@ export function useSketch() {
   const namedIfWanted = useCallback(
     (objects: SketchObject[]): SketchObject[] => {
       if (!naming.current) return objects;
-      const already = new Set(activePage().state.objects.map((object) => object.id));
+      const already = alreadyThere();
       return objects.map((object) =>
         object.kind === "point" && !already.has(object.id) && object.label === undefined
           ? { ...object, label: { shown: true } }
           : object,
       );
     },
-    [activePage],
+    [alreadyThere],
+  );
+
+  /**
+   * Every change goes through here, so an image is never left behind by the
+   * point it came from: `resolve` settles them all before anything is shown.
+   */
+  const apply = useCallback(
+    (next: SketchState, arm = true) => {
+      const objects = arm ? armed(namedIfWanted(next.objects)) : next.objects;
+      const settled = { ...next, objects: resolve(objects) };
+      replacePages(
+        current.current.map((page) =>
+          page.id === active.current ? { ...page, state: settled } : page,
+        ),
+      );
+    },
+    [replacePages, armed, namedIfWanted],
   );
 
   const labelNewPoints = useCallback((on: boolean) => {

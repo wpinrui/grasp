@@ -181,6 +181,7 @@ export function MeasurementBox({
   }`;
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: a box dragged around the sheet, not a control; what it holds is read as text
     <div
       ref={root}
       data-id={measurement.id}

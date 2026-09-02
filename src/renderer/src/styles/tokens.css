@@ -152,6 +152,12 @@
 
   /* Canvas scrollbars, which sit on the sheet */
   --color-scroll-track: #eceff4;
+  /* The dot in a switch that is on, which reads against every switch colour. */
+  --color-switch-knob: #ffffff;
+
+  /* A wash of the close red, behind a line that reports trouble. */
+  --color-error-wash: rgba(196, 43, 28, 0.12);
+
   --color-scroll-thumb: #98a2b3;
   --color-scroll-thumb-hover: #6d7789;
 

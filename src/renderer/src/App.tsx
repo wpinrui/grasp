@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { AboutDialog } from "./components/AboutDialog";
 import { ButtonDialog, type ButtonForm } from "./components/ButtonDialog";
 import { CalculatorDialog } from "./components/CalculatorDialog";
@@ -294,9 +294,9 @@ export function App() {
   });
 
   /** Arm a tool's flyout with one of what it offers. */
-  function pickVariant(tool: string, variant: string) {
+  const pickVariant = useCallback((tool: string, variant: string) => {
     setVariants((armed) => ({ ...armed, [tool]: variant }));
-  }
+  }, []);
   /**
    * What the palette has been set to for the tool that is up, which is how the
    * next thing that tool draws comes out. Switching tools puts it back on the
@@ -2521,6 +2521,7 @@ export function App() {
     if (!open || open.hidden === true) setEditing(null);
   }, [editing, objects]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: it runs when the figure moves, which is what a row records
   useEffect(() => {
     const run = collecting.current;
     if (!run) return;
@@ -2547,7 +2548,6 @@ export function App() {
     run.left -= 1;
     if (run.left <= 0) collecting.current = null;
     captureRow(table.id);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: it runs when the figure moves, which is what a row records
   }, [objects]);
 
   /**
@@ -2640,7 +2640,7 @@ export function App() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo, remove, selectAll, doc]);
+  }, [undo, redo, selectAll, doc, pickVariant]);
 
   return (
     <div className="app">

@@ -25,8 +25,10 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a dismiss layer, the card inside takes the focus
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Escape closes it, from the window listener above
     <div className="about__scrim" onClick={onClose}>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: it only stops the press reaching the layer behind */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: it swallows a press rather than doing anything */}
       <div className="about" onClick={(event) => event.stopPropagation()}>
         <img className="about__logo" src={iconUrl} alt="" />
         <h1 className="about__name">GRASP</h1>

@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0 0 0 / 45%);
+  background: var(--color-scrim);
 }
 
 .script {
@@ -16,7 +16,7 @@
   border: 1px solid var(--color-border-flyout);
   border-radius: 8px;
   background: var(--color-surface);
-  box-shadow: 0 14px 40px rgb(0 0 0 / 50%);
+  box-shadow: var(--shadow-flyout);
   color: var(--color-text);
   font-size: 13px;
 }
@@ -54,7 +54,7 @@
 
 .script__close:hover {
   background: var(--color-close-hover);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .script__body {
@@ -196,19 +196,19 @@
 }
 
 .js-string {
-  color: var(--color-tool-polygon, #a8d08d);
+  color: var(--color-tool-polygon);
 }
 
 .js-number {
-  color: var(--color-tool-point, #ffc83d);
+  color: var(--color-tool-point);
 }
 
 .js-keyword {
-  color: var(--color-tool-arrow, #60cdff);
+  color: var(--color-tool-arrow);
 }
 
 .js-call {
-  color: var(--color-tool-marker, #e879c0);
+  color: var(--color-tool-marker);
 }
 
 .script__errors {
@@ -216,7 +216,7 @@
   padding: 10px 12px 10px 28px;
   border: 1px solid var(--color-close-hover);
   border-radius: 5px;
-  background: rgb(196 43 28 / 12%);
+  background: var(--color-error-wash);
   line-height: 1.5;
 }
 

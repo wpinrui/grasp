@@ -1,4 +1,3 @@
-import type { MouseEvent } from "react";
 import type { Position, SketchMeasurement } from "../sketch/model";
 import { PLACES } from "../sketch/prefs";
 import {
@@ -10,7 +9,9 @@ import {
   MorePlacesIcon,
   ReflexIcon,
 } from "./icons";
-import "./MarkPanel.css";
+import { PanelButton, PanelShell, PanelSplit } from "./MarkPanelShell";
+
+const MEASURE_COLOUR = "var(--color-tool-measure)";
 
 interface ReadingPanelProps {
   reading: SketchMeasurement;
@@ -49,32 +50,27 @@ export function ReadingPanel({
   places,
   onPlaces,
 }: ReadingPanelProps) {
-  const hold = (event: MouseEvent) => event.preventDefault();
   const bounds = reading.bounds;
   const least = PLACES[0];
   const most = PLACES[PLACES.length - 1];
   const decimals = (
     <>
-      <button
-        type="button"
-        className="mark-panel__button"
-        aria-label="One fewer decimal place"
+      <PanelButton
+        label="One fewer decimal place"
         title={`One fewer decimal place (${places} now)`}
         disabled={places <= least}
         onClick={() => onPlaces(reading.id, places - 1)}
       >
         <FewerPlacesIcon />
-      </button>
-      <button
-        type="button"
-        className="mark-panel__button"
-        aria-label="One more decimal place"
+      </PanelButton>
+      <PanelButton
+        label="One more decimal place"
         title={`One more decimal place (${places} now)`}
         disabled={places >= most}
         onClick={() => onPlaces(reading.id, places + 1)}
       >
         <MorePlacesIcon />
-      </button>
+      </PanelButton>
     </>
   );
 
@@ -82,24 +78,18 @@ export function ReadingPanel({
   // arrows belong to a length, which is the only reading with two ends.
   if (reading.measure === "angle") {
     return (
-      <div
-        className="mark-panel"
-        style={{ left: `${at.x}px`, top: `${at.y}px`, color: "var(--color-tool-measure)" }}
-        onMouseDown={hold}
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        <button
-          type="button"
-          className={`mark-panel__button${reading.reflex ? " mark-panel__button--on" : ""}`}
-          aria-label="Read the reflex angle instead"
+      <PanelShell at={at} colour={MEASURE_COLOUR}>
+        <PanelButton
+          label="Read the reflex angle instead"
           title="Read the reflex angle instead"
+          on={reading.reflex}
           onClick={() => onReflex(reading.id, reading.reflex !== true)}
         >
           <ReflexIcon />
-        </button>
-        <span className="mark-panel__split" />
+        </PanelButton>
+        <PanelSplit />
         {decimals}
-      </div>
+      </PanelShell>
     );
   }
 
@@ -107,64 +97,50 @@ export function ReadingPanel({
   // how its segment is drawn out as a dimension.
   if (reading.measure !== "length") {
     return (
-      <div
-        className="mark-panel"
-        style={{ left: `${at.x}px`, top: `${at.y}px`, color: "var(--color-tool-measure)" }}
-        onMouseDown={hold}
-        onPointerDown={(event) => event.stopPropagation()}
-      >
+      <PanelShell at={at} colour={MEASURE_COLOUR}>
         {decimals}
-      </div>
+      </PanelShell>
     );
   }
 
   return (
-    <div
-      className="mark-panel"
-      style={{ left: `${at.x}px`, top: `${at.y}px`, color: "var(--color-tool-measure)" }}
-      onMouseDown={hold}
-      onPointerDown={(event) => event.stopPropagation()}
-    >
-      <button
-        type="button"
-        className={`mark-panel__button${bounds === undefined ? " mark-panel__button--on" : ""}`}
-        aria-label="The number on its own"
+    <PanelShell at={at} colour={MEASURE_COLOUR}>
+      <PanelButton
+        label="The number on its own"
         title="The number on its own"
+        on={bounds === undefined}
         onClick={() => onBounds(reading.id, undefined)}
       >
         <BoundsNoneIcon />
-      </button>
-      <button
-        type="button"
-        className={`mark-panel__button${bounds === "broken" ? " mark-panel__button--on" : ""}`}
-        aria-label="Arrows broken by the number"
+      </PanelButton>
+      <PanelButton
+        label="Arrows broken by the number"
         title="Arrows broken by the number"
+        on={bounds === "broken"}
         onClick={() => onBounds(reading.id, "broken")}
       >
         <BoundsBrokenIcon />
-      </button>
-      <button
-        type="button"
-        className={`mark-panel__button${bounds === "full" ? " mark-panel__button--on" : ""}`}
-        aria-label="Arrows running the whole way"
+      </PanelButton>
+      <PanelButton
+        label="Arrows running the whole way"
         title="Arrows running the whole way"
+        on={bounds === "full"}
         onClick={() => onBounds(reading.id, "full")}
       >
         <BoundsFullIcon />
-      </button>
-      <span className="mark-panel__split" />
-      <button
-        type="button"
-        className={`mark-panel__button${reading.leaders ? " mark-panel__button--on" : ""}`}
-        aria-label="Dotted lines out to the segment"
+      </PanelButton>
+      <PanelSplit />
+      <PanelButton
+        label="Dotted lines out to the segment"
         title="Dotted lines out to the segment"
+        on={reading.leaders}
         disabled={bounds === undefined}
         onClick={() => onLeaders(reading.id, reading.leaders !== true)}
       >
         <LeadersIcon />
-      </button>
-      <span className="mark-panel__split" />
+      </PanelButton>
+      <PanelSplit />
       {decimals}
-    </div>
+    </PanelShell>
   );
 }

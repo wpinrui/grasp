@@ -3613,7 +3613,7 @@ export function Canvas({
     const sides = everything
       .filter((side) => {
         const ends = isLine(side) && side.span.kind === "through" ? side.span.ends : null;
-        if (!ends || !ends.includes(corner)) return false;
+        if (!ends?.includes(corner)) return false;
         return ends.includes(one) || ends.includes(other);
       })
       .map((side) => side.id);
@@ -3965,6 +3965,7 @@ export function Canvas({
                   {selection.includes(object.id) &&
                     strokes.map((stroke, nth) => (
                       <path
+                        // biome-ignore lint/suspicious/noArrayIndexKey: stateless paths in a fixed-length list, redrawn whole
                         key={`halo-${object.id}-${nth}`}
                         className="canvas__mark-halo"
                         d={stroke}
@@ -3973,6 +3974,7 @@ export function Canvas({
                     ))}
                   {strokes.map((stroke, nth) => (
                     <path
+                      // biome-ignore lint/suspicious/noArrayIndexKey: stateless paths in a fixed-length list, redrawn whole
                       key={`${object.id}-${nth}`}
                       className="canvas__mark-stroke"
                       style={strokeLook({ ...object, pattern: undefined })}
@@ -4648,35 +4650,35 @@ export function Canvas({
         })}
 
         {zoomable && (
-        <div className="canvas__zoom" onPointerDown={(event) => event.stopPropagation()}>
-          <button
-            type="button"
-            className="canvas__zoom-button"
-            aria-label="Zoom out"
-            disabled={scale <= MIN_SCALE}
-            onClick={() => zoomTo(stopBelow(scale))}
-          >
-            −
-          </button>
-          <button
-            type="button"
-            className="canvas__zoom-level"
-            aria-label="Zoom to 100%"
-            title="Zoom to 100%"
-            onClick={() => zoomTo(1)}
-          >
-            {Math.round(scale * 100)}%
-          </button>
-          <button
-            type="button"
-            className="canvas__zoom-button"
-            aria-label="Zoom in"
-            disabled={scale >= MAX_SCALE}
-            onClick={() => zoomTo(stopAbove(scale))}
-          >
-            +
-          </button>
-        </div>
+          <div className="canvas__zoom" onPointerDown={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="canvas__zoom-button"
+              aria-label="Zoom out"
+              disabled={scale <= MIN_SCALE}
+              onClick={() => zoomTo(stopBelow(scale))}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="canvas__zoom-level"
+              aria-label="Zoom to 100%"
+              title="Zoom to 100%"
+              onClick={() => zoomTo(1)}
+            >
+              {Math.round(scale * 100)}%
+            </button>
+            <button
+              type="button"
+              className="canvas__zoom-button"
+              aria-label="Zoom in"
+              disabled={scale >= MAX_SCALE}
+              onClick={() => zoomTo(stopAbove(scale))}
+            >
+              +
+            </button>
+          </div>
         )}
       </div>
 

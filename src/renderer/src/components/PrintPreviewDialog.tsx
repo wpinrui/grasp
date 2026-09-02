@@ -59,8 +59,10 @@ export function PrintPreviewDialog({
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a dismiss layer, the card inside takes the focus
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Escape closes it, from the window listener above
     <div className="preview__scrim" onClick={onClose}>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: it only stops the press reaching the layer behind */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: it swallows a press rather than doing anything */}
       <div className="preview" onClick={(event) => event.stopPropagation()}>
         <div className="preview__bar">
           <span className="preview__title">Print Preview</span>

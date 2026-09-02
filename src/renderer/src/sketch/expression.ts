@@ -515,7 +515,7 @@ export function parse(text: string, named: Named, variable = false): Expr | Pars
     if (failed(left)) return left;
     for (;;) {
       const token = peek();
-      if (!token || token.kind !== "op" || token.text === "(" || token.text === ")") break;
+      if (token?.kind !== "op" || token.text === "(" || token.text === ")") break;
       if (token.text === "^") break;
       const op = token.text as "+" | "-" | "*" | "/";
       const mine = BINDS[op];

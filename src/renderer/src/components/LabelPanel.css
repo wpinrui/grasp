@@ -175,6 +175,6 @@
 }
 
 .labels__switch--on .labels__switch-knob {
-  background: #fff;
+  background: var(--color-switch-knob);
   transform: translateX(13px);
 }

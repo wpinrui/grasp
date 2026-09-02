@@ -1,4 +1,3 @@
-import type { MouseEvent } from "react";
 import { MOST_STROKES, type Position, type SketchMark } from "../sketch/model";
 import {
   AngleIcon,
@@ -10,7 +9,9 @@ import {
   RightAngleIcon,
   TickIcon,
 } from "./icons";
-import "./MarkPanel.css";
+import { PanelButton, PanelShell, PanelSplit } from "./MarkPanelShell";
+
+const MARKER_COLOUR = "var(--color-tool-marker)";
 
 interface MarkPanelProps {
   mark: SketchMark;
@@ -38,9 +39,6 @@ const COUNTS = Array.from({ length: MOST_STROKES }, (_, nth) => nth + 1);
  * off. It opens where the mark is, so what it is about is never in doubt, and
  * everything it offers is one press away rather than a count to be clicked up
  * to.
- *
- * It rides above the sheet in screen pixels, so it keeps its size at every zoom
- * the way a label does, and it follows the mark when the figure moves.
  */
 export function MarkPanel({
   mark,
@@ -58,97 +56,74 @@ export function MarkPanel({
   // Bars read the same either way round, so there is nothing to turn.
   const turns = mark.form === "parallel";
   const form = angle ? "equal" : (mark.form as "equal" | "parallel");
-  // A press must not reach the sheet: that would count as a click on the
-  // canvas, which is what closes the panel.
-  const hold = (event: MouseEvent) => event.preventDefault();
+  const swapTo = form === "equal" ? "Make it parallel" : "Make it equal sides";
 
   return (
-    <div
-      className="mark-panel"
-      style={{
-        left: `${at.x}px`,
-        top: `${at.y}px`,
-        color: "var(--color-tool-marker)",
-      }}
-      onMouseDown={hold}
-      onPointerDown={(event) => event.stopPropagation()}
-    >
+    <PanelShell at={at} colour={MARKER_COLOUR}>
       {turns && (
         <>
-          <button
-            type="button"
-            className="mark-panel__button"
-            aria-label="Turn the mark round"
+          <PanelButton
+            label="Turn the mark round"
             title="Turn the mark round"
             onClick={() => onFlip(mark.id)}
           >
             <FlipIcon />
-          </button>
-          <span className="mark-panel__split" />
+          </PanelButton>
+          <PanelSplit />
         </>
       )}
       {angle && (
         <>
-          <button
-            type="button"
-            className={`mark-panel__button${
-              "reflex" in mark && mark.reflex ? " mark-panel__button--on" : ""
-            }`}
-            aria-label="Mark the reflex angle instead"
+          <PanelButton
+            label="Mark the reflex angle instead"
             title="Mark the reflex angle instead"
+            on={"reflex" in mark && mark.reflex}
             onClick={() => onReflex(mark.id)}
           >
             <ReflexIcon />
-          </button>
-          <button
-            type="button"
-            className={`mark-panel__button${square ? " mark-panel__button--on" : ""}`}
-            aria-label="Draw it as a right angle"
+          </PanelButton>
+          <PanelButton
+            label="Draw it as a right angle"
             title="Draw it as a right angle"
+            on={square}
             onClick={() => onSquare(mark.id, !square)}
           >
             <RightAngleIcon />
-          </button>
-          <span className="mark-panel__split" />
+          </PanelButton>
+          <PanelSplit />
         </>
       )}
       {COUNTS.map((strokes) => (
-        <button
-          type="button"
+        <PanelButton
           key={strokes}
-          className={`mark-panel__button${
-            mark.strokes === strokes ? " mark-panel__button--on" : ""
-          }`}
-          aria-label={`${strokes}`}
+          label={`${strokes}`}
+          on={mark.strokes === strokes}
           onClick={() => onStrokes(mark.id, strokes)}
         >
           {angle ? <AngleIcon strokes={strokes} /> : <TickIcon form={form} strokes={strokes} />}
-        </button>
+        </PanelButton>
       ))}
       {!angle && canSwap && (
         <>
-          <span className="mark-panel__split" />
-          <button
-            type="button"
-            className="mark-panel__button"
-            aria-label={form === "equal" ? "Make it parallel" : "Make it equal sides"}
-            title={form === "equal" ? "Make it parallel" : "Make it equal sides"}
+          <PanelSplit />
+          <PanelButton
+            label={swapTo}
+            title={swapTo}
             onClick={() => onForm(mark.id, form === "equal" ? "parallel" : "equal")}
           >
             {form === "equal" ? <ParallelMarkIcon /> : <EqualMarkIcon />}
-          </button>
+          </PanelButton>
         </>
       )}
-      <span className="mark-panel__split" />
-      <button
-        type="button"
-        className="mark-panel__button mark-panel__button--away"
-        aria-label="Delete the mark"
+      <PanelSplit />
+      <PanelButton
+        label="Delete the mark"
         title="Delete the mark"
+        away
         onClick={() => onDelete(mark.id)}
       >
         <BinIcon />
-      </button>
-    </div>
+      </PanelButton>
+    </PanelShell>
   );
 }
