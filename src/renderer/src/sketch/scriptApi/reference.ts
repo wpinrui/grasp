@@ -179,10 +179,12 @@ function describedNames(): string[] {
  * Either way a script is being prompted with something untrue.
  */
 export function missingFromApiReference(): string[] {
-  const described = new Set(describedNames());
+  const names = describedNames();
+  const described = new Set(names);
   const offered = new Set(apiNames());
-  return [
+  const apart = new Set([
     ...apiNames().filter((name) => !described.has(name)),
-    ...describedNames().filter((name) => !offered.has(name)),
-  ];
+    ...names.filter((name) => !offered.has(name)),
+  ]);
+  return [...apart];
 }

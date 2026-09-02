@@ -25,6 +25,7 @@ import {
   type LineForm,
   type LineSpan,
   lineThrough,
+  NEARLY,
   type PathGeometry,
   POINT_SAMPLES,
   type PointSize,
@@ -47,9 +48,6 @@ import { pointsFrom } from "./transforms";
  * touches the page: every call takes what is on it and hands back what would
  * land, so the same answer serves the ghost and the commit.
  */
-
-/** How close two places count as the same, as a fraction of what is being measured. */
-const CLOSE_ENOUGH = 1e-6;
 
 /** The page as a build reads it, so nothing here needs the app around it. */
 export interface Building {
@@ -268,17 +266,15 @@ function arcOnCircle(page: Building): SketchObject[] {
     if (ends.length !== 2 || !where) return [];
     // They have to be on the circle, not merely near it.
     const on = (spot: SketchPoint) =>
-      Math.abs(distance(where.at, spot) - where.radius) <=
-      Math.max(CLOSE_ENOUGH, where.radius * CLOSE_ENOUGH);
+      Math.abs(distance(where.at, spot) - where.radius) <= Math.max(NEARLY, where.radius * NEARLY);
     if (!ends.every(on)) return [];
     return [createArc({ kind: "on", circle: round.id, from: ends[0].id, to: ends[1].id })];
   }
   if (!page.selected.every(isPoint)) return [];
   const [centre, one, other] = page.selected;
   const reach = distance(centre, one);
-  if (reach < CLOSE_ENOUGH) return [];
-  if (Math.abs(reach - distance(centre, other)) > Math.max(CLOSE_ENOUGH, reach * CLOSE_ENOUGH))
-    return [];
+  if (reach < NEARLY) return [];
+  if (Math.abs(reach - distance(centre, other)) > Math.max(NEARLY, reach * NEARLY)) return [];
   return [createArc({ kind: "centre", centre: centre.id, from: one.id, to: other.id })];
 }
 

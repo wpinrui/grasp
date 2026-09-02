@@ -1,4 +1,3 @@
-import { radiansOf } from "./model";
 /**
  * What the Transform dialogs work out: the vector, angle or ratio they were
  * given, turned into one derivation per selected point.
@@ -30,6 +29,7 @@ import {
   type MarkedVector,
   type PointSize,
   PX_PER_CM,
+  radiansOf,
   type Settled,
   type SketchArc,
   type SketchObject,

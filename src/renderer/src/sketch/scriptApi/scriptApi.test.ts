@@ -78,8 +78,9 @@ describe("running a script", () => {
   });
 
   it("leaves the page as it found it when a call fails", () => {
-    const already = [createPoint({ x: 5, y: 5 }, "medium")];
-    const page = [...already];
+    const page = [createPoint({ x: 5, y: 5 }, "medium")];
+    // A snapshot, so an edit in place on what is already there is caught too.
+    const already = structuredClone(page);
     const result = evaluate('point(0, 0); segment("nothing", "either");', {
       objects: page,
       sheet: SHEET,

@@ -92,6 +92,7 @@ import {
   pathIn,
   pointOnPath,
   pointsOf,
+  QUARTER_TURN,
   type Rect,
   radiansOf,
   radiusOf,
@@ -1480,7 +1481,7 @@ export function Canvas({
     const turn = degreesOf(angleBetween(from, to));
     return {
       at: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
-      turn: turn > 90 || turn <= -90 ? turn + HALF_TURN : turn,
+      turn: turn > QUARTER_TURN || turn <= -QUARTER_TURN ? turn + HALF_TURN : turn,
       dy: -GUIDE_LIFT,
       text: sayLength(distance(from, to)),
     };

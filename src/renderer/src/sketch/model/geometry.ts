@@ -8,7 +8,7 @@ const PICK_SLACK = 5;
 export const FAR = 1e9;
 
 /** How close two places count as the same, as a fraction of what is being measured. */
-const NEARLY = 1e-6;
+export const NEARLY = 1e-6;
 
 /** Below this a direction is too short to tell which way it points. */
 export const TINY = 1e-9;

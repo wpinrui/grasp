@@ -102,6 +102,7 @@ export {
   isRound,
   MAX_SAMPLES,
   MIN_SAMPLES,
+  NEARLY,
   POINT_SAMPLES,
   pathIn,
   QUARTER_TURN,

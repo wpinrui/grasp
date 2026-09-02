@@ -3,6 +3,7 @@ import {
   bodyOf,
   cornersOf,
   filledPath,
+  inLine,
   isArc,
   isCalculation,
   isCircle,
@@ -143,7 +144,7 @@ export interface ReadingOn {
 }
 
 /** What an object is called in print: by the points it was built from. */
-export function nameOf(id: string, objects: SketchObject[], names: Map<string, string>): Naming[] {
+function nameOf(id: string, objects: SketchObject[], names: Map<string, string>): Naming[] {
   const object = find(objects, id);
   const plain = [{ text: names.get(id) ?? "" }];
   if (!object) return plain;
@@ -181,7 +182,7 @@ function arcNaming(arc: SketchArc, objects: SketchObject[], names: Map<string, s
 }
 
 /** The stretch of a circle two or three points name, written the same way. */
-export function stretchNaming(
+function stretchNaming(
   held: SketchObject[],
   objects: SketchObject[],
   names: Map<string, string>,
@@ -365,10 +366,8 @@ export function wouldMeasure(
       const at = points.map((point) => settled.points.get(point.id));
       if (at.some((one) => one === undefined)) return [];
       const [a, b, c] = at as Position[];
-      const twist = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-      const reach = Math.hypot(b.x - a.x, b.y - a.y) * Math.hypot(c.x - a.x, c.y - a.y);
       // Three points that are not in a line have no ratio to read.
-      if (reach < 1e-9 || Math.abs(twist) > reach * 1e-6) return [];
+      if (!inLine(a, b, c)) return [];
       return [ids(points)];
     }
     default:
