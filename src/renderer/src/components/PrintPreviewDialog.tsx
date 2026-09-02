@@ -6,6 +6,12 @@ import "./PrintPreviewDialog.css";
 /** How much room the sheets are drawn in, in pixels. */
 const STAGE = { width: 660, height: 460 };
 
+/** Millimetres to the centimetre, since page setup holds paper in millimetres. */
+const MM_PER_CM = 10;
+
+/** The gap drawn between one sheet and the next, in pixels. */
+const SHEET_GAP = 10;
+
 interface PrintPreviewDialogProps {
   setup: PageSetup;
   /** The figure as it will print, or null when the page has nothing on it. */
@@ -43,10 +49,13 @@ export function PrintPreviewDialog({
   const paper = paperSize(setup);
   const area = printableArea(setup);
   const sheets = sheetsFor(setup, picture?.width ?? 0, picture?.height ?? 0);
-  const full = { width: (paper.width / 10) * PX_PER_CM, height: (paper.height / 10) * PX_PER_CM };
+  const full = {
+    width: (paper.width / MM_PER_CM) * PX_PER_CM,
+    height: (paper.height / MM_PER_CM) * PX_PER_CM,
+  };
 
   // Every sheet is drawn at one scale, and they all have to fit the stage.
-  const gap = 10;
+  const gap = SHEET_GAP;
   const wide = full.width * sheets.across + gap * (sheets.across - 1);
   const tall = full.height * sheets.down + gap * (sheets.down - 1);
   const shown = Math.min(STAGE.width / wide, STAGE.height / tall);

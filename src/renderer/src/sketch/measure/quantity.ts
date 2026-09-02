@@ -1,6 +1,8 @@
 import { plain, type Quantity } from "../expression";
 import {
+  HALF_TURN,
   PX_PER_CM,
+  radiansOf,
   type Settled,
   type SketchMeasurement,
   type SketchObject,
@@ -30,7 +32,7 @@ export function quantityOf(
     // is the rest of the turn.
     const degrees = measure === "angle" && measurement.reflex ? 360 - amount : amount;
     return {
-      value: units.angle === "radians" ? (degrees * Math.PI) / 180 : degrees,
+      value: units.angle === "radians" ? radiansOf(degrees) : degrees,
       length: 0,
       angle: 1,
     };
@@ -54,14 +56,14 @@ export function quantityOfParameter(parameter: SketchParameter): Quantity {
  */
 export function inSheetTerms(quantity: Quantity): Quantity {
   const perLength = PER_CM[units.distance] ** quantity.length;
-  const perAngle = (units.angle === "radians" ? 180 / Math.PI : 1) ** quantity.angle;
+  const perAngle = (units.angle === "radians" ? HALF_TURN / Math.PI : 1) ** quantity.angle;
   return { ...quantity, value: (quantity.value / perLength) * perAngle };
 }
 
 /** And back again, for writing one out. */
 export function fromSheetTerms(quantity: Quantity): Quantity {
   const perLength = PER_CM[units.distance] ** quantity.length;
-  const perAngle = (units.angle === "radians" ? Math.PI / 180 : 1) ** quantity.angle;
+  const perAngle = (units.angle === "radians" ? Math.PI / HALF_TURN : 1) ** quantity.angle;
   return { ...quantity, value: quantity.value * perLength * perAngle };
 }
 

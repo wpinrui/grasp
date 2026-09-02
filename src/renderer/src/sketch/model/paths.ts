@@ -12,6 +12,7 @@ import {
 import {
   type ArcGeometry,
   type CircleGeometry,
+  degreesOf,
   distance,
   distanceToLine,
   isArcPath,
@@ -20,6 +21,7 @@ import {
   type PathGeometry,
   type Position,
   pathIn,
+  radiansOf,
   type Settled,
   TINY,
   TURN,
@@ -141,7 +143,7 @@ function angleFollowed(angle: MarkedAngle, settled: Settled): number | null {
   if (!corner || !a || !b) return null;
   // The sheet's y counts downward, so counterclockwise on screen is the way the
   // bearing decreases.
-  return ((bearing(corner, a) - bearing(corner, b)) * 180) / Math.PI;
+  return degreesOf(bearing(corner, a) - bearing(corner, b));
 }
 
 /** The ratio a dilation is following, or null where it says nothing. */
@@ -199,9 +201,9 @@ function vectorFollowed(
   const far = by.distance ? reach(by.distance) : Math.hypot(held.dx, held.dy);
   const way = by.angle
     ? angleFollowed(by.angle, settled)
-    : (Math.atan2(-held.dy, held.dx) * 180) / Math.PI;
+    : degreesOf(Math.atan2(-held.dy, held.dx));
   if (far === null || way === null) return null;
-  const radians = (way * Math.PI) / 180;
+  const radians = radiansOf(way);
   return { dx: far * Math.cos(radians), dy: -far * Math.sin(radians) };
 }
 
@@ -251,7 +253,7 @@ export function imageOf(from: Derivation, settled: Settled): Position | null {
   }
   const degrees = from.by ? angleFollowed(from.by, settled) : from.degrees;
   if (degrees === null) return null;
-  const radians = (degrees * Math.PI) / 180;
+  const radians = radiansOf(degrees);
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
   // Counterclockwise on screen, where y counts downward.

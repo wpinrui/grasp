@@ -92,8 +92,10 @@ export type {
 } from "./geometry";
 export {
   clipToRect,
+  degreesOf,
   distance,
   distanceToLine,
+  HALF_TURN,
   insideShape,
   isArcPath,
   isRound,
@@ -101,6 +103,7 @@ export {
   MIN_SAMPLES,
   POINT_SAMPLES,
   pathIn,
+  radiansOf,
   SAMPLE_STEP,
   SHAPE_SAMPLES,
   slackAt,

@@ -44,12 +44,14 @@ import {
   createPoint,
   createTick,
   crossings,
+  degreesOf,
   distance,
   distanceToPath,
   endsById,
   familyOf,
   filledPath,
   fillLook,
+  HALF_TURN,
   isArc,
   isButton,
   isCaption,
@@ -91,6 +93,7 @@ import {
   pointOnPath,
   pointsOf,
   type Rect,
+  radiansOf,
   radiusOf,
   rectBetween,
   type SketchCalculation,
@@ -1018,7 +1021,7 @@ export function Canvas({
       }
     }
     if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = (snapping.angleDegrees * Math.PI) / 180;
+      const step = radiansOf(snapping.angleDegrees);
       const bearing = Math.atan2(at.y - from.y, at.x - from.x);
       const base = baseAngle(bearing);
       for (const whole of nearWhole((bearing - base) / step)) {
@@ -1045,7 +1048,7 @@ export function Canvas({
       reach = Math.max(step, Math.round(reach / step) * step);
     }
     if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = (snapping.angleDegrees * Math.PI) / 180;
+      const step = radiansOf(snapping.angleDegrees);
       const base = baseAngle(angle);
       angle = base + Math.round((angle - base) / step) * step;
     }
@@ -1075,7 +1078,7 @@ export function Canvas({
       reach = Math.round(reach / step) * step;
     }
     if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = (snapping.angleDegrees * Math.PI) / 180;
+      const step = radiansOf(snapping.angleDegrees);
       angle = Math.round(angle / step) * step;
     }
     return { x: Math.cos(angle) * reach, y: Math.sin(angle) * reach };
@@ -1474,10 +1477,10 @@ export function Canvas({
 
   /** How long the line is so far, written along it and never upside down. */
   function alongText(from: Position, to: Position): GuideText {
-    const turn = (angleBetween(from, to) * 180) / Math.PI;
+    const turn = degreesOf(angleBetween(from, to));
     return {
       at: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
-      turn: turn > 90 || turn <= -90 ? turn + 180 : turn,
+      turn: turn > 90 || turn <= -90 ? turn + HALF_TURN : turn,
       dy: -GUIDE_LIFT,
       text: sayLength(distance(from, to)),
     };
@@ -1520,7 +1523,7 @@ export function Canvas({
         at: spot(middle, out),
         turn: 0,
         dy: 5,
-        text: sayAngle((Math.abs(sweep) * 180) / Math.PI),
+        text: sayAngle(degreesOf(Math.abs(sweep))),
       },
     };
   }

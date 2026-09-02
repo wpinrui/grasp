@@ -78,6 +78,19 @@ export function isArcPath(path: PathGeometry): path is ArcGeometry {
   return "sweep" in path;
 }
 
+/** Half a turn in degrees, which is what turns one measure of angle into the other. */
+export const HALF_TURN = 180;
+
+/** An angle in degrees, as radians. */
+export function radiansOf(degrees: number): number {
+  return (degrees * Math.PI) / HALF_TURN;
+}
+
+/** An angle in radians, as degrees. */
+export function degreesOf(radians: number): number {
+  return (radians * HALF_TURN) / Math.PI;
+}
+
 /** A whole turn. */
 export const TURN = Math.PI * 2;
 
