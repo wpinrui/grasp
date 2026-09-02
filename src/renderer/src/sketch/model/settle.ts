@@ -4,6 +4,7 @@ import {
   type ArcGeometry,
   type CircleGeometry,
   distance,
+  distanceToLine,
   insideShape,
   type LineGeometry,
   type LocusShape,
@@ -29,15 +30,7 @@ import {
   isWriting,
   pointsOf,
 } from "./guards";
-import {
-  arcAt,
-  circleAt,
-  distanceToLine,
-  distanceToPath,
-  imageOf,
-  lineAlong,
-  spotOnPath,
-} from "./paths";
+import { arcAt, circleAt, distanceToPath, imageOf, lineAlong, spotOnPath } from "./paths";
 import type { SketchObject } from "./values";
 
 /**

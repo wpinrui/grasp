@@ -13,14 +13,13 @@ import {
   type ArcGeometry,
   type CircleGeometry,
   distance,
-  FAR,
+  distanceToLine,
   isArcPath,
   isRound,
   type LineGeometry,
   type PathGeometry,
   type Position,
   pathIn,
-  type Rect,
   type Settled,
   TINY,
   TURN,
@@ -451,41 +450,6 @@ export function insideWedge(arc: ArcGeometry, wedge: "sector" | "segment", at: P
 }
 
 /**
- * The stretch of a straight object that lies inside a rectangle, or null when
- * none of it does. A segment is cut at both ends, a ray only at the first and a
- * line at neither, which is the whole of what tells the three apart: this both
- * draws them and decides whether a marquee has caught one.
- */
-export function clipToRect(line: LineGeometry, rect: Rect): [Position, Position] | null {
-  const dx = line.b.x - line.a.x;
-  const dy = line.b.y - line.a.y;
-  if (dx === 0 && dy === 0) return null;
-  let near = line.form === "line" ? -FAR : 0;
-  let far = line.form === "segment" ? 1 : FAR;
-  const edges: [number, number][] = [
-    [-dx, line.a.x - rect.x],
-    [dx, rect.x + rect.width - line.a.x],
-    [-dy, line.a.y - rect.y],
-    [dy, rect.y + rect.height - line.a.y],
-  ];
-  for (const [towards, room] of edges) {
-    if (towards === 0) {
-      // Parallel to this edge, so it is either wholly inside it or wholly out.
-      if (room < 0) return null;
-      continue;
-    }
-    const t = room / towards;
-    if (towards < 0) near = Math.max(near, t);
-    else far = Math.min(far, t);
-    if (near > far) return null;
-  }
-  return [
-    { x: line.a.x + dx * near, y: line.a.y + dy * near },
-    { x: line.a.x + dx * far, y: line.a.y + dy * far },
-  ];
-}
-
-/**
  * How far along a path a point sits, as the fraction of the way from the first
  * of its two defining points to the second, kept to where the path runs: a
  * segment stops at both ends, a ray at the first, a line at neither.
@@ -520,16 +484,4 @@ export function distanceToPath(path: PathGeometry, at: Position): number {
   }
   if (!isRound(path)) return distanceToLine(path, at);
   return Math.abs(distance(path.at, at) - path.radius);
-}
-
-/** How far a point sits from a straight object, respecting where it stops. */
-export function distanceToLine(line: LineGeometry, at: Position): number {
-  const dx = line.b.x - line.a.x;
-  const dy = line.b.y - line.a.y;
-  const span = dx * dx + dy * dy;
-  if (span === 0) return distance(line.a, at);
-  let t = ((at.x - line.a.x) * dx + (at.y - line.a.y) * dy) / span;
-  if (line.form !== "line" && t < 0) t = 0;
-  if (line.form === "segment" && t > 1) t = 1;
-  return distance({ x: line.a.x + dx * t, y: line.a.y + dy * t }, at);
 }

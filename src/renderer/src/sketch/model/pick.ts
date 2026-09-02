@@ -2,6 +2,7 @@ import { filledPath, radiusOf, type SketchPoint, wedgeOf } from "./figures";
 import {
   type ArcGeometry,
   type CircleGeometry,
+  clipToRect,
   distance,
   edgesOf,
   insideShape,
@@ -25,7 +26,7 @@ import {
   pointsOf,
 } from "./guards";
 import { markShape, nearMark } from "./marks";
-import { clipToRect, distanceToPath, insideWedge, spotOnPath, wholePath } from "./paths";
+import { distanceToPath, insideWedge, spotOnPath, wholePath } from "./paths";
 import { nearLocus, settle } from "./settle";
 import type { SketchObject } from "./values";
 /**

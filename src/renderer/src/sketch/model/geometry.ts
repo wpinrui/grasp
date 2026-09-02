@@ -170,3 +170,50 @@ export function edgesOf(corners: Position[]): LineGeometry[] {
     form: "segment" as const,
   }));
 }
+
+/**
+ * The stretch of a straight object that lies inside a rectangle, or null when
+ * none of it does. A segment is cut at both ends, a ray only at the first and a
+ * line at neither, which is the whole of what tells the three apart: this both
+ * draws them and decides whether a marquee has caught one.
+ */
+export function clipToRect(line: LineGeometry, rect: Rect): [Position, Position] | null {
+  const dx = line.b.x - line.a.x;
+  const dy = line.b.y - line.a.y;
+  if (dx === 0 && dy === 0) return null;
+  let near = line.form === "line" ? -FAR : 0;
+  let far = line.form === "segment" ? 1 : FAR;
+  const edges: [number, number][] = [
+    [-dx, line.a.x - rect.x],
+    [dx, rect.x + rect.width - line.a.x],
+    [-dy, line.a.y - rect.y],
+    [dy, rect.y + rect.height - line.a.y],
+  ];
+  for (const [towards, room] of edges) {
+    if (towards === 0) {
+      // Parallel to this edge, so it is either wholly inside it or wholly out.
+      if (room < 0) return null;
+      continue;
+    }
+    const t = room / towards;
+    if (towards < 0) near = Math.max(near, t);
+    else far = Math.min(far, t);
+    if (near > far) return null;
+  }
+  return [
+    { x: line.a.x + dx * near, y: line.a.y + dy * near },
+    { x: line.a.x + dx * far, y: line.a.y + dy * far },
+  ];
+}
+
+/** How far a point sits from a straight object, respecting where it stops. */
+export function distanceToLine(line: LineGeometry, at: Position): number {
+  const dx = line.b.x - line.a.x;
+  const dy = line.b.y - line.a.y;
+  const span = dx * dx + dy * dy;
+  if (span === 0) return distance(line.a, at);
+  let t = ((at.x - line.a.x) * dx + (at.y - line.a.y) * dy) / span;
+  if (line.form !== "line" && t < 0) t = 0;
+  if (line.form === "segment" && t > 1) t = 1;
+  return distance({ x: line.a.x + dx * t, y: line.a.y + dy * t }, at);
+}
