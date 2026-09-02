@@ -7,6 +7,6 @@
 export type { ScriptApi, ScriptSheet } from "./calls";
 export { apiNames } from "./calls";
 export type { ApiEntry } from "./reference";
-export { API_REFERENCE, missingFromApiReference } from "./reference";
+export { API_REFERENCE, apiReferenceDrift } from "./reference";
 export type { ScriptResult } from "./sandbox";
 export { evaluate, unknownCalls } from "./sandbox";

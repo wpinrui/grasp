@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { createPoint, isLine, isPoint } from "../model";
 import { apiNames } from "./calls";
-import { missingFromApiReference } from "./reference";
+import { apiReferenceDrift, describedNames } from "./reference";
 import { evaluate, unknownCalls } from "./sandbox";
 
 /**
@@ -60,8 +60,14 @@ describe("the API a script is run with", () => {
     expect(apiNames()).toEqual(CALLS);
   });
 
-  it("describes every call it offers", () => {
-    expect(missingFromApiReference()).toEqual([]);
+  it("and its reference say the same thing", () => {
+    expect(apiReferenceDrift()).toEqual({ undescribed: [], stale: [] });
+  });
+
+  it("would notice either of them drifting from the other", () => {
+    const described = describedNames();
+    expect(apiReferenceDrift(["point", "hexagon"], described).undescribed).toContain("hexagon");
+    expect(apiReferenceDrift(apiNames(), [...described, "octagon"]).stale).toEqual(["octagon"]);
   });
 });
 

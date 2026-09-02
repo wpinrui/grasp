@@ -111,6 +111,20 @@ describe("resizing a point", () => {
     expect(sized(result.current.state.objects, a.id)).toBe("large");
   });
 
+  it("resizes what was undone too, so redoing keeps the new size", () => {
+    const { result } = renderHook(() => useSketch());
+    const a = point({ x: 0, y: 0 });
+    act(() => result.current.commit({ objects: [a], selection: [] }));
+    act(() => result.current.commit({ objects: [{ ...a, x: 60 }], selection: [] }));
+    act(() => result.current.undo());
+    act(() => result.current.select([a.id]));
+    act(() => result.current.restyle("large"));
+
+    act(() => result.current.redo());
+    expect(result.current.state.objects[0]).toMatchObject({ id: a.id, x: 60 });
+    expect(sized(result.current.state.objects, a.id)).toBe("large");
+  });
+
   it("is not an undo step of its own", () => {
     const { result } = renderHook(() => useSketch());
     const a = point({ x: 0, y: 0 });
@@ -144,18 +158,22 @@ describe("a page's history", () => {
     act(() => result.current.redo());
     expect(ids(result.current.state.objects)).toEqual([a.id]);
     expect(result.current.activeId).toBe(first);
-    void second;
   });
 
-  it("goes with the page when it is deleted", () => {
+  it("goes with the page, and the pages beside it keep theirs", () => {
     const { result } = renderHook(() => useSketch());
     const a = point({ x: 0, y: 0 });
+    const b = point({ x: 90, y: 90 });
     const first = result.current.activeId;
     act(() => result.current.commit({ objects: [a], selection: [] }));
+
     act(() => result.current.addPage());
+    act(() => result.current.commit({ objects: [b], selection: [] }));
     act(() => result.current.removePage(first));
 
     expect(result.current.pages.map((page) => page.id)).not.toContain(first);
+    // The page that is left is the one that was added, with its own step to undo.
+    expect(ids(result.current.state.objects)).toEqual([b.id]);
     act(() => result.current.undo());
     expect(result.current.state.objects).toEqual([]);
   });
@@ -168,7 +186,7 @@ describe("a page's history", () => {
 });
 
 describe("opening a sketch from disk", () => {
-  it("replaces the pages and leaves nothing to undo", () => {
+  it("replaces the pages", () => {
     const { result } = renderHook(() => useSketch());
     const a = point({ x: 0, y: 0 });
     act(() => result.current.commit({ objects: [a], selection: [] }));

@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
+import type { MenuAction } from "../components/menus";
 import { type Building, canBuild } from "./builds";
 import { MEASURE_OF } from "./measured";
 import {
@@ -63,7 +64,11 @@ const OWNED = [
   "line",
 ] as const;
 
-/** Answered by `isEnabled` itself, from state no build can see. */
+/**
+ * Everything else. Some of these `isEnabled` answers before it ever asks,
+ * but the ones that matter are those that fall through to its final `return
+ * true`: a stray `false` from here would grey one of those out for good.
+ */
 const NOT_OWNED = [
   "translate",
   "rotate",
@@ -82,6 +87,14 @@ const NOT_OWNED = [
   "split-merge",
   "mark-angle",
   "edit-definition",
+  // The fall-through group, enabled unless something says otherwise.
+  "undo",
+  "redo",
+  "select-all",
+  "clear",
+  "save",
+  "calculate",
+  "new-parameter",
 ] as const;
 
 describe("which entries canBuild answers", () => {
@@ -100,7 +113,7 @@ describe("which entries canBuild answers", () => {
     const measures = Object.keys(MEASURE_OF);
     expect(measures.length).toBeGreaterThan(0);
     for (const action of measures) {
-      expect({ action, answer: canBuild(empty, action as (typeof OWNED)[number]) }).toEqual({
+      expect({ action, answer: canBuild(empty, action as MenuAction) }).toEqual({
         action,
         answer: expect.any(Boolean),
       });
@@ -109,7 +122,7 @@ describe("which entries canBuild answers", () => {
 
   it("leaves everything else to the caller", () => {
     for (const action of NOT_OWNED) {
-      expect({ action, answer: canBuild(empty, action as (typeof OWNED)[number]) }).toEqual({
+      expect({ action, answer: canBuild(empty, action as MenuAction) }).toEqual({
         action,
         answer: null,
       });
@@ -199,6 +212,41 @@ describe("what the selection lets through", () => {
     const objects = [centre, rim, round];
     expect(canBuild(building(objects, [round.id]), "circle-interior")).toBe(true);
     expect(canBuild(building(objects, [centre.id]), "circle-interior")).toBe(false);
+  });
+
+  it("takes two segments meeting at a point for a bisector", () => {
+    const corner = point({ x: 0, y: 0 });
+    const along = point({ x: 100, y: 0 });
+    const up = point({ x: 0, y: 100 });
+    const one = createLine("segment", { kind: "through", ends: [corner.id, along.id] });
+    const other = createLine("segment", { kind: "through", ends: [corner.id, up.id] });
+    const objects = [corner, along, up, one, other];
+    expect(canBuild(building(objects, [one.id, other.id]), "bisector")).toBe(true);
+
+    // Two segments that share no end make no corner to halve.
+    const far = point({ x: 400, y: 400 });
+    const alsoFar = point({ x: 500, y: 400 });
+    const apart = createLine("segment", { kind: "through", ends: [far.id, alsoFar.id] });
+    const loose = [corner, along, far, alsoFar, one, apart];
+    expect(canBuild(building(loose, [one.id, apart.id]), "bisector")).toBe(false);
+  });
+
+  it("takes a point on a path and something built on it for a locus", () => {
+    const a = point({ x: 0, y: 0 });
+    const b = point({ x: 100, y: 0 });
+    const along = createLine("segment", { kind: "through", ends: [a.id, b.id] });
+    const driver = createPoint({ x: 50, y: 0 }, "medium", { kind: "on", path: along.id, at: 0.5 });
+    const away = point({ x: 50, y: 80 });
+    const driven = createPoint({ x: 0, y: 0 }, "medium", {
+      kind: "midpoint",
+      of: driver.id,
+      and: away.id,
+    });
+    const objects = [a, b, along, driver, away, driven];
+    expect(canBuild(building(objects, [driver.id, driven.id]), "locus")).toBe(true);
+
+    // The driven object has to be built on the driver.
+    expect(canBuild(building(objects, [driver.id, away.id]), "locus")).toBe(false);
   });
 
   it("takes a centre and a point on the rim for a circle", () => {

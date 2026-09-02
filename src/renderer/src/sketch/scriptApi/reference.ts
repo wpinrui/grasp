@@ -13,9 +13,9 @@ export interface ApiEntry {
  * The whole API, written out for the prompt. A handle is the string a call
  * hands back; every call that takes an object takes a handle.
  *
- * `apiNames` reads the API itself rather than this list, and `missingFromApiReference`
+ * `apiNames` reads the API itself rather than this list, and `apiReferenceDrift`
  * says where the two have parted company, so a call cannot be added without
- * being described.
+ * being described, nor described without being added.
  */
 export const API_REFERENCE: { heading: string; entries: ApiEntry[] }[] = [
   {
@@ -167,24 +167,26 @@ export const API_REFERENCE: { heading: string; entries: ApiEntry[] }[] = [
 ];
 
 /** The names the reference describes, one per entry. */
-function describedNames(): string[] {
+export function describedNames(): string[] {
   return API_REFERENCE.flatMap((group) => group.entries).map(
     (entry) => entry.call.split(/[( ]/)[0],
   );
 }
 
 /**
- * Where the API and its reference have parted company: a call the reference
- * does not describe, or an entry describing a call the API no longer has.
- * Either way a script is being prompted with something untrue.
+ * Where the API and its reference have parted company: calls nothing describes,
+ * and entries describing a call the API no longer has. Either way a script is
+ * prompted with something untrue. Both lists are taken as arguments so the
+ * comparison itself can be checked against ones that have drifted.
  */
-export function missingFromApiReference(): string[] {
-  const names = describedNames();
-  const described = new Set(names);
-  const offered = new Set(apiNames());
-  const apart = new Set([
-    ...apiNames().filter((name) => !described.has(name)),
-    ...names.filter((name) => !offered.has(name)),
-  ]);
-  return [...apart];
+export function apiReferenceDrift(
+  offered: string[] = apiNames(),
+  described: string[] = describedNames(),
+): { undescribed: string[]; stale: string[] } {
+  const says = new Set(described);
+  const has = new Set(offered);
+  return {
+    undescribed: offered.filter((name) => !says.has(name)),
+    stale: [...new Set(described.filter((name) => !has.has(name)))],
+  };
 }
