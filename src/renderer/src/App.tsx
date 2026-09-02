@@ -525,7 +525,7 @@ export function App() {
       const drawn = await drawPicture(picture, wanted);
       if (!drawn) return;
       if (to === "clipboard") await window.api.image.copy(drawn.png);
-      else await window.api.image.save(drawn.png, drawn.svg, doc.name);
+      else await window.api.image.save({ ...drawn, suggested: doc.name });
     } catch (error) {
       await window.api.file.reportError(
         error instanceof Error ? error.message : "The picture could not be drawn.",

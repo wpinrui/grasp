@@ -9,6 +9,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage } from "electron";
+import type { PictureToSave } from "../shared/picture";
 import { keep, settings } from "./settings";
 
 const EXTENSION = "grasp";
@@ -128,7 +129,8 @@ async function quit(): Promise<void> {
   app.quit();
 }
 
-export function registerFileHandlers(host: Host): void {
+/** Everything the File menu asks the OS for: opening, saving and the recent list. */
+function registerDocumentHandlers(host: Host): void {
   ipcMain.handle("file:starting-document", (event) => host.startingDocument(event.sender.id));
 
   ipcMain.handle("file:release-untitled", (event) => host.releaseUntitled(event.sender.id));
@@ -193,7 +195,10 @@ export function registerFileHandlers(host: Host): void {
       return { path, name: documentName(path) };
     },
   );
+}
 
+/** The message boxes GRASP puts up, which are the OS's rather than the window's. */
+function registerPromptHandlers(): void {
   ipcMain.handle("file:confirm-unsaved", async (event, name: string): Promise<SavePrompt> => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window) return "cancel";
@@ -239,30 +244,38 @@ export function registerFileHandlers(host: Host): void {
     });
     return response === 0;
   });
+}
 
+/**
+ * Export: the sheet as a picture. The renderer draws it and hands over both
+ * forms, since which one is wanted is only settled by the file that comes back.
+ */
+function registerPictureHandlers(): void {
   // Export: the sheet as a picture. The renderer draws it and hands over both
   // forms, since which one is wanted is only settled by the file that comes back.
   ipcMain.handle("image:copy", (_event, png: Uint8Array) => {
     clipboard.writeImage(nativeImage.createFromBuffer(Buffer.from(png)));
   });
 
-  ipcMain.handle(
-    "image:save",
-    async (event, png: Uint8Array, svg: string, suggested: string): Promise<boolean> => {
-      const window = BrowserWindow.fromWebContents(event.sender);
-      if (!window) return false;
-      const result = await dialog.showSaveDialog(window, {
-        title: "Export Image to File",
-        defaultPath: `${suggested}.png`,
-        filters: PICTURE_FILTERS,
-      });
-      const path = result.filePath;
-      if (result.canceled || !path) return false;
-      if (path.toLowerCase().endsWith(".svg")) await writeFile(path, svg, "utf8");
-      else await writeFile(path, Buffer.from(png));
-      return true;
-    },
-  );
+  ipcMain.handle("image:save", async (event, drawn: PictureToSave): Promise<boolean> => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window) return false;
+    const result = await dialog.showSaveDialog(window, {
+      title: "Export Image to File",
+      defaultPath: `${drawn.suggested}.png`,
+      filters: PICTURE_FILTERS,
+    });
+    const path = result.filePath;
+    if (result.canceled || !path) return false;
+    if (path.toLowerCase().endsWith(".svg")) await writeFile(path, drawn.svg, "utf8");
+    else await writeFile(path, Buffer.from(drawn.png));
+    return true;
+  });
+}
 
+export function registerFileHandlers(host: Host): void {
+  registerDocumentHandlers(host);
+  registerPromptHandlers();
+  registerPictureHandlers();
   ipcMain.handle("file:quit", quit);
 }
