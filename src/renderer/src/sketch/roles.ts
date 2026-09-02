@@ -1,5 +1,3 @@
-import type { MenuAction } from "../components/menus";
-import { isCircle, isPoint } from "./model";
 /**
  * What each selected object is doing in the construction under the pointer, so
  * hovering an entry says which point is the centre before it is built.
@@ -7,15 +5,10 @@ import { isCircle, isPoint } from "./model";
  * Only where the roles differ: two points that are both ends of a segment have
  * nothing to tell apart, while a centre and a point on the rim do.
  */
-
+import type { MenuAction } from "../components/menus";
 import { alongAndThrough, type Building, bisector, locusParts } from "./builds";
+import { isCircle, isPoint } from "./model";
 
-/**
- * What each selected object is doing in the construction under the pointer,
- * so hovering an entry says which point is the centre before it is built.
- * Only where the roles differ: two points that are both ends of a segment
- * have nothing to tell apart, while a centre and a point on the rim do.
- */
 export function rolesFor(
   page: Building,
   action: MenuAction | null,

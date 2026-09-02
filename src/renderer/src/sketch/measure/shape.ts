@@ -1,6 +1,7 @@
 import {
   type ArcGeometry,
   type CircleGeometry,
+  degreesOf,
   distance,
   distanceToPath,
   isLine,
@@ -62,7 +63,7 @@ export function cornerAngle(a: Position, b: Position, c: Position): number | nul
   const lengths = Math.hypot(one.x, one.y) * Math.hypot(other.x, other.y);
   if (lengths < 1e-9) return null;
   const cos = (one.x * other.x + one.y * other.y) / lengths;
-  return (Math.acos(Math.min(1, Math.max(-1, cos))) * 180) / Math.PI;
+  return degreesOf(Math.acos(Math.min(1, Math.max(-1, cos))));
 }
 
 /**
@@ -147,7 +148,7 @@ export function anglesAt(
       out.push({
         arms: [arms[i].end, arms[j].end],
         sides: [arms[i].side, arms[j].side],
-        turn: (turn * 180) / Math.PI,
+        turn: degreesOf(turn),
       });
     }
   }

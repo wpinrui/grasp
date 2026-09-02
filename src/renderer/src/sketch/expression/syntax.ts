@@ -77,3 +77,29 @@ export interface Named {
   value(name: string): string | null;
   fn(name: string): string | null;
 }
+
+/** A number as an expression, which is what the arithmetic folds down to. */
+export function literal(value: number): Expr {
+  return { kind: "number", value };
+}
+
+/** One expression multiplied by another. */
+export function times(left: Expr, right: Expr): Expr {
+  return { kind: "binary", op: "*", left, right };
+}
+
+/** A function's body with its variable replaced by what it is applied to. */
+export function substitute(body: Expr, on: Expr): Expr {
+  switch (body.kind) {
+    case "variable":
+      return on;
+    case "unary":
+    case "call":
+    case "apply":
+      return { ...body, on: substitute(body.on, on) };
+    case "binary":
+      return { ...body, left: substitute(body.left, on), right: substitute(body.right, on) };
+    default:
+      return body;
+  }
+}

@@ -1,4 +1,4 @@
-import { type MeasureKind, PX_PER_CM } from "../model";
+import { type MeasureKind, PX_PER_CM, radiansOf } from "../model";
 import { DEFAULT_PREFS, type DistanceUnit, type Units } from "../prefs";
 export const TURN = Math.PI * 2;
 
@@ -48,7 +48,7 @@ export function sayLength(px: number): string {
 
 export function sayAngle(degrees: number): string {
   if (units.angle === "radians") {
-    return `${said((degrees * Math.PI) / 180, units.anglePlaces)} rad`;
+    return `${said(radiansOf(degrees), units.anglePlaces)} rad`;
   }
   return `${said(degrees, units.anglePlaces)}°`;
 }

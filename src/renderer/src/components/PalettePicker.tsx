@@ -2,6 +2,7 @@ import { type ReactNode, type RefObject, useEffect, useRef, useState } from "rea
 import type { LinePattern, LineWidth } from "../sketch/model";
 import "./Palette.css";
 
+/** How each weight is drawn in its own button, in pixels. */
 export const WEIGHT_SAMPLE: Record<LineWidth, number> = {
   hairline: 1,
   thin: 1.75,

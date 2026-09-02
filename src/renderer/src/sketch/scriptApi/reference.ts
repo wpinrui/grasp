@@ -166,10 +166,23 @@ export const API_REFERENCE: { heading: string; entries: ApiEntry[] }[] = [
   },
 ];
 
-/** Every call the API has that the reference does not describe. */
-export function missingFromApiReference(): string[] {
-  const described = new Set(
-    API_REFERENCE.flatMap((group) => group.entries).map((entry) => entry.call.split(/[( ]/)[0]),
+/** The names the reference describes, one per entry. */
+function describedNames(): string[] {
+  return API_REFERENCE.flatMap((group) => group.entries).map(
+    (entry) => entry.call.split(/[( ]/)[0],
   );
-  return apiNames().filter((name) => !described.has(name));
+}
+
+/**
+ * Where the API and its reference have parted company: a call the reference
+ * does not describe, or an entry describing a call the API no longer has.
+ * Either way a script is being prompted with something untrue.
+ */
+export function missingFromApiReference(): string[] {
+  const described = new Set(describedNames());
+  const offered = new Set(apiNames());
+  return [
+    ...apiNames().filter((name) => !described.has(name)),
+    ...describedNames().filter((name) => !offered.has(name)),
+  ];
 }

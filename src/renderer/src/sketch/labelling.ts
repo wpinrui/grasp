@@ -1,3 +1,11 @@
+/**
+ * Where a label sits beside what it names.
+ *
+ * A label hangs off an anchor on the object, and leans out of it into the
+ * widest gap between everything running through that spot, shunning any gap
+ * that leads into a fill. A plain figure therefore labels itself the same way
+ * throughout, and a label never lands on the ink it belongs to.
+ */
 import type {
   PathGeometry,
   Position,
@@ -20,14 +28,6 @@ import {
   spotOnPath,
   wedgeOf,
 } from "./model";
-/**
- * Where a label sits beside what it names.
- *
- * A label hangs off an anchor on the object, and leans out of it into the
- * widest gap between everything running through that spot, shunning any gap
- * that leads into a fill. A plain figure therefore labels itself the same way
- * throughout, and a label never lands on the ink it belongs to.
- */
 
 /** The page as the labelling reads it: where everything settled, and at what zoom. */
 export interface Labelling {
@@ -35,7 +35,7 @@ export interface Labelling {
   settled: Settled;
   /** Screen pixels per sheet pixel, which is what "near enough" is measured in. */
   scale: number;
-  /** The two ends of every straight object, by id. */
+  /** Where every point on the page sits, by id. */
   ends: Map<string, SketchPoint>;
   /** Where a straight object is drawn, cut to what is on screen. */
   spanOf: (line: SketchLine) => [Position, Position] | null;

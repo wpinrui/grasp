@@ -28,7 +28,6 @@ import {
   type PathGeometry,
   POINT_SAMPLES,
   type PointSize,
-  type Position,
   pathIn,
   SHAPE_SAMPLES,
   type SketchArc,
@@ -398,13 +397,6 @@ export function wouldBuild(page: Building, action: MenuAction | null): SketchObj
       // Every Measure entry, which writes a number rather than drawing one.
       return action ? measurements(page, action) : [];
   }
-}
-
-/** Whether three points lie on one straight line, near enough to read a ratio along. */
-export function inLine(a: Position, b: Position, c: Position): boolean {
-  const across = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-  const span = Math.hypot(b.x - a.x, b.y - a.y) * Math.hypot(c.x - a.x, c.y - a.y);
-  return span > 0 && Math.abs(across) <= span * CLOSE_ENOUGH;
 }
 
 /**

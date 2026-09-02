@@ -3,8 +3,54 @@
  * what they are for rather than kept in one list, and reached from here so that
  * where an icon lives is nobody else's business.
  */
-export * from "./chrome";
-export * from "./marks";
-export * from "./panels";
-export * from "./readings";
-export * from "./tools";
+export {
+  CloseIcon,
+  FlyoutMarker,
+  MaximizeIcon,
+  MenuCheckIcon,
+  MinimizeIcon,
+  SubmenuArrowIcon,
+} from "./chrome";
+export {
+  AngleIcon,
+  AngleMarkIcon,
+  BinIcon,
+  EqualMarkIcon,
+  FlipIcon,
+  ParallelMarkIcon,
+  ReflexIcon,
+  RightAngleIcon,
+  TickIcon,
+} from "./marks";
+export { HiddenIcon, SnapIcon, TagIcon, TextPaletteIcon } from "./panels";
+export {
+  BoundsBrokenIcon,
+  BoundsFullIcon,
+  BoundsNoneIcon,
+  FewerPlacesIcon,
+  LeadersIcon,
+  MorePlacesIcon,
+} from "./readings";
+export {
+  ArrowIcon,
+  ArrowMarksIcon,
+  ArrowPathsIcon,
+  ArrowPointsIcon,
+  ArrowTextIcon,
+  CompassIcon,
+  LineIcon,
+  MarkerIcon,
+  MeasureAngleIcon,
+  MeasureAreaIcon,
+  MeasureIcon,
+  MeasureLengthIcon,
+  PointIcon,
+  PolygonEdgesIcon,
+  PolygonFillIcon,
+  PolygonIcon,
+  RayIcon,
+  SegmentIcon,
+  StatusArrowIcon,
+  StraightedgeIcon,
+  TextIcon,
+} from "./tools";

@@ -30,11 +30,6 @@ import { markShape, nearMark } from "./marks";
 import { distanceToPath, insideWedge, spotOnPath, wholePath } from "./paths";
 import { nearLocus, settle } from "./settle";
 import type { SketchObject } from "./values";
-/**
- * Topmost object under the pointer, or null. Points win over lines wherever the
- * two overlap, since a line always has points sitting on it; among their own
- * kind, later objects sit on top.
- */
 /** The page a pick reads: what is on it, at what zoom, and where it all settled. */
 export interface Picking {
   objects: SketchObject[];
@@ -42,6 +37,11 @@ export interface Picking {
   settled?: Settled;
 }
 
+/**
+ * Topmost object under the pointer, or null. Points win over lines wherever the
+ * two overlap, since a line always has points sitting on it; among their own
+ * kind, later objects sit on top.
+ */
 export function objectAt(at: Position, page: Picking): SketchObject | null {
   const { objects, scale } = page;
   const settled = page.settled ?? settle(objects).settled;

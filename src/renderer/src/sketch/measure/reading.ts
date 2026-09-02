@@ -2,6 +2,7 @@ import { evaluate, type Quantity, type Sheet, write } from "../expression";
 import {
   bodyOf,
   cornersOf,
+  filledPath,
   isArc,
   isCalculation,
   isCircle,
@@ -15,6 +16,7 @@ import {
   type Position,
   readValuesWith,
   type Settled,
+  type SketchArc,
   type SketchCalculation,
   type SketchFunction,
   type SketchMeasurement,
@@ -22,7 +24,6 @@ import {
   type SketchParameter,
   wedgeOf,
 } from "../model";
-import { nameOf, stretchNaming } from "./amount";
 import {
   fromSheetTerms,
   inSheetTerms,
@@ -30,7 +31,7 @@ import {
   quantityOfParameter,
   sayQuantity,
 } from "./quantity";
-import { cornerOf, find, onCircle } from "./shape";
+import { cornerOf, endsOf, find, onCircle } from "./shape";
 import { said, units } from "./units";
 /** A run of the reading, with the mark that says what kind of thing it names. */
 export interface Naming {
@@ -118,10 +119,10 @@ export function quantitiesOf(settled: Settled): Map<string, Quantity | null> {
 }
 
 /**
- * How the geometry reads a number as it settles, handed to `model.ts` because a
- * transform can follow one and the page has to work them out together. Sheet
- * terms, centimetres and degrees, so the geometry needs to know nothing about
- * what units are being written.
+ * How the geometry reads a number as it settles, handed to `model/settle.ts`
+ * because a transform can follow one and the page has to work them out
+ * together. Sheet terms, centimetres and degrees, so the geometry needs to
+ * know nothing about what units are being written.
  */
 readValuesWith((object, objects, settled) => {
   const worked = isMeasurement(object)
@@ -135,13 +136,70 @@ readValuesWith((object, objects, settled) => {
 });
 
 /** The page a reading is read off: what is on it, what things are called, and where they settled. */
-export interface Reading0n {
+export interface ReadingOn {
   objects: SketchObject[];
   names: Map<string, string>;
   settled: Settled;
 }
 
-export function readingOf(measurement: SketchMeasurement, page: Reading0n): Reading {
+/** What an object is called in print: by the points it was built from. */
+export function nameOf(id: string, objects: SketchObject[], names: Map<string, string>): Naming[] {
+  const object = find(objects, id);
+  const plain = [{ text: names.get(id) ?? "" }];
+  if (!object) return plain;
+  const of = (ids: string[]) => ids.map((one) => names.get(one) ?? "?").join("");
+  if (isLine(object)) {
+    const ends = endsOf(object);
+    if (!ends) return plain;
+    const over = object.form === "segment" ? "bar" : object.form === "ray" ? "ray" : "line";
+    return [{ text: of(ends), over }];
+  }
+  if (isCircle(object)) {
+    if (object.span.kind !== "through") return plain;
+    return [{ text: `⊙${of([object.span.centre, object.span.edge])}` }];
+  }
+  if (isArc(object)) return arcNaming(object, objects, names);
+  if (isInterior(object)) {
+    const corners = cornersOf(object);
+    if (corners) {
+      return [{ text: `${corners.length === 3 ? "△" : ""}${of(corners)}` }];
+    }
+    return nameOf(filledPath(object) ?? "", objects, names);
+  }
+  return plain;
+}
+
+/** An arc's printed name: the letters it runs through under an arc. */
+function arcNaming(arc: SketchArc, objects: SketchObject[], names: Map<string, string>): Naming[] {
+  const of = (ids: string[]) => ids.map((one) => names.get(one) ?? "?").join("");
+  if (arc.span.kind === "through") {
+    return [{ text: of([arc.span.from, arc.span.via, arc.span.to]), over: "arc" }];
+  }
+  const ends: Naming = { text: of([arc.span.from, arc.span.to]), over: "arc" };
+  if (arc.span.kind === "centre") return [ends];
+  return [ends, { text: " on " }, ...nameOf(arc.span.circle, objects, names)];
+}
+
+/** The stretch of a circle two or three points name, written the same way. */
+export function stretchNaming(
+  held: SketchObject[],
+  objects: SketchObject[],
+  names: Map<string, string>,
+): Naming[] {
+  if (held.length === 1) return nameOf(held[0].id, objects, names);
+  const round = held.find(isCircle);
+  const points = held.filter(isPoint);
+  if (!round) return [];
+  const letters = points.map((point) => names.get(point.id) ?? "?").join("");
+  return [{ text: letters, over: "arc" }, { text: " on " }, ...nameOf(round.id, objects, names)];
+}
+
+/**
+ * How a measurement reads: the name of the quantity and its value. Asking for
+ * the label instead writes the measurement's own name in front of the value,
+ * which is what Show Labels swaps in.
+ */
+export function readingOf(measurement: SketchMeasurement, page: ReadingOn): Reading {
   const { objects, names, settled } = page;
   const measure = measurement.measure;
   const value = sayQuantity(quantityOf(measurement, objects, settled), measurement.places);

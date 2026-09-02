@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { isLine, isPoint } from "../model";
+import { createPoint, isLine, isPoint } from "../model";
 import { apiNames } from "./calls";
 import { missingFromApiReference } from "./reference";
 import { evaluate, unknownCalls } from "./sandbox";
@@ -77,12 +77,16 @@ describe("running a script", () => {
     expect(result.objects.filter(isLine)).toHaveLength(1);
   });
 
-  it("draws nothing when a call fails", () => {
+  it("leaves the page as it found it when a call fails", () => {
+    const already = [createPoint({ x: 5, y: 5 }, "medium")];
+    const page = [...already];
     const result = evaluate('point(0, 0); segment("nothing", "either");', {
-      objects: [],
+      objects: page,
       sheet: SHEET,
     });
     expect(result.ok).toBe(false);
+    // The run builds into a list of its own, so the caller's page is untouched.
+    expect(page).toEqual(already);
   });
 
   it("reports a call the API does not have before running anything", () => {

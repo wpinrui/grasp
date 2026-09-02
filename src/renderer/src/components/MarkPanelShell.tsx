@@ -34,8 +34,9 @@ export function PanelShell({ at, colour, children }: PanelShellProps) {
 }
 
 interface PanelButtonProps {
-  /** What the button is, read out and used as the tooltip unless `title` says otherwise. */
+  /** What the button is, read out by a screen reader. */
   label: string;
+  /** The tooltip, where there is one. The count buttons deliberately have none. */
   title?: string;
   /** Whether it reads as the one that is on. */
   on?: boolean;

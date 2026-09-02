@@ -1,3 +1,4 @@
+import { radiansOf } from "./model";
 /**
  * What the Transform dialogs work out: the vector, angle or ratio they were
  * given, turned into one derivation per selected point.
@@ -132,7 +133,7 @@ function translation(
     const distance = reading(values.distance);
     const angle = reading(values.angle);
     if (distance === null || angle === null) return null;
-    const radians = (angle * Math.PI) / 180;
+    const radians = radiansOf(angle);
     // Counterclockwise from east, on a sheet whose y counts downward.
     const held = {
       dx: distance * PX_PER_CM * Math.cos(radians),

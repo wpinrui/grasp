@@ -67,5 +67,3 @@ export function caretMarks(): Record<"bold" | "italic" | "underline", boolean> {
   };
   return { bold: read("bold"), italic: read("italic"), underline: read("underline") };
 }
-
-/** How each weight is drawn in its own button, in pixels. */

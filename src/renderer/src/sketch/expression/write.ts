@@ -47,5 +47,3 @@ export function write(expr: Expr, names: Map<string, string>, binds = 0): string
     }
   }
 }
-
-// ------------------------------------------------------------------- parsing

@@ -137,9 +137,9 @@ function locusOf(locus: SketchLocus, objects: SketchObject[], settled: Settled):
 
 /**
  * How a number on the sheet is read, in centimetres and degrees. Working one out
- * lives in `measure.ts`, which is built on this file and so cannot be reached
- * from it, so that module hands the reader over as it loads. The same seam
- * `writeIn` uses to set the units readings are written in.
+ * lives in `measure/reading.ts`, which is built on this module and so cannot be
+ * reached from it, so that module hands the reader over as it loads. The same
+ * seam `writeIn` uses to set the units readings are written in.
  */
 type ValueReader = (
   object: SketchObject,

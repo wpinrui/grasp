@@ -204,29 +204,3 @@ export function parse(text: string, named: Named, variable = false): Expr | Pars
   if (over) return { error: `${over.text} has nothing to join on to`, at: over.at };
   return parsed;
 }
-
-// ------------------------------------------------------------- differentiating
-
-export function literal(value: number): Expr {
-  return { kind: "number", value };
-}
-
-export function times(left: Expr, right: Expr): Expr {
-  return { kind: "binary", op: "*", left, right };
-}
-
-/** A function's body with its variable replaced by what it is applied to. */
-export function substitute(body: Expr, on: Expr): Expr {
-  switch (body.kind) {
-    case "variable":
-      return on;
-    case "unary":
-    case "call":
-    case "apply":
-      return { ...body, on: substitute(body.on, on) };
-    case "binary":
-      return { ...body, left: substitute(body.left, on), right: substitute(body.right, on) };
-    default:
-      return body;
-  }
-}

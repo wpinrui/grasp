@@ -3,6 +3,8 @@ import { type Expr, type LiteralUnit, plain, type Quantity, type Sheet } from ".
 /** How many of a distance unit make one centimetre. */
 const PER_CM: Record<"cm" | "mm" | "in", number> = { cm: 1, mm: 10, in: 1 / 2.54 };
 
+// A degree in radians. Spelt out rather than taken from the model's radiansOf,
+// because the model imports this module and cannot be imported back.
 const RADIANS = Math.PI / 180;
 
 // ---------------------------------------------------------------- evaluating
@@ -191,5 +193,3 @@ export function dependsOn(expr: Expr): string[] {
   walk(expr);
   return found;
 }
-
-// ------------------------------------------------------------------- writing

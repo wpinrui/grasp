@@ -1,4 +1,12 @@
+/**
+ * What the Measure menu would write, and where on the sheet it would land.
+ *
+ * A measurement is written into the top left of the view, under whatever is
+ * written there already, so a run of them stacks rather than piling up in one
+ * place. Nothing here touches the page.
+ */
 import type { MenuAction } from "../components/menus";
+import type { Building } from "./builds";
 import { wouldMeasure } from "./measure";
 import {
   createMeasurement,
@@ -7,15 +15,6 @@ import {
   type Position,
   type SketchObject,
 } from "./model";
-/**
- * What the Measure menu would write, and where on the sheet it would land.
- *
- * A measurement is written into the top left of the view, under whatever is
- * written there already, so a run of them stacks rather than piling up in one
- * place. Nothing here touches the page.
- */
-
-import type { Building } from "./builds";
 
 /** Which reading each Measure entry takes off the selection. */
 export const MEASURE_OF: Partial<Record<MenuAction, MeasureKind>> = {

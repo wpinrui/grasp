@@ -1,5 +1,4 @@
-import { literal, substitute, times } from "./parse";
-import type { Expr } from "./syntax";
+import { type Expr, literal, substitute, times } from "./syntax";
 /**
  * The derivative with respect to the variable, worked out on the tree and then
  * tidied. Every expression the Calculator can make has one, because every part

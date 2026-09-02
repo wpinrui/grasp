@@ -1,6 +1,3 @@
-import { inLine } from "./builds";
-import type { Quantity } from "./expression";
-import { isLine, isMark, type MarkedAngle, type MarkedRatio, type SketchObject } from "./model";
 /**
  * What the selection would be marked as: the angle, the ratio, the vector, the
  * mirror or the distances a future transform would follow.
@@ -11,6 +8,15 @@ import { isLine, isMark, type MarkedAngle, type MarkedRatio, type SketchObject }
  */
 
 import type { Building } from "./builds";
+import type { Quantity } from "./expression";
+import {
+  inLine,
+  isLine,
+  isMark,
+  type MarkedAngle,
+  type MarkedRatio,
+  type SketchObject,
+} from "./model";
 
 /** The last thing of a kind that was picked, which is what a Mark entry takes. */
 function lastOf<T extends SketchObject>(

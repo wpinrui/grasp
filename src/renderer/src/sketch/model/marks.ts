@@ -1,12 +1,14 @@
 import { nextId } from "./create";
 import type { SketchPoint } from "./figures";
 import {
+  degreesOf,
   distance,
   isArcPath,
   isRound,
   type PathGeometry,
   type Position,
   pathIn,
+  QUARTER_TURN,
   type Settled,
   slackAt,
   TURN,
@@ -68,7 +70,7 @@ const RIGHT_SLACK = 1e-6;
 
 /** Whether a turn is a right angle, which is what draws as the square. */
 export function isRightAngle(sweep: number): boolean {
-  return Math.abs(Math.abs((sweep * 180) / Math.PI) - 90) <= RIGHT_SLACK;
+  return Math.abs(Math.abs(degreesOf(sweep)) - QUARTER_TURN) <= RIGHT_SLACK;
 }
 
 /**

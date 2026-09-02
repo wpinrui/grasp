@@ -251,8 +251,6 @@ function registerPromptHandlers(): void {
  * forms, since which one is wanted is only settled by the file that comes back.
  */
 function registerPictureHandlers(): void {
-  // Export: the sheet as a picture. The renderer draws it and hands over both
-  // forms, since which one is wanted is only settled by the file that comes back.
   ipcMain.handle("image:copy", (_event, png: Uint8Array) => {
     clipboard.writeImage(nativeImage.createFromBuffer(Buffer.from(png)));
   });

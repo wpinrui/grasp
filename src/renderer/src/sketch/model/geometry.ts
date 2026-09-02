@@ -7,6 +7,9 @@ const PICK_SLACK = 5;
 /** Far enough that a ray or a line always leaves any rectangle we clip to. */
 export const FAR = 1e9;
 
+/** How close two places count as the same, as a fraction of what is being measured. */
+const NEARLY = 1e-6;
+
 /** Below this a direction is too short to tell which way it points. */
 export const TINY = 1e-9;
 
@@ -80,6 +83,9 @@ export function isArcPath(path: PathGeometry): path is ArcGeometry {
 
 /** Half a turn in degrees, which is what turns one measure of angle into the other. */
 export const HALF_TURN = 180;
+
+/** A quarter turn in degrees, which is the right angle a mark is drawn square for. */
+export const QUARTER_TURN = 90;
 
 /** An angle in degrees, as radians. */
 export function radiansOf(degrees: number): number {
@@ -227,4 +233,11 @@ export function distanceToLine(line: LineGeometry, at: Position): number {
   if (line.form !== "line" && t < 0) t = 0;
   if (line.form === "segment" && t > 1) t = 1;
   return distance({ x: line.a.x + dx * t, y: line.a.y + dy * t }, at);
+}
+
+/** Whether three points lie on one straight line, near enough to read a ratio along. */
+export function inLine(a: Position, b: Position, c: Position): boolean {
+  const across = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  const span = Math.hypot(b.x - a.x, b.y - a.y) * Math.hypot(c.x - a.x, c.y - a.y);
+  return span > 0 && Math.abs(across) <= span * NEARLY;
 }

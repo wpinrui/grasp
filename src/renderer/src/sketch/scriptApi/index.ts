@@ -1,14 +1,7 @@
 /**
- * The API a script is run with, and the evaluation of it.
- *
- * None of this touches the app. Every call builds a plain object into a list
- * held here and hands back its id, so the page a script is working on is
- * untouched until the script returns and the host lands what came back. A call
- * that fails throws, the list is dropped, and there is nothing to put back.
- *
- * This runs inside a worker, which is what keeps a script away from the app:
- * see `script.ts`. It is written to need nothing but its arguments so that it
- * can.
+ * The API a script is run with, and the evaluation of it: `calls` builds the
+ * page, `sandbox` runs the script over it, `reference` describes it for the
+ * prompt. Each says how it works; this is only the way in.
  */
 
 export type { ScriptApi, ScriptSheet } from "./calls";

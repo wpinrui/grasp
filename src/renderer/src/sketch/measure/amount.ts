@@ -2,6 +2,7 @@ import {
   type ArcGeometry,
   type CircleGeometry,
   cornersOf,
+  degreesOf,
   distance,
   distanceToLine,
   filledPath,
@@ -12,18 +13,15 @@ import {
   isPoint,
   type Position,
   type Settled,
-  type SketchArc,
   type SketchMeasurement,
   type SketchObject,
   spotOnPath,
   wedgeOf,
 } from "../model";
-import type { Naming } from "./reading";
 import {
   arcSpread,
   cornerAngle,
   cornerOf,
-  endsOf,
   find,
   onCircle,
   shoelace,
@@ -119,7 +117,7 @@ export function amountOf(
       const found = arcSpanOf(held, settled);
       if (!found) return null;
       if (measurement.measure === "arc-length") return found.length;
-      return (found.angle * 180) / Math.PI;
+      return degreesOf(found.angle);
     }
     case "radius": {
       const round = circleFor(held[0], settled);
@@ -188,61 +186,3 @@ function arcSpanOf(
   const angle = stretchOn(where, spots);
   return { angle, length: angle * where.radius };
 }
-
-/** What an object is called in print: by the points it was built from. */
-export function nameOf(id: string, objects: SketchObject[], names: Map<string, string>): Naming[] {
-  const object = find(objects, id);
-  const plain = [{ text: names.get(id) ?? "" }];
-  if (!object) return plain;
-  const of = (ids: string[]) => ids.map((one) => names.get(one) ?? "?").join("");
-  if (isLine(object)) {
-    const ends = endsOf(object);
-    if (!ends) return plain;
-    const over = object.form === "segment" ? "bar" : object.form === "ray" ? "ray" : "line";
-    return [{ text: of(ends), over }];
-  }
-  if (isCircle(object)) {
-    if (object.span.kind !== "through") return plain;
-    return [{ text: `⊙${of([object.span.centre, object.span.edge])}` }];
-  }
-  if (isArc(object)) return arcNaming(object, objects, names);
-  if (isInterior(object)) {
-    const corners = cornersOf(object);
-    if (corners) {
-      return [{ text: `${corners.length === 3 ? "△" : ""}${of(corners)}` }];
-    }
-    return nameOf(filledPath(object) ?? "", objects, names);
-  }
-  return plain;
-}
-
-/** An arc's printed name: the letters it runs through under an arc. */
-function arcNaming(arc: SketchArc, objects: SketchObject[], names: Map<string, string>): Naming[] {
-  const of = (ids: string[]) => ids.map((one) => names.get(one) ?? "?").join("");
-  if (arc.span.kind === "through") {
-    return [{ text: of([arc.span.from, arc.span.via, arc.span.to]), over: "arc" }];
-  }
-  const ends: Naming = { text: of([arc.span.from, arc.span.to]), over: "arc" };
-  if (arc.span.kind === "centre") return [ends];
-  return [ends, { text: " on " }, ...nameOf(arc.span.circle, objects, names)];
-}
-
-/** The stretch of a circle two or three points name, written the same way. */
-export function stretchNaming(
-  held: SketchObject[],
-  objects: SketchObject[],
-  names: Map<string, string>,
-): Naming[] {
-  if (held.length === 1) return nameOf(held[0].id, objects, names);
-  const round = held.find(isCircle);
-  const points = held.filter(isPoint);
-  if (!round) return [];
-  const letters = points.map((point) => names.get(point.id) ?? "?").join("");
-  return [{ text: letters, over: "arc" }, { text: " on " }, ...nameOf(round.id, objects, names)];
-}
-
-/**
- * How a measurement reads: the name of the quantity and its value. Asking for
- * the label instead writes the measurement's own name in front of the value,
- * which is what Show Labels swaps in.
- */

@@ -46,7 +46,7 @@ export interface PageContent {
 
 /**
  * Ids are counted out and stamped with a token this run picked, the way object
- * ids are in `model.ts` and for the same reason: the counter is module state,
+ * ids are in `model/create.ts` and for the same reason: the counter is module state,
  * so anything that reloads the module starts it again. Without the token a page
  * made after a hot reload takes an id a page already on screen is using, and
  * two pages sharing an id are one page as far as everything keyed by it goes.
