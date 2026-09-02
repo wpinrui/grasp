@@ -12,6 +12,7 @@ import {
   type WheelEvent,
 } from "react";
 import { insertAtCaret, linkHtml, plainText, withNames } from "../sketch/captions";
+import { LABEL_REACH, type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
 import {
   anglesAt,
   angleWanted,
@@ -49,7 +50,6 @@ import {
   familyOf,
   filledPath,
   fillLook,
-  insideShape,
   isArc,
   isButton,
   isCaption,
@@ -296,21 +296,6 @@ const CROSS_REACH = 9;
 
 /** The ring drawn where a click would land on a straight object. */
 const SNAP_RING = 8;
-
-/** How far from what it names a label sits until it is dragged, in screen pixels. */
-const LABEL_OFF = 16;
-
-/** Which way a label leans when nothing is in the way: up and to the right. */
-const LABEL_LEAN = -Math.PI / 4;
-
-/** How many ways round a label looks for a gap to sit in. */
-const LABEL_TRIES = 24;
-
-/** How much a way into a fill loses by, more than any gap can make up. */
-const LABEL_SHUN = 10;
-
-/** How far from what it names a label can be dragged, in screen pixels. */
-const LABEL_REACH = 48;
 
 /** How wide a caption comes out when it was asked for rather than dragged. */
 const CAPTION_WIDTH = 220;
@@ -2862,6 +2847,9 @@ export function Canvas({
     return along ? clipToRect(along, shown) : null;
   }
 
+  /** The page as the labelling reads it. */
+  const labelling: Labelling = { objects, settled, scale, ends, spanOf };
+
   /**
    * What a click at this spot would land on. A point already there wins, then
    * the crossing of two straight objects, then the one straight object under
@@ -2921,193 +2909,6 @@ export function Canvas({
       }
     }
     return createPoint(at, pointSize);
-  }
-
-  /**
-   * Where an object's label hangs: on a point, halfway along a straight object,
-   * on the rim of a circle, the middle of an arc, the middle of a fill.
-   */
-  function labelAnchor(object: SketchObject): Position | null {
-    // A caption says what it says, and a measurement writes its own name in
-    // front of its value. Neither hangs a label anywhere.
-    if (isWriting(object)) return null;
-    if (isPoint(object)) return ends.get(object.id) ?? null;
-    if (isLine(object)) {
-      const span = spanOf(object);
-      return span ? { x: (span[0].x + span[1].x) / 2, y: (span[0].y + span[1].y) / 2 } : null;
-    }
-    if (isCircle(object)) {
-      const round = settled.circles.get(object.id);
-      if (!round) return null;
-      // Up and to the right of the rim, clear of the centre and the points.
-      return {
-        x: round.at.x + round.radius * Math.cos(-Math.PI / 4),
-        y: round.at.y + round.radius * Math.sin(-Math.PI / 4),
-      };
-    }
-    if (isArc(object)) {
-      const arc = settled.arcs.get(object.id);
-      return arc ? spotOnPath(arc, 0.5) : null;
-    }
-    if (isInterior(object)) {
-      const inside = filledPath(object);
-      if (inside) {
-        const arc = settled.arcs.get(inside);
-        if (arc) {
-          const middle = spotOnPath(arc, 0.5);
-          return wedgeOf(object) === "sector"
-            ? { x: (arc.at.x + middle.x) / 2, y: (arc.at.y + middle.y) / 2 }
-            : middle;
-        }
-        const round = settled.circles.get(inside);
-        return round ? { x: round.at.x, y: round.at.y } : null;
-      }
-      const corners = settled.shapes.get(object.id);
-      if (!corners || corners.length === 0) return null;
-      return {
-        x: corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length,
-        y: corners.reduce((sum, corner) => sum + corner.y, 0) / corners.length,
-      };
-    }
-    const shape = settled.loci.get(object.id);
-    if (shape?.kind !== "points" || shape.at.length === 0) return null;
-    return shape.at[Math.floor(shape.at.length / 2)];
-  }
-
-  /**
-   * The ways objects leave a spot, so a label can be put somewhere none of them
-   * is. One way for a path that stops here, two for one that carries on through.
-   */
-  function throughSpot(at: Position): number[] {
-    const ways: number[] = [];
-    const close = 0.5 / scale;
-    const add = (dx: number, dy: number) => ways.push(Math.atan2(dy, dx));
-    const both = (dx: number, dy: number) => {
-      add(dx, dy);
-      add(-dx, -dy);
-    };
-    const ends = (path: PathGeometry, end: 0 | 1) => distance(spotOnPath(path, end), at) <= close;
-    for (const along of settled.lines.values()) {
-      if (distanceToPath(along, at) > close) continue;
-      const dx = along.b.x - along.a.x;
-      const dy = along.b.y - along.a.y;
-      // A line runs on past both its points, a ray past the second only, and a
-      // segment past neither, so at an end each of those leaves one way only.
-      if (along.form !== "line" && ends(along, 0)) add(dx, dy);
-      else if (along.form === "segment" && ends(along, 1)) add(-dx, -dy);
-      else both(dx, dy);
-    }
-    for (const round of settled.circles.values()) {
-      // A circle runs across the spot along its tangent there.
-      if (distanceToPath(round, at) <= close) both(-(at.y - round.at.y), at.x - round.at.x);
-    }
-    for (const arc of settled.arcs.values()) {
-      if (distanceToPath(arc, at) > close) continue;
-      if (arc.flat) {
-        const dx = arc.flat[1].x - arc.flat[0].x;
-        const dy = arc.flat[1].y - arc.flat[0].y;
-        if (ends(arc, 0)) add(dx, dy);
-        else if (ends(arc, 1)) add(-dx, -dy);
-        else both(dx, dy);
-        continue;
-      }
-      // The tangent, taken the way the arc sweeps, so an end leaves inwards.
-      const onward = arc.sweep >= 0 ? 1 : -1;
-      const dx = -(at.y - arc.at.y) * onward;
-      const dy = (at.x - arc.at.x) * onward;
-      if (ends(arc, 0)) add(dx, dy);
-      else if (ends(arc, 1)) add(-dx, -dy);
-      else both(dx, dy);
-    }
-    return ways;
-  }
-
-  /** How far apart two angles are, never more than half a turn. */
-  function apart(one: number, other: number): number {
-    const gap = Math.abs(((one - other) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-    return gap > Math.PI ? Math.PI * 2 - gap : gap;
-  }
-
-  /** Where a label lands on the sheet when it goes out a given way. */
-  function labelSpot(at: Position, angle: number): Position {
-    return {
-      x: at.x + (Math.cos(angle) * LABEL_OFF) / scale,
-      y: at.y + (Math.sin(angle) * LABEL_OFF) / scale,
-    };
-  }
-
-  /**
-   * Whether a spot falls in a fill, which is no place for a label. A fill's own
-   * label is the exception: that one hangs in the middle of what it names.
-   */
-  function inFill(object: SketchObject, at: Position): boolean {
-    return objects.some((other) => {
-      if (other.id === object.id || !isInterior(other) || filledPath(other)) return false;
-      const corners = settled.shapes.get(other.id);
-      return corners ? insideShape(corners, at) : false;
-    });
-  }
-
-  /** The first of these ways out that keeps the label clear of every fill. */
-  function clearOf(object: SketchObject, at: Position, ways: number[]): number {
-    return ways.find((way) => !inFill(object, labelSpot(at, way))) ?? ways[0];
-  }
-
-  /** Every way out, starting from the one wanted, to look for a clear one. */
-  function around(from: number): number[] {
-    return Array.from(
-      { length: LABEL_TRIES },
-      (_, step) => from + (step / LABEL_TRIES) * Math.PI * 2,
-    );
-  }
-
-  /**
-   * Where a label sits when it has not been dragged: out of the way of
-   * everything running through the spot it hangs from, clear of any fill, and
-   * leaning up and to the right when it is free to.
-   */
-  function labelOff(object: SketchObject, at: Position): Position {
-    const out = (angle: number) => ({
-      x: Math.cos(angle) * LABEL_OFF,
-      y: Math.sin(angle) * LABEL_OFF,
-    });
-    if (isLine(object)) {
-      // Beside the line rather than across it, on the upper side unless that
-      // side is the one filled, in which case the other one.
-      const span = spanOf(object);
-      if (!span) return out(clearOf(object, at, around(LABEL_LEAN)));
-      const angle = Math.atan2(span[1].y - span[0].y, span[1].x - span[0].x) - Math.PI / 2;
-      const upper = Math.sin(angle) > 0 ? angle + Math.PI : angle;
-      return out(clearOf(object, at, [upper, upper + Math.PI]));
-    }
-    if (isCircle(object) || isArc(object)) {
-      // Outside the rim, straight out from the middle.
-      const round = settled.circles.get(object.id) ?? settled.arcs.get(object.id);
-      if (!round || (isArc(object) && settled.arcs.get(object.id)?.flat)) {
-        return out(clearOf(object, at, around(LABEL_LEAN)));
-      }
-      const away = Math.atan2(at.y - round.at.y, at.x - round.at.x);
-      return out(clearOf(object, at, around(away)));
-    }
-    if (!isPoint(object)) return out(clearOf(object, at, around(LABEL_LEAN)));
-    const ways = throughSpot(at);
-    if (ways.length === 0) return out(clearOf(object, at, around(LABEL_LEAN)));
-    // The widest gap between what runs through here, less any gap that leads
-    // into a fill, with the lean breaking any tie so a plain figure still
-    // labels itself the same way throughout.
-    let best = LABEL_LEAN;
-    let score = -Infinity;
-    for (let step = 0; step < LABEL_TRIES; step += 1) {
-      const angle = LABEL_LEAN + (step / LABEL_TRIES) * Math.PI * 2;
-      const room = Math.min(...ways.map((way) => apart(angle, way)));
-      const filled = inFill(object, labelSpot(at, angle)) ? LABEL_SHUN : 0;
-      const worth = room + 0.001 * Math.cos(angle - LABEL_LEAN) - filled;
-      if (worth > score) {
-        score = worth;
-        best = angle;
-      }
-    }
-    return out(best);
   }
 
   /** Drag a label about within its reach of what it names. */
@@ -3394,14 +3195,14 @@ export function Canvas({
   const labels = objects.flatMap((object) => {
     if (!object.label?.shown) return [];
     const name = names.get(object.id);
-    const at = name ? labelAnchor(object) : null;
+    const at = name ? labelAnchor(labelling, object) : null;
     if (!at || !name) return [];
     return [
       {
         id: object.id,
         name,
         at,
-        off: object.label.off ?? labelOff(object, at),
+        off: object.label.off ?? labelOff(labelling, object, at),
         look: labelLook(object.label),
       },
     ];
@@ -3410,7 +3211,7 @@ export function Canvas({
   /** Where a mark's caption sits: the same spot its label would hang from. */
   function markAt(id: string): Position | null {
     const object = everything.find((candidate) => candidate.id === id);
-    return object ? labelAnchor(object) : null;
+    return object ? labelAnchor(labelling, object) : null;
   }
 
   /** Where an end of a locus is, and which way it carries on from there. */
