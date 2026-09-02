@@ -41,19 +41,18 @@ import {
   takesWeight,
   toolDraws,
 } from "./sketch/armed";
-import {
-  alongAndThrough,
-  type Building,
-  bisector,
-  canBuild,
-  inLine,
-  locusParts,
-  wouldBuild,
-} from "./sketch/builds";
+import { type Building, canBuild, wouldBuild } from "./sketch/builds";
 import { captionRowName } from "./sketch/captions";
 import { canDefine, customImager } from "./sketch/custom";
-import type { Expr, Quantity } from "./sketch/expression";
+import type { Expr } from "./sketch/expression";
 import { canSeed, DEFAULT_DEPTH, iterated } from "./sketch/iterate";
+import {
+  markableAngle,
+  markableDistances,
+  markableMirror,
+  markableRatio,
+  markableVector,
+} from "./sketch/markable";
 import {
   inSheetTerms,
   readingOf,
@@ -96,8 +95,6 @@ import {
   type LinePattern,
   type LineWidth,
   MAX_SAMPLES,
-  type MarkedAngle,
-  type MarkedRatio,
   MIN_SAMPLES,
   namesFor,
   type ParameterUnit,
@@ -124,6 +121,7 @@ import { type Drawn, drawPicture, type PictureOptions, pictureSvg } from "./sket
 import { canvasTokens, type Prefs } from "./sketch/prefs";
 import { buildPrompt } from "./sketch/prompt";
 import { splitMerged, splitMergeFor } from "./sketch/relink";
+import { rolesFor } from "./sketch/roles";
 import { runScript } from "./sketch/script";
 import {
   DEFAULT_VALUES,
@@ -677,104 +675,6 @@ export function App() {
   /** The row an Iterate click fills: the first empty one, then round again. */
   const nextSeed = Math.max(targets.indexOf(null), 0);
 
-  /**
-   * What each selected object is doing in the construction under the pointer,
-   * so hovering an entry says which point is the centre before it is built.
-   * Only where the roles differ: two points that are both ends of a segment
-   * have nothing to tell apart, while a centre and a point on the rim do.
-   */
-  function rolesFor(action: MenuAction | null): { id: string; label: string }[] {
-    const nth = (index: number, label: string) =>
-      selected[index] ? [{ id: selected[index].id, label }] : [];
-    if (action === "circle-centre-point") {
-      return [...nth(0, "CENTER"), ...nth(1, "POINT ON CIRCUMFERENCE")];
-    }
-    if (action === "circle-centre-radius") {
-      return [
-        ...(chosenPoints[0] ? [{ id: chosenPoints[0].id, label: "CENTER" }] : []),
-        ...(chosenLines[0] ? [{ id: chosenLines[0].id, label: "RADIUS" }] : []),
-      ];
-    }
-    if (action === "arc-on-circle") {
-      const round = selected.find(isCircle);
-      if (!round) return [...nth(0, "CENTER"), ...nth(1, "FROM"), ...nth(2, "TO")];
-      const ends = selected.filter(isPoint);
-      return [
-        { id: round.id, label: "CIRCLE" },
-        ...(ends[0] ? [{ id: ends[0].id, label: "FROM" }] : []),
-        ...(ends[1] ? [{ id: ends[1].id, label: "TO" }] : []),
-      ];
-    }
-    if (action === "arc-through") {
-      return [...nth(0, "FROM"), ...nth(1, "THROUGH"), ...nth(2, "TO")];
-    }
-    if (action === "ray") return [...nth(0, "FROM"), ...nth(1, "TOWARD")];
-    if (action === "parallel" || action === "perpendicular") {
-      const found = alongAndThrough(building);
-      if (!found) return [];
-      return [
-        { id: found.line.id, label: action === "parallel" ? "PARALLEL TO" : "PERPENDICULAR TO" },
-        ...found.points.map((point) => ({ id: point.id, label: "THROUGH" })),
-      ];
-    }
-    if (action === "bisector") {
-      const span = bisector(building);
-      return span?.kind === "bisector" ? [{ id: span.corner, label: "CORNER" }] : [];
-    }
-    if (action === "locus") {
-      const parts = locusParts(building);
-      if (!parts) return [];
-      return [
-        { id: parts.driver.id, label: "DRIVER" },
-        { id: parts.domain.id, label: "DOMAIN" },
-        { id: parts.driven.id, label: "DRIVEN" },
-      ];
-    }
-    if (action === "measure-distance") {
-      // Between two points there is nothing to tell apart. From a point to a
-      // straight object there is.
-      if (chosenPoints.length === selected.length) return [];
-      const point = chosenPoints[0];
-      const line = chosenLines[0];
-      if (!point || !line) return [];
-      return [
-        { id: point.id, label: "FROM" },
-        { id: line.id, label: "TO" },
-      ];
-    }
-    if (action === "measure-angle") {
-      // Two straight objects: the first is the side it turns from, the second
-      // the side it turns to, and the corner is theirs already.
-      if (chosenLines.length === 2) {
-        return [
-          { id: chosenLines[0].id, label: "FROM" },
-          { id: chosenLines[1].id, label: "TO" },
-        ];
-      }
-      return [...nth(0, "FROM"), ...nth(1, "VERTEX"), ...nth(2, "TO")];
-    }
-    if (action === "measure-arc-angle" || action === "measure-arc-length") {
-      const round = selected.find(isCircle);
-      if (!round) return [];
-      const ends = selected.filter(isPoint);
-      const jobs = ends.length === 3 ? ["FROM", "THROUGH", "TO"] : ["FROM", "TO"];
-      return [
-        { id: round.id, label: "CIRCLE" },
-        ...ends.flatMap((end, index) => (jobs[index] ? [{ id: end.id, label: jobs[index] }] : [])),
-      ];
-    }
-    if (action === "measure-ratio") {
-      if (chosenLines.length === 2) {
-        return [
-          { id: chosenLines[0].id, label: "NUMERATOR" },
-          { id: chosenLines[1].id, label: "DENOMINATOR" },
-        ];
-      }
-      return [...nth(0, "ORIGIN"), ...nth(1, "UNIT"), ...nth(2, "POINT")];
-    }
-    return [];
-  }
-
   const named = labelRows();
   const away = hiddenRows();
 
@@ -1080,7 +980,7 @@ export function App() {
     // Hovering anything else that gives its objects different jobs: each one
     // says which job it has, so the order they were picked in is visible
     // before the entry is clicked rather than after.
-    ...(preview.length > 0 ? rolesFor(hovered) : []),
+    ...(preview.length > 0 ? rolesFor(building, hovered) : []),
     // The centre and the mirror are only ever shown while the dialog that uses
     // them is open.
     ...(centre && (dialog === "rotate" || dialog === "dilate")
@@ -1418,120 +1318,30 @@ export function App() {
     });
   }
 
-  /** The last thing of a kind that was picked, which is what a Mark entry takes. */
-  function lastOf<T extends SketchObject>(is: (object: SketchObject) => object is T): T | null {
-    for (let nth = selected.length - 1; nth >= 0; nth -= 1) {
-      const object = selected[nth];
-      if (is(object)) return object;
-    }
-    return null;
-  }
-
-  /** Every number selected whose quantity is the kind wanted, in pick order. */
-  function readingsWhere(wants: (held: Quantity) => boolean): string[] {
-    return selected
-      .filter((object) => {
-        const held = geometry.values.get(object.id);
-        return held ? wants(held) : false;
-      })
-      .map((object) => object.id);
-  }
-
-  /** The straight object a mirror would be marked from. */
-  function markableMirror(): string | null {
-    return lastOf(isLine)?.id ?? null;
-  }
-
-  /** Two points, the first the tail of the vector and the second its head. */
-  function markableVector(): [string, string] | null {
-    const points = chosenPoints;
-    if (points.length < 2) return null;
-    return [points[points.length - 2].id, points[points.length - 1].id];
-  }
-
-  /**
-   * The angle the selection would mark. An angle marker and two straight
-   * objects meeting at a point both come down to three points, so they are
-   * turned into those here rather than carried as their own kind of mark.
-   */
-  function markableAngle(): MarkedAngle | null {
-    const marker = lastOf(isMark);
-    if (marker && "corner" in marker) {
-      return { kind: "points", a: marker.arms[0], corner: marker.corner, b: marker.arms[1] };
-    }
-    const reading = readingsWhere((held) => held.angle === 1 && held.length === 0);
-    if (reading.length > 0) return { kind: "value", of: reading[reading.length - 1] };
-    // Two straight objects sharing an end: the shared end is the corner, and
-    // each object's far end is a point on its arm.
-    const lines = selected.filter(isLine).filter((line) => line.span.kind === "through");
-    if (lines.length >= 2) {
-      const [one, other] = lines.slice(-2);
-      const ends = one.span.kind === "through" ? one.span.ends : null;
-      const theirs = other.span.kind === "through" ? other.span.ends : null;
-      if (ends && theirs) {
-        const corner = ends.find((end) => theirs.includes(end));
-        if (corner) {
-          const a = ends.find((end) => end !== corner);
-          const b = theirs.find((end) => end !== corner);
-          if (a && b) return { kind: "points", a, corner, b };
-        }
-      }
-    }
-    const points = chosenPoints;
-    if (points.length >= 3) {
-      const [a, corner, b] = points.slice(-3);
-      return { kind: "points", a: a.id, corner: corner.id, b: b.id };
-    }
-    return null;
-  }
-
-  /** The ratio the selection would mark, in whichever of its three forms fits. */
-  function markableRatio(): MarkedRatio | null {
-    const segments = selected.filter(isLine).filter((line) => line.form === "segment");
-    if (segments.length >= 2) {
-      const [top, bottom] = segments.slice(-2);
-      return { kind: "segments", top: top.id, bottom: bottom.id };
-    }
-    const reading = readingsWhere((held) => held.angle === 0 && held.length === 0);
-    if (reading.length > 0) return { kind: "value", of: reading[reading.length - 1] };
-    const points = chosenPoints;
-    if (points.length >= 3) {
-      const [a, b, c] = points.slice(-3);
-      if (inLine(a, b, c)) return { kind: "points", a: a.id, b: b.id, c: c.id };
-    }
-    return null;
-  }
-
-  /** One distance for a polar translation, or two for a rectangular one. */
-  function markableDistances(): string[] {
-    const readings = readingsWhere((held) => held.length === 1 && held.angle === 0);
-    return readings.slice(-2);
-  }
-
   /** A Mark entry, which sets what future transforms follow and leaves the selection alone. */
   function mark(action: MenuAction) {
     if (action === "mark-mirror") {
-      const found = markableMirror();
+      const found = markableMirror(building);
       if (found) setMirror(found);
       return;
     }
     if (action === "mark-vector") {
-      const ends = markableVector();
+      const ends = markableVector(building);
       if (ends)
         setValues({ ...values, translate: { ...values.translate, from: ends[0], to: ends[1] } });
       return;
     }
     if (action === "mark-angle") {
-      const angle = markableAngle();
+      const angle = markableAngle(building);
       if (angle) setFollows({ ...follows, angle });
       return;
     }
     if (action === "mark-ratio") {
-      const ratio = markableRatio();
+      const ratio = markableRatio(building);
       if (ratio) setFollows({ ...follows, ratio });
       return;
     }
-    const distances = markableDistances();
+    const distances = markableDistances(building);
     if (distances.length > 0) setFollows({ ...follows, distances });
   }
 
@@ -2064,11 +1874,11 @@ export function App() {
     if (action === "define-custom") return canDefine(objects, selection);
     if (action === "edit-custom") return customs.length > 0;
     if (action.startsWith("apply-transform:")) return transformable(selection, objects);
-    if (action === "mark-mirror") return markableMirror() !== null;
-    if (action === "mark-vector") return markableVector() !== null;
-    if (action === "mark-angle") return markableAngle() !== null;
-    if (action === "mark-ratio") return markableRatio() !== null;
-    if (action === "mark-distance") return markableDistances().length > 0;
+    if (action === "mark-mirror") return markableMirror(building) !== null;
+    if (action === "mark-vector") return markableVector(building) !== null;
+    if (action === "mark-angle") return markableAngle(building) !== null;
+    if (action === "mark-ratio") return markableRatio(building) !== null;
+    if (action === "mark-distance") return markableDistances(building).length > 0;
     if (action === "derivative") return chosenFunction() !== undefined;
     if (action === "tabulate") return chosenValues().length > 0;
     if (action === "add-table-data" || action === "remove-table-data") {
