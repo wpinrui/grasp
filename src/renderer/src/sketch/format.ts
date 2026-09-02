@@ -20,8 +20,8 @@ import {
   type PointSize,
   type SketchObject,
 } from "./model";
+import type { PageContent } from "./pages";
 import { ANGLE_UNITS, DISTANCE_UNITS, type Prefs } from "./prefs";
-import type { PageContent } from "./useSketch";
 
 const FORMAT = "grasp-sketch";
 
