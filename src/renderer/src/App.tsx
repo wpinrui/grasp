@@ -47,7 +47,6 @@ import {
   bisector,
   canBuild,
   inLine,
-  landingSpots,
   locusParts,
   wouldBuild,
 } from "./sketch/builds";
@@ -63,6 +62,7 @@ import {
   sheetOf,
   writeIn,
 } from "./sketch/measure";
+import { landingSpots } from "./sketch/measured";
 import {
   asPasted,
   type ButtonAction,
