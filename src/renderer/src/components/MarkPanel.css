@@ -1,0 +1,51 @@
+/*
+  The panel a mark opens: a small bar of buttons sitting just above the mark it
+  is about. It rides over the sheet in screen pixels, so it keeps its size at
+  every zoom, and it is centred on the mark and lifted clear of it.
+*/
+
+.mark-panel {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  transform: translate(-50%, -100%);
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 8px;
+  box-shadow: var(--shadow-flyout);
+  pointer-events: auto;
+  z-index: 30;
+}
+
+.mark-panel__button {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.mark-panel__button:hover {
+  background: var(--color-flyout-hover);
+}
+
+.mark-panel__button--on {
+  background: var(--color-surface-hover);
+}
+
+.mark-panel__button--away {
+  color: var(--color-text-menu);
+}
+
+.mark-panel__split {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: var(--color-border);
+}

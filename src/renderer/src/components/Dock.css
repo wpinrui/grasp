@@ -1,0 +1,145 @@
+/* The rail down the right edge: one button per panel, always there. */
+.dock__rail {
+  position: relative;
+  width: var(--toolbox-width);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--tool-gap);
+  padding: 6px 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+}
+
+.dock__tool {
+  /* The same size the toolbox draws its icons at, so the two rails match. */
+  font-size: 24px;
+  width: var(--tool-size);
+  height: var(--tool-size);
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--color-text-dim);
+}
+
+.dock__tool:hover {
+  background: var(--color-surface-hover-strong);
+  color: var(--color-text);
+}
+
+/*
+ * The open one is filled in, so it reads as the panel that is showing. Grey
+ * rather than a colour, because the icon on top carries the colour now.
+ */
+.dock__tool--open,
+.dock__tool--open:hover {
+  background: var(--color-surface-selected);
+  color: var(--color-text);
+}
+
+/* What the open panels sit in, between the sheet and the rail. */
+.dock__pane {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* A panel is a card over the window, so two of them read as two. */
+.dock__panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-panel);
+  border-radius: 8px;
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+  font-size: 12px;
+}
+
+/* The bar the dock draws for every panel: what it is, and how much of it. */
+.dock__bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.dock__bar-icon {
+  display: grid;
+  place-items: center;
+  /* Sized here rather than off the card, whose type is smaller than the icon. */
+  font-size: 16px;
+  width: 18px;
+  height: 18px;
+  color: var(--color-accent);
+}
+
+.dock__bar-name {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.dock__bar-count {
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: var(--color-surface);
+  color: var(--color-text-dim);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The seam between two cards. The gap itself is the grip. */
+.dock__seam {
+  flex: none;
+  height: 12px;
+  display: grid;
+  place-items: center;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.dock__seam-handle {
+  width: 28px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--color-seam);
+}
+
+.dock__seam:hover .dock__seam-handle,
+.dock__seam:active .dock__seam-handle {
+  background: var(--color-accent);
+}
+
+/* The edge the pane is dragged wider by. */
+.dock__grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 7px;
+  z-index: 1;
+  cursor: ew-resize;
+}
+
+/* The toolbox's tooltip, hung off the other side of the rail so it opens over
+   the sheet rather than off the edge of the window. */
+.tooltip--dock {
+  left: auto;
+  right: 54px;
+}

@@ -1,0 +1,113 @@
+/*
+  A measurement rides above the sheet rather than in it, so it keeps its size at
+  every zoom the way a label does. It hangs by its top left corner and is set
+  the way a caption is, in Times New Roman at 14 point.
+*/
+
+.reading {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  line-height: 1.35;
+  white-space: nowrap;
+  cursor: default;
+  font-family: "Times New Roman", serif;
+  font-size: 14pt;
+  font-style: normal;
+  font-weight: normal;
+  color: var(--color-canvas-text);
+}
+
+/* Under the pointer, and there to be picked up. */
+.reading:hover {
+  border-color: var(--color-selection-band);
+}
+
+.reading--selected {
+  border-color: var(--color-selection);
+  background: var(--color-selection-halo);
+}
+
+/*
+  A hidden measurement, while the dock points at its row. It is not on the
+  sheet, so this faint copy is the only way to see where it sits.
+*/
+/* The Measure tool is on what this was taken from, and a click will come here
+   rather than write another. Lit the way the Arrow lights what it is over. */
+.reading--lit {
+  border-color: var(--color-snap-band);
+  background: var(--color-selection-halo);
+}
+
+.reading--ghost {
+  opacity: 0.55;
+  border-color: var(--color-snap-band);
+  background: var(--color-selection-halo);
+}
+
+/*
+  The marks that say what a name names: a bar over a segment, arrowheads for a
+  ray and a line, and a curve over an arc.
+*/
+.reading__over {
+  position: relative;
+  padding: 0 1px;
+}
+
+.reading__over--bar {
+  border-top: 1px solid currentcolor;
+}
+
+.reading__over--arc {
+  border-top: 1px solid currentcolor;
+  border-radius: 60% 60% 0 0 / 100% 100% 0 0;
+}
+
+.reading__over--ray,
+.reading__over--line {
+  border-top: 1px solid currentcolor;
+  padding: 0 4px;
+}
+
+.reading__over--ray::after,
+.reading__over--line::after {
+  content: "";
+  position: absolute;
+  top: -0.5px;
+  right: 0;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  border-left: 4px solid currentcolor;
+  transform: translateY(-40%);
+}
+
+.reading__over--line::before {
+  content: "";
+  position: absolute;
+  top: -0.5px;
+  left: 0;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  border-right: 4px solid currentcolor;
+  transform: translateY(-40%);
+}
+
+/* Ratio stacks its two names, with the rule running between them. */
+.reading__fraction {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: middle;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.reading__top {
+  padding: 0 3px;
+  border-bottom: 1px solid currentcolor;
+}
+
+.reading__bottom {
+  padding: 0 3px;
+}

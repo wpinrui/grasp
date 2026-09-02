@@ -1,0 +1,89 @@
+/* The prompts the desktop app gets from the operating system, drawn here in
+   GRASP's own chrome because a tab has none to borrow. */
+
+.web-prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 45%);
+}
+
+.web-prompt__box {
+  min-width: 320px;
+  max-width: 480px;
+  padding: 20px;
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.web-prompt__text {
+  margin: 0 0 18px;
+  line-height: 1.45;
+}
+
+.web-prompt__row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.web-prompt__key {
+  min-width: 84px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-key-border);
+  border-radius: 4px;
+  background: var(--color-key-bg);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.web-prompt__key:hover {
+  background: var(--color-surface-hover-strong);
+}
+
+.web-prompt__key--on {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* Bare: an embedded sheet and nothing round it. The chrome is hidden by what
+   it is not, rather than one class at a time, so a rail added later does not
+   quietly reappear here. */
+.bare .app {
+  min-height: 0;
+}
+
+.bare .app > :not(.app__workspace) {
+  display: none;
+}
+
+.bare .app__workspace {
+  padding: 0;
+}
+
+.bare .app__workspace > :not(.app__canvas) {
+  display: none;
+}
+
+/* The palette belongs to the canvas rather than to the workspace, so it needs
+   saying separately. */
+.bare .palette {
+  display: none;
+}
+
+/* Locked: the view is held where the sketch opened, so the zoom readout and
+   the scrollbars are gone. Both exist only to move the sheet, and a control
+   that cannot do its job is worse than no control. */
+.locked .canvas__zoom,
+.locked .canvas__scroll {
+  display: none;
+}

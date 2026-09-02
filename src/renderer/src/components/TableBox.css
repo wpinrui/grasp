@@ -1,0 +1,44 @@
+/*
+ * A table on the sheet. It hangs by a spot on the drawing and keeps its type
+ * size at every zoom, the way a reading does, so it stays readable zoomed out
+ * and does not swell zoomed in.
+ */
+.table-box {
+  position: absolute;
+  transform-origin: top left;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.table-box--ghost {
+  opacity: 0.4;
+}
+
+.table-box__grid {
+  border-collapse: collapse;
+  background: var(--color-sheet, transparent);
+}
+
+.table-box__grid th,
+.table-box__grid td {
+  padding: 2px 10px;
+  border: 1px solid currentColor;
+  text-align: right;
+  font-weight: normal;
+}
+
+.table-box__grid th {
+  font-style: italic;
+}
+
+/* The row that keeps up with the figure rather than holding a capture. It is
+   set apart so a reading that is still moving is not mistaken for a record. */
+.table-box__live td {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.table-box--selected .table-box__grid {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 1px;
+}

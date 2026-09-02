@@ -1,0 +1,51 @@
+{
+  "name": "grasp",
+  "version": "1.2.0",
+  "description": "An Electron application with React and TypeScript",
+  "main": "./out/main/index.js",
+  "author": "wpinrui",
+  "private": true,
+  "scripts": {
+    "dev": "yarn ensure-electron && electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "yarn ensure-electron && electron-vite preview",
+    "ensure-electron": "node scripts/ensure-electron.mjs",
+    "test": "vitest run",
+    "lint": "biome check",
+    "format": "biome format --write",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "yarn typecheck:node && yarn typecheck:web",
+    "prepare": "husky",
+    "build:web": "vite build --config vite.config.web.ts",
+    "dev:web": "vite --config vite.config.web.ts",
+    "package:win": "yarn build && electron-builder --win",
+    "package": "yarn build && electron-builder"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^42.0.0",
+    "electron-builder": "^26.0.0",
+    "electron-vite": "^5.0.0",
+    "husky": "^9.1.7",
+    "jsdom": "^29.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^7.0.0",
+    "vitest": "^4.0.0"
+  },
+  "resolutions": {
+    "vite": "^7.0.0"
+  }
+}

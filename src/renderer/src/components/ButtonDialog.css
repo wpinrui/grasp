@@ -1,0 +1,42 @@
+/* What a new action button needs: what it says, and the one choice it leaves. */
+.button-dialog__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.button-dialog__name {
+  width: 40px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.button-dialog__field {
+  flex: 1;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+.button-dialog__choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.button-dialog__choice input {
+  accent-color: var(--color-accent);
+}
+
+.button-dialog__note {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-hint);
+}

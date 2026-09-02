@@ -1,0 +1,384 @@
+/*
+ * The palette: a bar under the sheet, the width of the canvas. Two rows,
+ * always, so the sheet never changes height as the selection changes. Each run
+ * of controls is named down the left of it, and what the selection cannot take
+ * greys out rather than going away.
+ */
+.palette {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-canvas-divider);
+  border-radius: 0 0 8px 0;
+  color: var(--color-text-secondary);
+  user-select: none;
+}
+
+.palette__row {
+  flex: none;
+  height: 34px;
+  display: flex;
+  align-items: center;
+}
+
+/* The line between the two rows, which runs the whole width of the bar. */
+.palette__rule {
+  flex: none;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* What a run of controls is called, sitting to its left at a fixed width so
+   the two rows line up down the bar. */
+.palette__name {
+  flex: none;
+  width: 62px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* A row with something to set says so: its name comes up to full strength,
+   and a row that is greyed out keeps the muted one. */
+.palette__name--on {
+  color: var(--color-text);
+}
+
+.palette__controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.palette__controls--inks {
+  gap: 5px;
+}
+
+/* Between two runs of controls, and inside one that holds two ideas. */
+.palette__split {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin: 0 18px;
+  background: var(--color-divider);
+}
+
+.palette__split--tight {
+  margin: 0 8px;
+}
+
+/* Takes up whatever room is left, so nothing in the row stretches to fill it. */
+.palette__gap {
+  flex: 1;
+}
+
+/* One of the eight inks. It is the object's colour, and a caption's ink. */
+.palette__ink {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--color-key-border);
+  border-radius: 5px;
+}
+
+/* A ring with a gap, so the mark reads against the swatch's own colour. */
+.palette__ink--on {
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 3.5px var(--color-accent);
+}
+
+.palette__ink:disabled {
+  opacity: 0.35;
+}
+
+.palette__key {
+  min-width: 28px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.palette__key:hover:not(:disabled) {
+  background: var(--color-surface-hover-strong);
+  color: var(--color-text);
+}
+
+.palette__key--on {
+  background: var(--color-surface-selected);
+  color: var(--color-text);
+}
+
+.palette__key:disabled {
+  color: var(--color-text-disabled);
+}
+
+.palette__key--sample {
+  min-width: 34px;
+}
+
+.palette__key--bold {
+  font-weight: 700;
+}
+
+.palette__key--italic {
+  font-family: var(--font-label);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.palette__key--underline {
+  text-decoration: underline;
+}
+
+.palette__key--wide {
+  min-width: 34px;
+  font-family: var(--font-label);
+  font-size: 15px;
+}
+
+/* The three bars that say which way a caption is ranged across its box. */
+.palette__lines {
+  width: 14px;
+  height: 10px;
+  background:
+    linear-gradient(currentColor, currentColor) top left / 14px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) center left / 9px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) bottom left / 14px 2px no-repeat;
+}
+
+.palette__lines--center {
+  background-position:
+    top center,
+    center center,
+    bottom center;
+}
+
+.palette__lines--right {
+  background-position:
+    top right,
+    center right,
+    bottom right;
+}
+
+/* A dropdown, drawn and opened by the bar rather than by the system. */
+.palette__picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 2px;
+}
+
+.palette__box {
+  width: 54px;
+  height: 26px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border-radius: 5px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+.palette__picker--wide .palette__box {
+  width: 140px;
+  font-size: 13px;
+}
+
+.palette__box:hover:not(:disabled) {
+  background: var(--color-surface-hover-strong);
+}
+
+.palette__box--on {
+  background: var(--color-surface-selected);
+}
+
+.palette__box:disabled {
+  color: var(--color-text-disabled);
+}
+
+.palette__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The list a box opens, above the bar so it is never off the bottom. */
+.palette__list {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 50;
+  min-width: 100%;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 8px;
+  box-shadow: var(--shadow-flyout);
+}
+
+.palette__option {
+  height: 26px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  border-radius: 5px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.palette__option:hover {
+  background: var(--color-flyout-hover);
+  color: var(--color-text);
+}
+
+.palette__option--on {
+  background: var(--color-surface-selected);
+  color: var(--color-text);
+}
+
+/* The caret each box carries, pointing the way the list will open. */
+.palette__caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  pointer-events: none;
+}
+
+.palette__caret--down {
+  border-top: 5px solid var(--color-text-dim);
+}
+
+.palette__caret--up {
+  border-bottom: 5px solid var(--color-text-dim);
+}
+
+.palette__box:disabled .palette__caret--down {
+  border-top-color: var(--color-text-disabled);
+}
+
+/* The notation and the symbols, sitting on after the style keys rather than
+   out at the right, where a wide window would leave them stranded. */
+.palette__openers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.palette__opener-anchor {
+  position: relative;
+}
+
+.palette__opener {
+  height: 26px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 5px;
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.palette__opener:hover:not(:disabled) {
+  background: var(--color-surface-hover-strong);
+  color: var(--color-text);
+}
+
+.palette__opener--on {
+  background: var(--color-surface-selected);
+  color: var(--color-text);
+}
+
+.palette__opener:disabled {
+  color: var(--color-text-disabled);
+}
+
+/* A specimen of what is inside, so the button says what it opens. */
+.palette__sample {
+  font-family: var(--font-label);
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.palette__opener:disabled .palette__sample {
+  color: var(--color-text-disabled);
+}
+
+.palette__opener:disabled .palette__caret--up {
+  border-bottom-color: var(--color-text-disabled);
+}
+
+/*
+ * What an opener opens, above the bar. It is sized to hold the whole of what is
+ * in it: there is room on the sheet, so nothing here scrolls.
+ */
+.palette__panel {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 50;
+  padding: 10px 12px 12px 12px;
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 8px;
+  box-shadow: var(--shadow-flyout);
+}
+
+/* The four sets side by side in two columns, so the panel is wide, not tall. */
+.palette__sets {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 12px 24px;
+}
+
+.palette__set {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.palette__name--set {
+  width: auto;
+}
+
+.palette__grid {
+  display: grid;
+  grid-template-columns: repeat(9, 28px);
+  gap: 2px;
+}
+
+.palette__grid--notation {
+  grid-template-columns: repeat(6, 36px);
+}
+
+.palette__glyph {
+  width: 28px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-label);
+  font-size: 15px;
+}
+
+.palette__glyph:hover {
+  background: var(--color-surface-hover-strong);
+  color: var(--color-text);
+}

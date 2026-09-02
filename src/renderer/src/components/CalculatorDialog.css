@@ -1,0 +1,189 @@
+/*
+ * The Calculator. A field you type into, a line that says what it comes to,
+ * three pop-ups for the things that are quicker to pick than to spell, and the
+ * keypad under them.
+ */
+.calc__input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* f(x) = , in front of the field, while a function is being defined. */
+.calc__lead {
+  font-family: var(--font-label), serif;
+  font-size: 15px;
+  color: var(--color-text-secondary);
+}
+
+.calc__well {
+  position: relative;
+  flex: 1;
+}
+
+.calc__field {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-family: var(--font-label), serif;
+  font-size: 15px;
+}
+
+/* The text goes see-through so the layer underneath shows the red through it,
+   with the caret left visible so the field is still a field to type in. */
+.calc__field--bad {
+  border-bottom-color: var(--color-paint-red);
+  color: transparent;
+  caret-color: var(--color-text);
+}
+
+.calc__ghost {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 9px;
+  font-family: var(--font-label), serif;
+  font-size: 15px;
+  color: var(--color-text);
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* From the first thing that does not make sense to the end of the line. */
+.calc__ghost-bad {
+  color: var(--color-paint-red);
+}
+
+.calc__preview {
+  margin: 0;
+  min-height: 18px;
+  font-family: var(--font-label), serif;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.calc__preview--bad {
+  font-family: inherit;
+  font-size: var(--font-size-caption);
+  color: var(--color-paint-red);
+}
+
+.calc__popups {
+  display: flex;
+  gap: 6px;
+}
+
+.calc__popup {
+  position: relative;
+  flex: 1;
+}
+
+.calc__popup-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.calc__popup-button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.calc__popup-button:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+
+/* The caret each pop-up carries, which is the triangle the palette's boxes
+   already use rather than a glyph that draws as a dot at this size. */
+.calc__caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--color-text-dim);
+  pointer-events: none;
+}
+
+.calc__popup-button:disabled .calc__caret {
+  border-top-color: var(--color-text-disabled);
+}
+
+.calc__dismiss {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+
+.calc__list {
+  position: absolute;
+  z-index: 80;
+  top: 28px;
+  left: 0;
+  min-width: 100%;
+  max-height: 216px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 6px;
+  box-shadow: var(--shadow-flyout);
+}
+
+.calc__list-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--color-text-menu);
+  font-size: var(--font-size-caption);
+  white-space: pre;
+  text-align: left;
+}
+
+.calc__list-item:hover {
+  background: var(--color-flyout-hover);
+  color: var(--color-text);
+}
+
+.calc__keys {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.calc__key {
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-family: var(--font-label), serif;
+  font-size: 15px;
+}
+
+.calc__key:hover {
+  background: var(--color-surface-hover);
+}
+
+/* The variable, which is only there while a function is being defined. */
+.calc__key--x {
+  color: var(--color-accent);
+}

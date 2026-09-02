@@ -1,0 +1,327 @@
+{
+  "format": "grasp-sketch",
+  "version": 10,
+  "pages": [
+    {
+      "name": "Rosette",
+      "objects": [
+        {
+          "id": "point-1-zqvspe",
+          "kind": "point",
+          "x": 0,
+          "y": 0,
+          "size": "dot",
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "point-2-zqvspe",
+          "kind": "point",
+          "x": 212.66668701171875,
+          "y": -3.1599999999999966,
+          "size": "large",
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-orange",
+          "weight": "medium"
+        },
+        {
+          "id": "point-3-zqvspe",
+          "kind": "point",
+          "x": -52.188164809638835,
+          "y": 2.2894981246280253,
+          "size": "large",
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-magenta",
+          "weight": "medium"
+        },
+        {
+          "id": "circle-4-zqvspe",
+          "kind": "circle",
+          "span": {
+            "kind": "through",
+            "centre": "point-1-zqvspe",
+            "edge": "point-2-zqvspe"
+          },
+          "colour": "--color-ink-grey",
+          "weight": "hairline",
+          "pattern": "dashed"
+        },
+        {
+          "id": "point-5-zqvspe",
+          "kind": "point",
+          "x": 103.59670322990058,
+          "y": -185.75475349082257,
+          "size": "dot",
+          "from": {
+            "kind": "rotate",
+            "of": "point-2-zqvspe",
+            "centre": "point-1-zqvspe",
+            "degrees": 60
+          },
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "point-6-zqvspe",
+          "kind": "point",
+          "x": -109.06998378181815,
+          "y": -182.5947534908226,
+          "size": "dot",
+          "from": {
+            "kind": "rotate",
+            "of": "point-2-zqvspe",
+            "centre": "point-1-zqvspe",
+            "degrees": 120
+          },
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "point-7-zqvspe",
+          "kind": "point",
+          "x": -212.66668701171875,
+          "y": 3.1599999999999704,
+          "size": "dot",
+          "from": {
+            "kind": "rotate",
+            "of": "point-2-zqvspe",
+            "centre": "point-1-zqvspe",
+            "degrees": 180
+          },
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "point-8-zqvspe",
+          "kind": "point",
+          "x": -103.59670322990065,
+          "y": 185.7547534908225,
+          "size": "dot",
+          "from": {
+            "kind": "rotate",
+            "of": "point-2-zqvspe",
+            "centre": "point-1-zqvspe",
+            "degrees": 240
+          },
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "point-9-zqvspe",
+          "kind": "point",
+          "x": 109.06998378181822,
+          "y": 182.59475349082254,
+          "size": "dot",
+          "from": {
+            "kind": "rotate",
+            "of": "point-2-zqvspe",
+            "centre": "point-1-zqvspe",
+            "degrees": 300
+          },
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "point-10-zqvspe",
+          "kind": "point",
+          "x": -24.111318866974724,
+          "y": 46.34102556435031,
+          "size": "dot",
+          "from": {
+            "kind": "rotate",
+            "of": "point-3-zqvspe",
+            "centre": "point-1-zqvspe",
+            "degrees": 60
+          },
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "point-11-zqvspe",
+          "kind": "point",
+          "x": 28.076845942664107,
+          "y": 44.05152743972229,
+          "size": "dot",
+          "from": {
+            "kind": "rotate",
+            "of": "point-3-zqvspe",
+            "centre": "point-1-zqvspe",
+            "degrees": 120
+          },
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "point-12-zqvspe",
+          "kind": "point",
+          "x": 52.188164809638835,
+          "y": -2.289498124628019,
+          "size": "dot",
+          "from": {
+            "kind": "rotate",
+            "of": "point-3-zqvspe",
+            "centre": "point-1-zqvspe",
+            "degrees": 180
+          },
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "point-13-zqvspe",
+          "kind": "point",
+          "x": 24.11131886697474,
+          "y": -46.3410255643503,
+          "size": "dot",
+          "from": {
+            "kind": "rotate",
+            "of": "point-3-zqvspe",
+            "centre": "point-1-zqvspe",
+            "degrees": 240
+          },
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "point-14-zqvspe",
+          "kind": "point",
+          "x": -28.076845942664125,
+          "y": -44.051527439722285,
+          "size": "dot",
+          "from": {
+            "kind": "rotate",
+            "of": "point-3-zqvspe",
+            "centre": "point-1-zqvspe",
+            "degrees": 300
+          },
+          "label": {
+            "shown": false
+          },
+          "colour": "--color-ink-grey"
+        },
+        {
+          "id": "arc-15-zqvspe",
+          "kind": "arc",
+          "span": {
+            "kind": "through",
+            "from": "point-2-zqvspe",
+            "via": "point-3-zqvspe",
+            "to": "point-5-zqvspe"
+          },
+          "colour": "--color-ink-blue",
+          "weight": "medium",
+          "pattern": "solid"
+        },
+        {
+          "id": "arc-16-zqvspe",
+          "kind": "arc",
+          "span": {
+            "kind": "through",
+            "from": "point-5-zqvspe",
+            "via": "point-10-zqvspe",
+            "to": "point-6-zqvspe"
+          },
+          "colour": "--color-ink-blue",
+          "weight": "medium",
+          "pattern": "solid"
+        },
+        {
+          "id": "arc-17-zqvspe",
+          "kind": "arc",
+          "span": {
+            "kind": "through",
+            "from": "point-6-zqvspe",
+            "via": "point-11-zqvspe",
+            "to": "point-7-zqvspe"
+          },
+          "colour": "--color-ink-blue",
+          "weight": "medium",
+          "pattern": "solid"
+        },
+        {
+          "id": "arc-18-zqvspe",
+          "kind": "arc",
+          "span": {
+            "kind": "through",
+            "from": "point-7-zqvspe",
+            "via": "point-12-zqvspe",
+            "to": "point-8-zqvspe"
+          },
+          "colour": "--color-ink-blue",
+          "weight": "medium",
+          "pattern": "solid"
+        },
+        {
+          "id": "arc-19-zqvspe",
+          "kind": "arc",
+          "span": {
+            "kind": "through",
+            "from": "point-8-zqvspe",
+            "via": "point-13-zqvspe",
+            "to": "point-9-zqvspe"
+          },
+          "colour": "--color-ink-blue",
+          "weight": "medium",
+          "pattern": "solid"
+        },
+        {
+          "id": "arc-20-zqvspe",
+          "kind": "arc",
+          "span": {
+            "kind": "through",
+            "from": "point-9-zqvspe",
+            "via": "point-14-zqvspe",
+            "to": "point-2-zqvspe"
+          },
+          "colour": "--color-ink-blue",
+          "weight": "medium",
+          "pattern": "solid"
+        }
+      ]
+    }
+  ],
+  "prefs": {
+    "units": {
+      "angle": "degrees",
+      "anglePlaces": 2,
+      "distance": "cm",
+      "distancePlaces": 2,
+      "otherPlaces": 2
+    },
+    "colours": {
+      "point": "--color-ink-red",
+      "path": "--color-ink-red",
+      "fill": "--color-ink-blue",
+      "mark": "--color-ink-magenta",
+      "label": "--color-ink-black",
+      "sheet": "--color-sheet-white"
+    },
+    "text": {
+      "font": "Times New Roman",
+      "size": 14
+    }
+  }
+}

@@ -1,0 +1,37 @@
+appId: com.electron.grasp
+productName: GRASP
+directories:
+  buildResources: build
+  # Its own folder under dist, so the packaged app and the web build do not
+  # land on top of each other.
+  output: dist/desktop
+files:
+  - out/**
+  - resources/**
+  - "!**/*.map"
+asarUnpack:
+  - resources/**
+win:
+  icon: resources/icon.png
+  # Two ways to have it: the installer for a machine you can install on, and a
+  # single portable exe for one you cannot, which is most school machines.
+  target:
+    - nsis
+    - portable
+
+nsis:
+  # Not one-click: it offers where to put itself, and installs for the user
+  # rather than the machine, so it wants no administrator.
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  artifactName: ${productName}-${version}-setup.${ext}
+
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}
+mac:
+  icon: resources/icon.png
+linux:
+  icon: resources/icon.png

@@ -1,0 +1,68 @@
+/*
+ * New Parameter. Two things to set and one thing to say: what the number is,
+ * what it is a number of, and how far the keys will move it.
+ */
+.parameter__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.parameter__name {
+  width: 52px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.parameter__number {
+  flex: 1;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+.parameter__units {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.parameter__unit {
+  flex: 1;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  white-space: nowrap;
+}
+
+.parameter__unit:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.parameter__unit--on,
+.parameter__unit--on:hover {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* The unit itself, after the name of the kind: Angle (degrees). */
+.parameter__unit-said {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.parameter__note {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-hint);
+}

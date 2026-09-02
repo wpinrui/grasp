@@ -1,0 +1,262 @@
+/*
+ * The Transform dialogs, laid out as the reference but in GRASP's own chrome.
+ * It floats over the workspace rather than blocking it, because the sheet
+ * underneath has to stay clickable while it is open.
+ */
+.dialog {
+  position: fixed;
+  z-index: 60;
+  width: 286px;
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 8px;
+  box-shadow: var(--shadow-flyout);
+  color: var(--color-text);
+  user-select: none;
+}
+
+/* Where three buttons have to sit in a row rather than two. */
+.dialog--wide {
+  width: 372px;
+}
+
+.dialog__bar {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 4px 0 12px;
+  border-bottom: 1px solid var(--color-border);
+  cursor: default;
+}
+
+.dialog__title {
+  flex: 1;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.dialog__close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--color-text-dim);
+}
+
+.dialog__close:hover {
+  background: var(--color-close-hover);
+  color: var(--color-text);
+}
+
+.dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.dialog__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.dialog__legend {
+  padding: 0 4px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-hint);
+}
+
+.dialog__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dialog__radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.dialog__radio input {
+  accent-color: var(--color-accent);
+}
+
+.dialog__radio--off {
+  color: var(--color-text-disabled);
+}
+
+.dialog__field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dialog__input {
+  width: 96px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  text-align: center;
+}
+
+.dialog__unit {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-dim);
+}
+
+/* New over old, stacked as a fraction. */
+.dialog__ratio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.dialog__rule {
+  width: 108px;
+  height: 1px;
+  background: var(--color-text-dim);
+}
+
+.dialog__about,
+.dialog__picked {
+  margin: 0;
+  text-align: center;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-dim);
+}
+
+/* Iterate: one row per seed, saying where that seed goes. */
+.dialog__map {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dialog__row-map {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+/* The row the next click on the sheet would fill. */
+.dialog__row-map--active {
+  border-color: var(--color-accent);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.dialog__seed {
+  min-width: 52px;
+}
+
+.dialog__arrow {
+  color: var(--color-text-dim);
+}
+
+.dialog__target {
+  flex: 1;
+  text-align: right;
+  color: var(--color-text-dim);
+}
+
+.dialog__row-map--active .dialog__target {
+  color: var(--color-text);
+}
+
+.dialog__steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.dialog__step {
+  width: 28px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: 15px;
+}
+
+.dialog__step:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.dialog__step:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+
+.dialog__count {
+  min-width: 32px;
+  text-align: center;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.dialog__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 12px 12px 12px;
+}
+
+.dialog__button {
+  white-space: nowrap;
+  height: 28px;
+  min-width: 84px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+.dialog__button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.dialog__button--go {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.dialog__button--go:hover:not(:disabled) {
+  background: var(--color-accent);
+  opacity: 0.9;
+}
+
+.dialog__button:disabled {
+  color: var(--color-text-disabled);
+  border-color: var(--color-border);
+  background: var(--color-surface-raised);
+  cursor: default;
+}

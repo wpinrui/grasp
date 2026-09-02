@@ -1,0 +1,184 @@
+:root {
+  color-scheme: dark;
+
+  /* Semantic design tokens, taken from the GRASP design doc. The ONLY file
+     allowed to hold raw colour; everywhere else references these via var(). */
+
+  /* Window chrome surfaces */
+  --color-bg: #202020;
+  --color-surface: #272727;
+  --color-surface-raised: #333333;
+  --color-surface-hover: #2d2d2d;
+  --color-surface-hover-strong: #3d3d3d;
+  /* The rail button whose panel is showing, which is stronger than a hover. */
+  --color-surface-selected: #4f4f4f;
+  --color-flyout: #2c2c2c;
+  --color-flyout-hover: #3a3a3a;
+
+  /* Lines */
+  --color-border: #303030;
+  --color-border-flyout: #3d3d3d;
+  --color-divider: #3a3a3a;
+  --color-key-bg: #3a3a3a;
+  --color-key-border: #4a4a4a;
+
+  /* Chrome text */
+  --color-text: #ffffff;
+  --color-text-secondary: #e6e6e6;
+  --color-text-menu: #f0f0f0;
+  --color-text-dim: #c9c9c9;
+  --color-text-hint: #a8a8a8;
+  --color-text-muted: #9d9d9d;
+  --color-text-disabled: #6f6f6f;
+
+  /* A dock panel is a card over the window, with a seam between two of them. */
+  --color-border-panel: #383838;
+  --color-seam: #3f3f3f;
+
+  --color-accent: #60cdff;
+  /* Labels are set the way geometry is set in print. */
+  --font-label: "Times New Roman", Times, serif;
+  --color-close-hover: #c42b1c;
+
+  /* Toolbox, one hue per tool */
+  --color-tool-arrow: #60cdff;
+  --color-tool-point: #ffc83d;
+  --color-tool-compass: #c39bff;
+  --color-tool-straightedge: #4ad6cd;
+  --color-tool-polygon: #6ccb70;
+  --color-tool-polygon-fill: rgba(108, 203, 112, 0.22);
+  --color-tool-text: #ff8ba7;
+  --color-tool-measure: #ffc83d;
+  --color-tool-marker: #ff9f4a;
+  /* What the Text arrow's T is drawn in, which is a red rather than the Text
+     tool's pink: beside a blue arrow the pink read as another shade of it. */
+  --color-arrow-text: #ff6b6b;
+
+  /* Dock panel icons, drawn flat and coloured, the way the Snap magnet is */
+  --color-panel-snap: #e646c8;
+  --color-panel-steel: #e9e9ea;
+  --color-panel-labels: #ffb02e;
+  --color-panel-hidden: #6d8cff;
+  --color-panel-hole: #2f2f31;
+  /* The paint on the text palette */
+  --color-paint-red: #e8474b;
+  --color-paint-yellow: #ffc83d;
+  --color-paint-green: #4caf5e;
+  --color-paint-blue: #4a9bf0;
+
+  /* Canvas sheet, always light */
+  --color-canvas: #ffffff;
+  /* The papers a sheet can be, light first and then dark */
+  --color-sheet-white: #ffffff;
+  --color-sheet-cream: #fbf7ee;
+  --color-sheet-grey: #f2f4f7;
+  --color-sheet-blue: #f0f5fb;
+  --color-sheet-slate: #39414c;
+  --color-sheet-navy: #1f2a3c;
+  --color-sheet-charcoal: #2b2b2e;
+  --color-sheet-black: #121212;
+
+  /* The same colours again as they are on a dark sheet. A colour keeps its
+     identity, so red is red; only what it is worth against the paper changes. */
+  --color-ink-black-on-dark: #f2f3f5;
+  --color-ink-grey-on-dark: #a8b0bd;
+  --color-ink-red-on-dark: #ff7b7b;
+  --color-ink-orange-on-dark: #ffab4d;
+  --color-ink-green-on-dark: #5ed97e;
+  --color-ink-blue-on-dark: #6fb4ff;
+  --color-ink-purple-on-dark: #b393ff;
+  --color-ink-magenta-on-dark: #ff7fd0;
+  --color-canvas-text-on-dark: #b9c0cb;
+  --color-canvas-text-strong-on-dark: #f2f3f5;
+  --color-canvas-divider-on-dark: #4a525f;
+  --color-canvas-accent-on-dark: #6fb4ff;
+  --color-object-edge-on-dark: rgba(240, 243, 247, 0.22);
+  --color-slot-on-dark: #3a4250;
+  --color-scroll-track-on-dark: #23262b;
+  --color-scroll-thumb-on-dark: #565e6b;
+  --color-scroll-thumb-hover-on-dark: #737d8d;
+  --color-glass-on-dark: rgba(28, 31, 36, 0.86);
+  --color-glass-border-on-dark: #3a414c;
+  --color-glass-hover-on-dark: #2c313a;
+  --color-slot: #eef1f6;
+  --color-canvas-text: #4a5058;
+  --color-canvas-text-strong: #1c1f23;
+  --color-canvas-divider: #c2c8d0;
+  --color-canvas-accent: #0b7ec4;
+  /* Ink a caption can be written in */
+  --color-ink-black: #1c1f23;
+  --color-ink-grey: #5a6270;
+  --color-ink-red: #c0272d;
+  --color-ink-orange: #b85c00;
+  --color-ink-green: #1a7f37;
+  --color-ink-blue: #0b64c4;
+  --color-ink-purple: #6b3fbf;
+  --color-ink-magenta: #b0217f;
+  /* Canvas objects */
+  --color-object: #e5484d;
+  /* A point and a path take the same colour until Preferences says otherwise */
+  --color-point: var(--color-object);
+  --color-path: var(--color-object);
+  --color-object-edge: rgba(24, 28, 33, 0.18);
+  --color-selection: #0b7ec4;
+  --color-selection-halo: rgba(11, 126, 196, 0.16);
+  /* Points a transform dialog is holding, and what it would make */
+  --color-interior: #0b7ec4;
+  --color-interior-selected: rgba(11, 126, 196, 0.34);
+  --color-interior-preview: rgba(229, 72, 77, 0.16);
+  /* A locus: the curve, its many samples, and the arrowhead on an open end */
+  --color-locus: rgba(123, 97, 217, 0.8);
+  --color-locus-selected: #0b7ec4;
+  --color-locus-fill: rgba(123, 97, 217, 0.09);
+  --color-locus-preview: rgba(229, 72, 77, 0.45);
+  --color-locus-arrow: #7b61d9;
+  --color-mark: #d1379d;
+  --color-mark-band: rgba(209, 55, 157, 0.3);
+  --color-preview: rgba(229, 72, 77, 0.45);
+  --color-preview-edge: rgba(24, 28, 33, 0.14);
+  --color-preview-line: rgba(229, 72, 77, 0.4);
+  --color-snap: #0f9b8e;
+  --color-snap-band: rgba(15, 155, 142, 0.26);
+  --color-selection-band: rgba(11, 126, 196, 0.32);
+  --color-marquee-fill: rgba(11, 126, 196, 0.08);
+  --color-marquee-stroke: rgba(11, 126, 196, 0.55);
+  /* Export: what a picture is drawn in when it is not drawn as it is */
+  --color-export-paper: #ffffff;
+  --color-export-ink-black: #000000;
+  --color-export-ink-white: #ffffff;
+  --color-export-fill-grey: #b9bec5;
+  --color-export-fill-black: #000000;
+  --color-export-fill-white: #ffffff;
+
+  /* Canvas scrollbars, which sit on the sheet */
+  --color-scroll-track: #eceff4;
+  --color-scroll-thumb: #98a2b3;
+  --color-scroll-thumb-hover: #6d7789;
+
+  --color-glass: rgba(255, 255, 255, 0.86);
+  --color-glass-border: #e2e6ec;
+  --color-glass-hover: #eef1f5;
+
+  /* What an about box lays over the window it covers. */
+  --color-scrim: rgba(0, 0, 0, 0.5);
+
+  --shadow-flyout: 0 8px 28px rgba(0, 0, 0, 0.62);
+  --shadow-panel: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --shadow-tooltip: 0 6px 18px rgba(0, 0, 0, 0.55);
+  --shadow-glass: 0 2px 6px rgba(0, 0, 0, 0.08);
+
+  /* Typography */
+  --font-family:
+    "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-size-base: 13px;
+  --font-size-caption: 12px;
+
+  /* Chrome metrics */
+  --titlebar-height: 34px;
+  --menubar-height: 36px;
+  --pagebar-height: 36px;
+  --toolbox-width: 58px;
+  --scrollbar-size: 14px;
+  --tool-size: 44px;
+  --tool-gap: 6px;
+}

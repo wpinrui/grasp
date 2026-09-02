@@ -1,0 +1,211 @@
+.menubar {
+  position: relative;
+  z-index: 40;
+  height: var(--menubar-height);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  background: var(--color-bg);
+}
+
+.menubar__anchor {
+  position: relative;
+}
+
+.menubar__item {
+  padding: 5px 10px;
+  font-size: var(--font-size-base);
+  border-radius: 5px;
+  color: var(--color-text-secondary);
+}
+
+.menubar__item:hover {
+  background: var(--color-surface-hover);
+}
+
+.menubar__item--open,
+.menubar__item--open:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.menubar__spacer {
+  flex: 1;
+}
+
+/* The AI and Script buttons, at the right where the menu titles run out. */
+.menubar__tool {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-menu);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.menubar__tool:hover {
+  background: var(--color-surface-hover-strong);
+}
+
+.menubar__toggles {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.menubar__toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 5px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+}
+
+.menubar__toggle:hover {
+  background: var(--color-surface-hover);
+}
+
+.menubar__toggle[aria-pressed="true"] {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.flyout {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  width: max-content;
+  min-width: 200px;
+  max-width: 340px;
+  padding: 4px;
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 8px;
+  box-shadow: var(--shadow-flyout);
+  z-index: 40;
+}
+
+/* A submenu opens to the right, its first entry level with its parent row. */
+.flyout--nested {
+  top: -4px;
+  left: 100%;
+  margin-left: 1px;
+  min-width: 148px;
+}
+
+.flyout__row {
+  position: relative;
+}
+
+.flyout__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 5px;
+  font-size: var(--font-size-base);
+  color: var(--color-text-menu);
+  text-align: left;
+}
+
+.flyout--checkable .flyout__item,
+.flyout__item--indent {
+  padding-left: 32px;
+}
+
+.flyout__label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Bookkeeping: struck through until the entry does something. */
+.flyout__label--todo {
+  text-decoration: line-through;
+}
+
+.flyout__item:hover:not(:disabled),
+.flyout__item--open {
+  background: var(--color-flyout-hover);
+  color: var(--color-text);
+}
+
+.flyout__item:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+
+.flyout__shortcut {
+  flex: none;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
+.flyout__item:hover:not(:disabled) .flyout__shortcut,
+.flyout__item--open .flyout__shortcut {
+  color: var(--color-text-dim);
+}
+
+.flyout__item:disabled .flyout__shortcut {
+  color: var(--color-text-disabled);
+}
+
+/* Where a recent sketch says which file it is, after its name. */
+.flyout__note {
+  flex: 0 1 auto;
+  margin-left: 4px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flyout__item:hover:not(:disabled) .flyout__note,
+.flyout__item--open .flyout__note {
+  color: var(--color-text-dim);
+}
+
+.flyout__item:disabled .flyout__note {
+  color: var(--color-text-disabled);
+}
+
+.flyout__check {
+  position: absolute;
+  left: 11px;
+  display: flex;
+  color: var(--color-text-menu);
+}
+
+.flyout__submenu {
+  flex: none;
+  display: flex;
+  margin-right: -4px;
+  color: var(--color-text-muted);
+}
+
+.flyout__item:disabled .flyout__submenu {
+  color: var(--color-text-disabled);
+}
+
+.flyout__separator {
+  height: 1px;
+  background: var(--color-border-flyout);
+  margin: 4px 10px;
+}

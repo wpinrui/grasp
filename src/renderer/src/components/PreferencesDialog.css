@@ -1,0 +1,62 @@
+/* Preferences: everything on one sheet, so Apply to plainly covers all of it.
+   It borrows the dialog chrome; only its own parts are here. */
+.prefs__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.prefs__row-name {
+  flex: none;
+  width: 68px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-hint);
+}
+
+.prefs__controls {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.prefs__select {
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 5px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-caption);
+}
+
+.prefs__select--places {
+  flex: 1;
+  min-width: 0;
+}
+
+.prefs__none {
+  flex: none;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-disabled);
+}
+
+.prefs__swatches {
+  display: flex;
+  gap: 5px;
+}
+
+.prefs__swatch {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--color-key-border);
+  border-radius: 5px;
+}
+
+/* A ring with a gap, the way the palette marks the ink it is on. */
+.prefs__swatch--on {
+  box-shadow:
+    0 0 0 2px var(--color-flyout),
+    0 0 0 3.5px var(--color-accent);
+}

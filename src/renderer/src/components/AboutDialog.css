@@ -1,0 +1,93 @@
+/*
+ * About GRASP. It sits over the middle of the window on a scrim, because
+ * unlike the transform dialogs there is nothing to do on the sheet while it is
+ * up, and because that is where an about box belongs.
+ */
+.about__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: var(--color-scrim);
+}
+
+.about {
+  width: 340px;
+  padding: 28px 24px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 10px;
+  box-shadow: var(--shadow-flyout);
+  color: var(--color-text);
+  user-select: none;
+}
+
+.about__logo {
+  width: 96px;
+  height: 96px;
+}
+
+.about__name {
+  margin: 14px 0 0 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.about__tagline {
+  margin: 6px 0 0 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+}
+
+.about__version {
+  margin: 14px 0 0 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-dim);
+}
+
+/* A button rather than an anchor: the link opens in the browser, not in here. */
+.about__link {
+  margin: 10px 0 0 0;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: var(--font-size-caption);
+  color: var(--color-accent);
+}
+
+.about__link:hover {
+  background: var(--color-flyout-hover);
+  text-decoration: underline;
+}
+
+.about__built,
+.about__licence {
+  margin: 12px 0 0 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
+.about__licence {
+  margin-top: 4px;
+}
+
+.about__close {
+  margin: 20px 0 0 0;
+  min-width: 96px;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 5px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+.about__close:hover {
+  background: var(--color-surface-hover-strong);
+}

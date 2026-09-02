@@ -1,0 +1,164 @@
+.toolbox {
+  position: relative;
+  width: var(--toolbox-width);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--tool-gap);
+  padding: 6px 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+}
+
+.tool {
+  position: relative;
+  width: var(--tool-size);
+  height: var(--tool-size);
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  /* What every icon in the rail is drawn at, since an icon takes its size from
+     what it sits in. */
+  font-size: 24px;
+}
+
+.tool:hover {
+  background: var(--color-surface-hover-strong);
+}
+
+.tool--active,
+.tool--active:hover {
+  background: var(--color-surface-raised);
+}
+
+.tool__rail {
+  position: absolute;
+  left: -1px;
+  top: 11px;
+  width: 3px;
+  height: 22px;
+  border-radius: 99px;
+  /* The button carries its tool's hue as its colour, so the rail takes it. */
+  background: currentColor;
+}
+
+.tool__flyout {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  opacity: 0.7;
+}
+
+.tool--active .tool__flyout {
+  opacity: 0.9;
+}
+
+/* A tool with nothing to do as things stand: still there, plainly not to hand. */
+.tool--off {
+  opacity: 0.32;
+  cursor: default;
+}
+
+/* A tool's variants, opened on hover in place of its tooltip. */
+.variants {
+  position: absolute;
+  left: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  /* The room after the key matches the tooltip the flyout stands in for. */
+  padding: 4px 8px 4px 4px;
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 8px;
+  box-shadow: var(--shadow-flyout);
+  z-index: 40;
+}
+
+/*
+ * The rail centres its buttons, so there is a strip of padding between one and
+ * the panel. This bridges it, invisibly, so the pointer is never over anything
+ * that counts as having left both and the panel does not close on the way.
+ */
+.variants::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  right: 100%;
+  width: 14px;
+}
+
+/* The tool's key, standing in for the tooltip the flyout replaced. */
+.variants__key {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding-left: 8px;
+  margin-left: 2px;
+  border-left: 1px solid var(--color-border);
+}
+
+.variants__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 24px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.variants__name {
+  font-size: var(--font-size-caption);
+  line-height: 1;
+  color: var(--color-text-menu);
+}
+
+.variants__item:hover {
+  background: var(--color-flyout-hover);
+}
+
+.variants__item--armed {
+  background: var(--color-surface-hover);
+}
+
+.tooltip {
+  position: absolute;
+  left: 54px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px 0 10px;
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 6px;
+  box-shadow: var(--shadow-tooltip);
+  white-space: nowrap;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.tooltip__name {
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+
+.tooltip__key {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--color-key-bg);
+  border: 1px solid var(--color-key-border);
+  border-bottom-width: 2px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}

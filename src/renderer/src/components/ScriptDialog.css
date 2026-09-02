@@ -1,0 +1,269 @@
+/* The stepped way to a figure: the request, the prompt, the script. */
+
+.script__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 45%);
+}
+
+.script {
+  width: 620px;
+  max-width: calc(100vw - 48px);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: 0 14px 40px rgb(0 0 0 / 50%);
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.script__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.script__title {
+  font-weight: 600;
+}
+
+.script__steps {
+  flex: 1;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.script__close {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-dim);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.script__close:hover {
+  background: var(--color-close-hover);
+  color: #fff;
+}
+
+.script__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.script__say {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* What just happened to the clipboard, said in the green that means it worked. */
+.script__say--done {
+  color: var(--color-ink-green-on-dark);
+}
+
+.script__say--failed {
+  color: var(--color-close-hover);
+}
+
+/* The handoff: what was copied, where it goes, and a way to see it. */
+.script__handoff {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-divider);
+  border-radius: 6px;
+  background: var(--color-bg);
+}
+
+.script__row--left {
+  justify-content: flex-start;
+  gap: 14px;
+}
+
+.script__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.script__prompt {
+  max-height: 180px;
+  margin: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--color-key-border);
+  border-radius: 5px;
+  background: var(--color-surface);
+  color: var(--color-text-dim);
+  font:
+    11.5px / 1.5 "Cascadia Code",
+    "Consolas",
+    monospace;
+  white-space: pre-wrap;
+}
+
+.script__note {
+  margin: 0;
+  color: var(--color-text-dim);
+  line-height: 1.5;
+}
+
+.script__request {
+  height: 92px;
+  padding: 9px 11px;
+  border: 1px solid var(--color-key-border);
+  border-radius: 5px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.script__request:focus-visible,
+.script__type:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+/*
+  The box the script goes in. The colouring is painted underneath and the text
+  area sits transparently on top of it, so the two have to be set in exactly the
+  same way or the letters drift apart.
+*/
+.script__code {
+  position: relative;
+  height: 260px;
+  border: 1px solid var(--color-key-border);
+  border-radius: 5px;
+  background: var(--color-bg);
+}
+
+.script__paint,
+.script__type {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  overflow: auto;
+  font:
+    12.5px / 1.55 "Cascadia Code",
+    "Consolas",
+    monospace;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.script__paint {
+  pointer-events: none;
+  color: var(--color-text-secondary);
+}
+
+.script__type {
+  background: transparent;
+  color: transparent;
+  caret-color: var(--color-text);
+  resize: none;
+}
+
+.script__type::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.js-comment {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.js-string {
+  color: var(--color-tool-polygon, #a8d08d);
+}
+
+.js-number {
+  color: var(--color-tool-point, #ffc83d);
+}
+
+.js-keyword {
+  color: var(--color-tool-arrow, #60cdff);
+}
+
+.js-call {
+  color: var(--color-tool-marker, #e879c0);
+}
+
+.script__errors {
+  margin: 0;
+  padding: 10px 12px 10px 28px;
+  border: 1px solid var(--color-close-hover);
+  border-radius: 5px;
+  background: rgb(196 43 28 / 12%);
+  line-height: 1.5;
+}
+
+.script__target {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-dim);
+}
+
+.script__target select {
+  padding: 4px 8px;
+  border: 1px solid var(--color-key-border);
+  border-radius: 4px;
+  background: var(--color-key-bg);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.script__row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.script__key {
+  min-width: 92px;
+  padding: 7px 14px;
+  border: 1px solid var(--color-key-border);
+  border-radius: 4px;
+  background: var(--color-key-bg);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.script__key:hover:not(:disabled) {
+  background: var(--color-surface-hover-strong);
+}
+
+.script__key--on {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.script__key:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}

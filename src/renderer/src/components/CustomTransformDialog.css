@@ -1,0 +1,51 @@
+/* Define and Edit Custom Transforms: a name apiece, and what it is for. */
+.custom__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom__name {
+  width: 44px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+/* The keyboard shortcut the entry takes, in the order they were defined. */
+.custom__key {
+  width: 52px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-hint);
+}
+
+.custom__field {
+  flex: 1;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+.custom__drop {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.custom__drop:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.custom__note {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-hint);
+}

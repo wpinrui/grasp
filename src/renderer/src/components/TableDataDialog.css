@@ -1,0 +1,55 @@
+/* Add and Remove Table Data: a choice apiece, and what it would do. */
+.tabledata__choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+}
+
+.tabledata__choice input {
+  accent-color: var(--color-accent);
+}
+
+.tabledata__how {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 24px;
+}
+
+.tabledata__how--off {
+  color: var(--color-text-disabled);
+}
+
+.tabledata__field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-caption);
+  color: inherit;
+}
+
+.tabledata__number {
+  width: 52px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  text-align: center;
+}
+
+.tabledata__number:disabled {
+  border-bottom-color: var(--color-border);
+  color: var(--color-text-disabled);
+}
+
+.tabledata__note {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-hint);
+}

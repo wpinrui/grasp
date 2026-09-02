@@ -1,0 +1,99 @@
+/* The snap panel: a short list of what the tools hold themselves to. */
+.snap {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text);
+}
+
+.snap__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.snap__row--all {
+  justify-content: flex-end;
+  border-bottom: none;
+}
+
+.snap__name {
+  flex: 1;
+  white-space: nowrap;
+}
+
+/* The step a switch beside it holds things to, greyed out while it is off. */
+.snap__step {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.snap__number {
+  width: 46px;
+  padding: 1px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: right;
+}
+
+.snap__number:disabled {
+  color: var(--color-text-dim);
+}
+
+.snap__unit {
+  color: var(--color-text-dim);
+}
+
+.snap__action {
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.snap__action:hover {
+  background: var(--color-surface-hover);
+}
+
+/* The same switch the Labels panel uses: a setting that stays on, not a tick. */
+.snap__switch {
+  flex: none;
+  position: relative;
+  width: 30px;
+  height: 17px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.snap__switch--on {
+  background: var(--color-selection);
+  border-color: var(--color-selection);
+}
+
+.snap__switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--color-text);
+  transition: transform 120ms ease;
+}
+
+.snap__switch--on .snap__switch-knob {
+  background: #fff;
+  transform: translateX(13px);
+}

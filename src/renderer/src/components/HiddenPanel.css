@@ -1,0 +1,133 @@
+/* Everything hidden on the page, in the app's chrome colours. */
+.hidden-panel {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text);
+}
+
+.hidden-panel__count {
+  color: var(--color-text-muted);
+}
+
+.hidden-panel__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+/* One heading per kind, with the count and a way to show the whole kind. */
+.hidden-panel__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 3px 10px;
+}
+
+.hidden-panel__group-name {
+  flex: 1;
+  color: var(--color-text-hint);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hidden-panel__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  cursor: default;
+}
+
+.hidden-panel__row:hover {
+  background: var(--color-surface-hover);
+}
+
+/* A hidden object's name reads the way its label would, but dimmed: it is not
+   on the sheet to be read next to. */
+.hidden-panel__name {
+  color: var(--color-text-muted);
+  font: italic bold 16px var(--font-label);
+  text-align: left;
+}
+
+.hidden-panel__action {
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.hidden-panel__action:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.hidden-panel__action:disabled {
+  color: var(--color-text-disabled);
+}
+
+.hidden-panel__action--small {
+  padding: 1px 6px;
+  font-size: 10.5px;
+}
+
+.hidden-panel__foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Whole kinds put away at once, above the things put away one at a time. */
+.hidden-panel__all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hidden-panel__all-of {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.hidden-panel__switch {
+  flex: none;
+  position: relative;
+  width: 30px;
+  height: 17px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.hidden-panel__switch--on {
+  background: var(--color-selection);
+  border-color: var(--color-selection);
+}
+
+.hidden-panel__switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--color-text);
+  transition: transform 120ms ease;
+}
+
+.hidden-panel__switch--on .hidden-panel__switch-knob {
+  background: #fff;
+  transform: translateX(13px);
+}

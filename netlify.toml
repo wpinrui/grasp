@@ -1,0 +1,27 @@
+# Netlify publishes the web build. The desktop app is built and packaged
+# separately and is not part of this.
+
+[build]
+  command = "yarn build:web"
+  publish = "dist/web"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# The app lives under /launch and is one page, so anything below it that is not
+# a built asset is that page.
+[[redirects]]
+  from = "/launch"
+  to = "/launch/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/launch/*"
+  to = "/launch/index.html"
+  status = 200
+
+# Everything else is the landing page, which is the site root.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

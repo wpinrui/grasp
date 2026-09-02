@@ -1,0 +1,219 @@
+{
+  "format": "grasp-sketch",
+  "version": 10,
+  "pages": [
+    {
+      "name": "Page 1",
+      "objects": [
+        {
+          "id": "point-1-be9jjt",
+          "kind": "point",
+          "x": 120,
+          "y": 430,
+          "size": "medium",
+          "label": {
+            "name": "A",
+            "shown": true
+          }
+        },
+        {
+          "id": "point-2-be9jjt",
+          "kind": "point",
+          "x": 560,
+          "y": 430,
+          "size": "medium",
+          "label": {
+            "name": "B",
+            "shown": true
+          }
+        },
+        {
+          "id": "point-3-be9jjt",
+          "kind": "point",
+          "x": 330,
+          "y": 130,
+          "size": "medium",
+          "label": {
+            "name": "C",
+            "shown": true
+          }
+        },
+        {
+          "id": "line-4-be9jjt",
+          "kind": "line",
+          "form": "segment",
+          "span": {
+            "kind": "through",
+            "ends": [
+              "point-1-be9jjt",
+              "point-2-be9jjt"
+            ]
+          }
+        },
+        {
+          "id": "line-5-be9jjt",
+          "kind": "line",
+          "form": "segment",
+          "span": {
+            "kind": "through",
+            "ends": [
+              "point-2-be9jjt",
+              "point-3-be9jjt"
+            ]
+          }
+        },
+        {
+          "id": "line-6-be9jjt",
+          "kind": "line",
+          "form": "segment",
+          "span": {
+            "kind": "through",
+            "ends": [
+              "point-3-be9jjt",
+              "point-1-be9jjt"
+            ]
+          }
+        },
+        {
+          "id": "shape-7-be9jjt",
+          "kind": "interior",
+          "vertices": [
+            "point-1-be9jjt",
+            "point-2-be9jjt",
+            "point-3-be9jjt"
+          ],
+          "colour": "--color-ink-blue"
+        },
+        {
+          "id": "mark-8-be9jjt",
+          "kind": "mark",
+          "form": "angle",
+          "corner": "point-1-be9jjt",
+          "arms": [
+            "point-2-be9jjt",
+            "point-3-be9jjt"
+          ],
+          "sides": [
+            "line-4-be9jjt",
+            "line-6-be9jjt"
+          ],
+          "strokes": 1,
+          "reflex": false,
+          "radius": 28
+        },
+        {
+          "id": "mark-9-be9jjt",
+          "kind": "mark",
+          "form": "angle",
+          "corner": "point-2-be9jjt",
+          "arms": [
+            "point-3-be9jjt",
+            "point-1-be9jjt"
+          ],
+          "sides": [
+            "line-5-be9jjt",
+            "line-4-be9jjt"
+          ],
+          "strokes": 1,
+          "reflex": false,
+          "radius": 28
+        },
+        {
+          "id": "mark-10-be9jjt",
+          "kind": "mark",
+          "form": "angle",
+          "corner": "point-3-be9jjt",
+          "arms": [
+            "point-1-be9jjt",
+            "point-2-be9jjt"
+          ],
+          "sides": [
+            "line-6-be9jjt",
+            "line-5-be9jjt"
+          ],
+          "strokes": 1,
+          "reflex": false,
+          "radius": 28
+        },
+        {
+          "id": "measure-11-be9jjt",
+          "kind": "measurement",
+          "measure": "angle",
+          "of": [
+            "point-2-be9jjt",
+            "point-1-be9jjt",
+            "point-3-be9jjt"
+          ],
+          "x": 640,
+          "y": 150
+        },
+        {
+          "id": "measure-12-be9jjt",
+          "kind": "measurement",
+          "measure": "angle",
+          "of": [
+            "point-1-be9jjt",
+            "point-2-be9jjt",
+            "point-3-be9jjt"
+          ],
+          "x": 640,
+          "y": 196
+        },
+        {
+          "id": "measure-13-be9jjt",
+          "kind": "measurement",
+          "measure": "angle",
+          "of": [
+            "point-1-be9jjt",
+            "point-3-be9jjt",
+            "point-2-be9jjt"
+          ],
+          "x": 640,
+          "y": 242
+        },
+        {
+          "id": "measure-14-be9jjt",
+          "kind": "measurement",
+          "measure": "length",
+          "of": [
+            "line-4-be9jjt"
+          ],
+          "x": 640,
+          "y": 308
+        },
+        {
+          "id": "measure-15-be9jjt",
+          "kind": "measurement",
+          "measure": "area",
+          "of": [
+            "shape-7-be9jjt"
+          ],
+          "x": 640,
+          "y": 354
+        }
+      ]
+    }
+  ],
+  "prefs": {
+    "units": {
+      "angle": "degrees",
+      "anglePlaces": 1,
+      "distance": "cm",
+      "distancePlaces": 2,
+      "otherPlaces": 2
+    },
+    "colours": {
+      "point": "--color-ink-red",
+      "path": "--color-ink-red",
+      "fill": "--color-ink-blue",
+      "mark": "--color-ink-magenta",
+      "label": "--color-ink-black",
+      "sheet": "--color-sheet-white"
+    },
+    "text": {
+      "font": "Times New Roman",
+      "size": 14
+    },
+    "pageTabs": true
+  }
+}

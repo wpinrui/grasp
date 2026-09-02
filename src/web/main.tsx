@@ -1,0 +1,79 @@
+/**
+ * The web app's entry. The same renderer as the desktop app, with the main
+ * process swapped for a tab: the surface goes in first, because the renderer
+ * reads it on its first frame.
+ */
+
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { App } from "../renderer/src/App";
+import "../renderer/src/styles/base.css";
+import { installWebApi } from "./api";
+import "./web.css";
+
+installWebApi();
+
+const asked = new URLSearchParams(window.location.search);
+
+/**
+ * `chrome=none` leaves the sheet and takes away everything round it: the menu
+ * bar, the rails, the palette and the page bar. A page embedding one figure has
+ * no use for them and no room for them either.
+ */
+if (asked.get("chrome") === "none") document.body.classList.add("bare");
+
+/**
+ * `locked` holds the view where the sketch opened. The figure is still live,
+ * so a corner drags and the numbers follow; what goes is moving the sheet
+ * under it. An embed is framed on its figure and sized to fit, so panning and
+ * zooming can only take the reader off it, and a page that scrolls has the
+ * wheel spoken for anyway.
+ *
+ * The gestures are caught here rather than switched off in the canvas: they
+ * belong to the window that is showing GRASP, not to GRASP.
+ */
+if (asked.has("locked")) {
+  document.body.classList.add("locked");
+  const swallow = (event: Event) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  /**
+   * The wheel is taken from GRASP but not from the browser. Stopping the
+   * handler keeps the zoom from running; leaving the default alone lets the
+   * sheet, which has nothing to scroll, hand the wheel up to the page holding
+   * the frame, so a reader scrolls past an embed rather than getting stuck on
+   * it.
+   */
+  window.addEventListener("wheel", (event) => event.stopImmediatePropagation(), {
+    capture: true,
+    passive: true,
+  });
+  // Space and the right button are the two ways the sheet is dragged about.
+  for (const when of ["keydown", "keyup"] as const) {
+    window.addEventListener(
+      when,
+      (event) => {
+        if (event.code === "Space") swallow(event);
+      },
+      true,
+    );
+  }
+  window.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (event.button !== 0) swallow(event);
+    },
+    true,
+  );
+  window.addEventListener("contextmenu", (event) => event.preventDefault(), true);
+}
+
+const root = document.getElementById("root");
+if (!root) throw new Error("Root element #root not found");
+
+createRoot(root).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

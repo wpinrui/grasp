@@ -1,0 +1,38 @@
+.app {
+  height: 100%;
+  min-height: 720px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  color: var(--color-text);
+  overflow: hidden;
+}
+
+.app__workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 0 6px 6px 6px;
+}
+
+/* The sheet and the palette bar under it, which is why the bar is exactly as
+   wide as the canvas rather than as wide as the window. */
+.app__canvas {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* With the bar there, the rounded bottom corner belongs to the bar. */
+.app__canvas--barred .canvas {
+  border-bottom: none;
+  border-radius: 0 8px 0 0;
+}
+
+/* Sits under the open menu so a click anywhere else closes it. */
+.app__dismiss {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}

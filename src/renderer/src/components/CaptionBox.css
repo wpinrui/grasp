@@ -1,0 +1,133 @@
+/*
+  A caption rides above the sheet rather than in it, so it keeps its size at
+  every zoom the way a label does. It hangs by its top left corner and holds the
+  width it was dragged out to, and the text reflows inside that width.
+*/
+
+.caption {
+  position: absolute;
+  box-sizing: border-box;
+  min-height: 1.2em;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  line-height: 1.35;
+  cursor: text;
+  /* Nothing about a caption belongs to the chrome's type. */
+  font-style: normal;
+  font-weight: normal;
+}
+
+/* Under the pointer, and there to be picked up: the same band a selection
+   draws, so what a press would take hold of is never in doubt. */
+.caption:hover {
+  border-color: var(--color-selection-band);
+}
+
+.caption--selected {
+  border-color: var(--color-selection);
+  background: var(--color-selection-halo);
+}
+
+.caption--editing {
+  border-color: var(--color-canvas-accent);
+  background: var(--color-canvas);
+  box-shadow: var(--shadow-glass);
+}
+
+.caption__body {
+  outline: none;
+  min-height: 1.2em;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* The grip that sets how wide the caption is, at its bottom right corner. */
+.caption__grip {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--color-canvas);
+  border-radius: 2px;
+  background: var(--color-selection);
+  cursor: nwse-resize;
+}
+
+/*
+  A hidden caption, while the dock points at its row. It is not on the sheet, so
+  this faint copy is the only way to see where it sits and what it says.
+*/
+.caption--ghost {
+  pointer-events: none;
+  opacity: 0.55;
+  border-color: var(--color-snap-band);
+  background: var(--color-selection-halo);
+}
+
+/* A Hot Text link: what it reads is filled in every time it is drawn. */
+.cap-link {
+  color: var(--color-canvas-accent);
+  cursor: pointer;
+}
+
+.cap-link:hover {
+  background: var(--color-selection-halo);
+  border-radius: 2px;
+}
+
+/* The mark a notation leaves for the part still to be typed. */
+.cap-slot {
+  padding: 0 1px;
+  border-radius: 2px;
+  background: var(--color-slot);
+  color: var(--color-canvas-text);
+}
+
+/* Mathematical notation. A fraction stacks, and the rule runs between. */
+.cap-frac {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: middle;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.cap-frac__top {
+  padding: 0 3px;
+  border-bottom: 1px solid currentcolor;
+}
+
+.cap-frac__bottom {
+  padding: 0 3px;
+}
+
+.cap-root {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.cap-root__of {
+  padding: 0 3px;
+  border-top: 1px solid currentcolor;
+}
+
+.cap-bar {
+  border-top: 1px solid currentcolor;
+  padding: 0 1px;
+}
+
+.cap-group {
+  white-space: nowrap;
+}
+
+/* The box a caption is being dragged out to, before the caption exists. */
+.caption-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed var(--color-canvas-accent);
+  border-radius: 3px;
+  background: var(--color-selection-halo);
+  pointer-events: none;
+}
