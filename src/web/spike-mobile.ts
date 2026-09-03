@@ -3,66 +3,101 @@
  *
  * The sheet already takes touch: the canvas is on pointer events with
  * `setPointerCapture` and sets `touch-action: none`, so a finger drag reaches
- * the drawing code exactly as a mouse drag does, and no pointer handler on it
- * reads a modifier key. What a finger has no way to reach is the three things
- * the sheet takes from the keyboard and the right button:
+ * the drawing code exactly as a mouse drag does. What a finger has no way to
+ * reach is what the sheet takes from hardware a phone does not have, which is
+ * what this bar stands in for.
  *
- *   - panning, which is the right button dragging or Space held down,
- *   - constraining to whole angles, which is Shift held down,
- *   - cancelling a half-drawn construction, which is Escape.
- *
- * So this bar is three keys drawn on the screen. It dispatches the same
- * window-level keyboard events the canvas is already listening for rather than
- * reaching into it, which is what keeps the whole experiment out of
- * `src/renderer`. It is a way to answer the question, not a design: a real
- * answer would put panning on a second finger and would not need a bar at all.
+ * Four of the five buttons are keys the app is already listening for on the
+ * window, so they need nothing from the renderer and are dispatched straight at
+ * it. Snap is the exception: it is a setting rather than a key, so it goes out
+ * as an event App picks up. That one hook is the only place the experiment
+ * reaches into `src/renderer`.
  */
 
 /** Held keys stay down between presses, so each one remembers its own state. */
-type Key = { code: string; key: string; label: string; hint: string; held: boolean };
+interface Held {
+  code: string;
+  key: string;
+  held: boolean;
+}
 
-function press(key: Key, down: boolean) {
-  const type = down ? "keydown" : "keyup";
+function key(code: string, name: string, down: boolean, modified = false) {
   window.dispatchEvent(
-    new KeyboardEvent(type, { code: key.code, key: key.key, bubbles: true, cancelable: true }),
+    new KeyboardEvent(down ? "keydown" : "keyup", {
+      code,
+      key: name,
+      ctrlKey: modified,
+      bubbles: true,
+      cancelable: true,
+    }),
   );
+}
+
+/** A press and its release, for the keys that are not held down. */
+function tap(code: string, name: string, modified = false) {
+  key(code, name, true, modified);
+  key(code, name, false, modified);
+}
+
+/**
+ * What the sheet snaps to on a phone, in the two states the button switches
+ * between. Objects are snapped to either way. Snapping a move is off in both:
+ * a finger is nowhere near accurate enough for the steps to help while dragging
+ * something that is already drawn.
+ */
+export const SNAP_OFF = { objects: true, length: false, angle: false, moving: false };
+export const SNAP_ON = { objects: true, length: true, angle: true, moving: false };
+
+/**
+ * The same off state again, in the shape the stored settings keep it in rather
+ * than the shape the sheet reads. Seeded before the first frame, so a phone
+ * opens on it whatever the desktop was left set to.
+ */
+export const SNAP_OFF_SETTINGS = {
+  snapObjects: true,
+  snapLength: false,
+  snapAngle: false,
+  snapMoving: false,
+};
+
+function button(label: string, hint: string, onPress: (on: boolean) => void, holds: boolean) {
+  const element = document.createElement("button");
+  element.type = "button";
+  element.className = "spike-touchbar__key";
+  element.textContent = label;
+  element.title = hint;
+  let on = false;
+  element.addEventListener("click", () => {
+    on = holds ? !on : false;
+    if (holds) element.classList.toggle("spike-touchbar__key--on", on);
+    onPress(on);
+  });
+  return element;
 }
 
 function build(): HTMLElement {
   const bar = document.createElement("div");
   bar.className = "spike-touchbar";
 
-  const keys: Key[] = [
-    { code: "Space", key: " ", label: "Pan", hint: "Drag the sheet", held: false },
-    { code: "ShiftLeft", key: "Shift", label: "Snap", hint: "Whole angles", held: false },
-  ];
+  const pan: Held = { code: "Space", key: " ", held: false };
 
-  for (const key of keys) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "spike-touchbar__key";
-    button.textContent = key.label;
-    button.title = key.hint;
-    button.addEventListener("click", () => {
-      key.held = !key.held;
-      press(key, key.held);
-      button.classList.toggle("spike-touchbar__key--on", key.held);
-    });
-    bar.append(button);
-  }
-
-  // Escape is not held, so it goes down and straight back up.
-  const cancel = document.createElement("button");
-  cancel.type = "button";
-  cancel.className = "spike-touchbar__key";
-  cancel.textContent = "Esc";
-  cancel.title = "Cancel what is being drawn";
-  cancel.addEventListener("click", () => {
-    const key: Key = { code: "Escape", key: "Escape", label: "Esc", hint: "", held: false };
-    press(key, true);
-    press(key, false);
-  });
-  bar.append(cancel);
+  bar.append(
+    button("Undo", "Undo", () => tap("KeyZ", "z", true), false),
+    button("Redo", "Redo", () => tap("KeyR", "r", true), false),
+    button("Pan", "Drag the sheet", (on) => key(pan.code, pan.key, on), true),
+    // Off snaps to what is on the sheet and nothing else. On adds the length
+    // and angle steps, which is the state the Snap panel would have been opened
+    // to set, and that panel is not on a phone.
+    button(
+      "Snap",
+      "Snap to length and angle",
+      (on) => {
+        window.dispatchEvent(new CustomEvent("spike:snap", { detail: on ? SNAP_ON : SNAP_OFF }));
+      },
+      true,
+    ),
+    button("Esc", "Cancel what is being drawn", () => tap("Escape", "Escape"), false),
+  );
 
   return bar;
 }
@@ -73,12 +108,14 @@ function build(): HTMLElement {
  * so the layout can be looked at on a desktop, and `?spike=off` takes it away
  * on a phone to show what the site does today.
  */
-export function installMobileSpike() {
+export function onAPhone(): boolean {
   const asked = new URLSearchParams(window.location.search).get("spike");
-  if (asked === "off") return;
-  const coarse = window.matchMedia("(pointer: coarse)").matches;
-  if (!coarse && asked !== "on") return;
+  if (asked === "off") return false;
+  return window.matchMedia("(pointer: coarse)").matches || asked === "on";
+}
 
+export function installMobileSpike() {
+  if (!onAPhone()) return;
   document.body.classList.add("spike-mobile");
   document.body.append(build());
 }

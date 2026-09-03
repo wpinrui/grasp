@@ -10,7 +10,7 @@ import { App } from "../renderer/src/App";
 import "../renderer/src/styles/base.css";
 import { installWebApi } from "./api";
 // SPIKE, not for merge: see spike-mobile.ts.
-import { installMobileSpike } from "./spike-mobile";
+import { installMobileSpike, onAPhone, SNAP_OFF_SETTINGS } from "./spike-mobile";
 import "./spike-mobile.css";
 import "./web.css";
 
@@ -71,6 +71,10 @@ if (asked.has("locked")) {
   );
   window.addEventListener("contextmenu", (event) => event.preventDefault(), true);
 }
+
+// SPIKE, not for merge: the sheet reads its snapping on its first frame, so the
+// state the phone starts in has to be in place before the app is rendered.
+if (onAPhone()) window.api.settings.write(SNAP_OFF_SETTINGS);
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element #root not found");

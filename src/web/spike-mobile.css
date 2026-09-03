@@ -55,11 +55,14 @@ body.spike-mobile .dock__rail::-webkit-scrollbar {
 .spike-touchbar {
   position: fixed;
   right: 8px;
-  bottom: calc(var(--pagebar-height) + 8px);
+  /* The page tabs are gone on a phone, so the bar sits on the bottom edge. The
+     zoom readout is top right, which is why this is the corner that is free. */
+  bottom: 8px;
   z-index: 50;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 44px);
   gap: 6px;
+  justify-items: end;
 }
 
 .spike-touchbar__key {
@@ -98,4 +101,34 @@ body.spike-mobile .dock__pane {
 body.spike-mobile .palette,
 body.spike-mobile .pagebar {
   display: none;
+}
+
+/* The menu bar. Number, Window and Help go on a phone: the first is desk work,
+   the second only opens panels that are not on screen here, and the third is an
+   about box. Six titles are left.
+
+   Hiding the titles is not the same as taking the actions away. Everything
+   these three held is still reachable from a desktop, and a sketch made here
+   still carries whatever they made. */
+body.spike-mobile .menubar__anchor:nth-child(7),
+body.spike-mobile .menubar__anchor:nth-child(8),
+body.spike-mobile .menubar__anchor:nth-child(9) {
+  display: none;
+}
+
+/* Whatever is left of the titles, AI and Script keep their place. They were
+   being pushed off the right edge by the titles overrunning, which is what put
+   the one feature worth having on a phone out of reach. The titles give up the
+   room instead, and scroll for it. */
+body.spike-mobile .menubar {
+  overflow: hidden;
+}
+
+body.spike-mobile .menubar__spacer {
+  flex: none;
+  width: 4px;
+}
+
+body.spike-mobile .menubar__tool {
+  flex: none;
 }

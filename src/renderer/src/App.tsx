@@ -533,6 +533,19 @@ export function App() {
     }
   }
 
+  /**
+   * SPIKE, not for merge. On a phone the Snap panel is not on screen, so the
+   * one switch that stands in for it says what it wants from outside the
+   * renderer and this puts it through the same door the panel would have.
+   */
+  useEffect(() => {
+    function onSpikeSnap(event: Event) {
+      keepSnapping((event as CustomEvent<Partial<Snapping>>).detail);
+    }
+    window.addEventListener("spike:snap", onSpikeSnap);
+    return () => window.removeEventListener("spike:snap", onSpikeSnap);
+  });
+
   function keepSnapping(part: Partial<Snapping>) {
     keepDock({
       ...(part.objects === undefined ? {} : { snapObjects: part.objects }),
