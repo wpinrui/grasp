@@ -46,10 +46,12 @@ describe("what kind of screen this is", () => {
     expect(onAPhone()).toBe(false);
   });
 
-  it("is not cached, so a screen that changes is not answered from memory", () => {
-    const screen = pointerIs(false);
+  it("asks the browser every time rather than answering from memory", () => {
+    // A fresh query each time, which is what a held one would get wrong: the
+    // module used to keep the first and never look again.
+    pointerIs(false);
     expect(onAPhone()).toBe(false);
-    screen.becomes(true);
+    pointerIs(true);
     expect(onAPhone()).toBe(true);
   });
 });

@@ -9,15 +9,9 @@
 
 import type { Position } from "./geometry";
 
-/** Where the sheet is being looked at, which is what a pan moves. */
-export interface View {
-  x: number;
-  y: number;
-}
-
 /** Where a pan began: the fingers' centre then, and the view then. */
 export interface PanFrom {
-  view: View;
+  view: Position;
   clientX: number;
   clientY: number;
 }
@@ -42,7 +36,7 @@ export function centreOf(places: Position[]): Position {
  * same finger. The sheet goes the way the fingers go, so the view goes the
  * other way.
  */
-export function pannedView(from: PanFrom, at: Position, scale: number): View {
+export function pannedView(from: PanFrom, at: Position, scale: number): Position {
   return {
     x: from.view.x - (at.x - from.clientX) / scale,
     y: from.view.y - (at.y - from.clientY) / scale,

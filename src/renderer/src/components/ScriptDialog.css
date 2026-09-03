@@ -1,13 +1,9 @@
 /* The stepped way to a figure: the request, the prompt, the script. */
 
+/* Placed and shaded by `.scrim` in base.css; what is left is how far up it
+   sits over everything else. */
 .script__scrim {
-  position: fixed;
-  inset: 0;
   z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-scrim);
 }
 
 .script {
@@ -275,6 +271,7 @@
 @media (pointer: coarse) {
   /* The scrim and the panel are placed by the shared rule in base.css. */
   .script {
+    width: 100%;
     max-width: none;
     display: flex;
     flex-direction: column;

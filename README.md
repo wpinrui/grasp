@@ -45,10 +45,11 @@ Generate complex proofs and sketches with minimal effort.
 
 - **In a browser.** [grasp-math.netlify.app/launch](https://grasp-math.netlify.app/launch).
   Fully-featured on a desktop, and always available online. The same address works
-  on a phone, with a set of tools cut to what a finger can do: two fingers move
-  the sheet, a long press on a tool opens its variants, and a Share button hands
-  the sketch to the device. Constructing, transforming and asking an AI for a
-  figure are all there; the panels, the pages and printing are not.
+  on a phone, laid out for a finger: two fingers move the sheet, a long press on a
+  tool opens its variants, and a Share button hands the sketch to the device. The
+  drawing and measuring tools are all there, so are the constructions, and so is
+  asking an AI for a figure. The transform dialogs, the parameters and tables, the
+  panels, the pages, image export and printing are not.
 - **Windows.** Each [release](https://github.com/wpinrui/grasp/releases) carries
   a full installation of GRASP, or a portable executable file.
 - **macOS and Linux.** Coming soon.

@@ -203,7 +203,7 @@ async function shareSketch(text: string, suggested: string): Promise<boolean> {
     // Backing out of the sheet is a share that was offered and declined, which
     // is served. Anything else failed, and saying otherwise would leave the
     // reader with neither a share nor the save that stands in for one.
-    return error instanceof DOMException && error.name === "AbortError";
+    return (error as { name?: string } | null)?.name === "AbortError";
   }
   return true;
 }

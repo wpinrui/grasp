@@ -8,7 +8,6 @@ import {
   type MenuAction,
   type MenuEntry,
   type MenuItem,
-  phoneItems,
   phoneMenus,
   recentItems,
 } from "./menus";
@@ -53,7 +52,6 @@ export function MenuBar({
   onScript,
 }: MenuBarProps) {
   const phone = usePhone();
-  const shown = (items: MenuEntry[]) => (phone ? phoneItems(items) : items);
   return (
     <div className="menubar">
       {(phone ? phoneMenus() : MENUS).map((menu) => (
@@ -69,11 +67,14 @@ export function MenuBar({
           </button>
           {openMenu === menu.label && (
             <Flyout
-              items={shown(
+              // The menus a phone shows come cut. The reader's own transforms
+              // are added after that, so nothing they have named can be
+              // mistaken for an entry the cut list means.
+              items={
                 menu.label === "Transform"
                   ? [...menu.items, ...customItems(transforms)]
-                  : menu.items,
-              )}
+                  : menu.items
+              }
               recent={recent}
               isTicked={isTicked}
               isEnabled={isEnabled}

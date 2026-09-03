@@ -86,6 +86,7 @@ import {
   nearMark,
   objectAt,
   objectsTouching,
+  type PanFrom,
   type PathGeometry,
   type PointSize,
   type Position,
@@ -463,7 +464,7 @@ interface Grab {
   movingIds: string[];
   marquee: Rect | null;
   /** Set for a hand drag: the view and the pointer where the pan began. */
-  pan: { view: Position; clientX: number; clientY: number } | null;
+  pan: PanFrom | null;
   /** Set when the press took hold of a locus arrowhead. */
   handle: { handle: Handle; span: [number, number] } | null;
   /** Set when this press is what started the object being drawn. */
@@ -556,6 +557,7 @@ export function Canvas({
    * finger came down.
    */
   function dropGesture() {
+    const dropped = grab.current;
     grab.current = null;
     setMarquee(null);
     setBoxing(null);
@@ -563,11 +565,18 @@ export function Canvas({
     sketch.cancelGesture();
     setPending(null);
     setTracing(null);
+    // The angle tools hold a corner between the press and the release. Left
+    // set, it stays drawn on the sheet and a later tap on nothing at all can
+    // land a mark on it.
+    setArming(null);
+    armFrom.current = null;
+    // A marquee selects as it sweeps, so one abandoned leaves nothing selected
+    // rather than whatever it had got as far as.
+    if (tool === "arrow" && dropped?.marquee) sketch.select([]);
   }
 
   /** Take the sheet as far as a pan has carried it, from wherever it began. */
-  function panTo(from: NonNullable<Grab["pan"]>, x: number, y: number) {
-    const at = { x, y };
+  function panTo(from: PanFrom, at: Position) {
     if (panTravel(from, at) >= DRAG_THRESHOLD) panMoved.current = true;
     onView({ ...viewNow.current, ...pannedView(from, at, scale) });
   }
@@ -2517,8 +2526,11 @@ export function Canvas({
     if (state.pan) {
       // Two fingers are followed by the point between them, so the sheet does
       // not lurch when one of them moves more than the other.
-      const at = fingers.current.size >= PAN_FINGERS ? betweenFingers() : null;
-      panTo(state.pan, at?.x ?? event.clientX, at?.y ?? event.clientY);
+      const at =
+        fingers.current.size >= PAN_FINGERS
+          ? betweenFingers()
+          : { x: event.clientX, y: event.clientY };
+      panTo(state.pan, at);
       return;
     }
 
@@ -2605,15 +2617,12 @@ export function Canvas({
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType === "touch") {
       fingers.current.delete(event.pointerId);
-      const panning = grab.current?.pan;
+      const panning = grab.current;
       // Still enough fingers to be panning, so the pan carries on from where
       // the ones left on the glass are now rather than ending under them.
-      if (panning && fingers.current.size >= PAN_FINGERS) {
+      if (panning?.pan && fingers.current.size >= PAN_FINGERS) {
         const at = betweenFingers();
-        grab.current = {
-          ...grab.current,
-          pan: { view: viewNow.current, clientX: at.x, clientY: at.y },
-        } as Grab;
+        panning.pan = { view: viewNow.current, clientX: at.x, clientY: at.y };
         return;
       }
     }

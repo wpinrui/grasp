@@ -159,7 +159,7 @@ export {
   tangentOnPath,
 } from "./marks";
 export { namesFor } from "./naming";
-export { centreOf, pannedView, panTravel } from "./panning";
+export { centreOf, type PanFrom, pannedView, panTravel } from "./panning";
 export {
   alongPath,
   arcAt,

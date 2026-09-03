@@ -67,13 +67,11 @@ button {
   }
 
   /*
-    Every overlay centred by a scrim over the window: the About box, the print
-    preview, the AI dialog and the prompts the web build draws for itself.
-
-    A phone keyboard covers the window rather than resizing it, so anything
-    centred in it ends up behind the keyboard the moment a field is tapped. The
-    visual viewport is the part that moves, so the scrim is pulled onto it and
-    its panel pushed to the top of that, where the keyboard never reaches.
+    A phone keyboard covers the window rather than resizing it, so an overlay
+    centred in the window ends up behind the keyboard the moment a field in it
+    is tapped. The visual viewport is the part that moves, so the scrim is
+    pulled onto it and its panel pushed to the top of that, where the keyboard
+    never reaches.
   */
   .scrim {
     top: var(--seen-top);
@@ -84,9 +82,23 @@ button {
   }
 
   .scrim__panel {
-    width: 100%;
     min-width: 0;
     max-height: calc(var(--seen-height) - 16px);
     overflow-y: auto;
   }
+}
+
+/*
+  An overlay that covers the window, and the panel it holds in the middle: the
+  About box, the print preview, the AI dialog and the prompts the web build
+  draws for itself. Each carries its own z-index and its own looks; this is the
+  part all four share.
+*/
+.scrim {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-scrim);
 }

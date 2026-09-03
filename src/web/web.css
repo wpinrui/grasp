@@ -1,19 +1,16 @@
 /* The prompts the desktop app gets from the operating system, drawn here in
    GRASP's own chrome because a tab has none to borrow. */
 
+/* Placed and shaded by `.scrim` in base.css; what is left is how far up it
+   sits over everything else. */
 .web-prompt {
-  position: fixed;
-  inset: 0;
   z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgb(0 0 0 / 45%);
 }
 
 .web-prompt__box {
   min-width: 320px;
   max-width: 480px;
+  width: 100%;
   padding: 20px;
   border: 1px solid var(--color-border-flyout);
   border-radius: 8px;
@@ -86,4 +83,15 @@
 .locked .canvas__zoom,
 .locked .canvas__scroll {
   display: none;
+}
+
+/*
+  A touch screen. The box is drawn for a desktop's width, and 320px of it does
+  not fit inside the scrim's padding on the narrowest phones.
+*/
+@media (pointer: coarse) {
+  .web-prompt__box {
+    min-width: 0;
+    max-width: none;
+  }
 }

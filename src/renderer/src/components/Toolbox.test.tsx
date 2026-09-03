@@ -108,6 +108,18 @@ describe("holding a tool on a touch screen", () => {
     expect(maybe("Segment")).not.toBeNull();
   });
 
+  it("drops a press still being timed when the rail goes", () => {
+    // Otherwise the timer fires into a component that is no longer there.
+    const { unmount } = (() => {
+      rail();
+      return { unmount: cleanup };
+    })();
+    fireEvent.pointerDown(button(STRAIGHTEDGE), { clientX: 20, clientY: 100 });
+    expect(vi.getTimerCount()).toBe(1);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("closes on a press anywhere else", () => {
     rail();
     hold(STRAIGHTEDGE, HOLD_MS);

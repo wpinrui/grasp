@@ -79,6 +79,13 @@ describe("handing over the sketch", () => {
     expect(await share(SKETCH, "Triangle")).toBe(false);
   });
 
+  it("counts an abort thrown as a plain error as served too", async () => {
+    // Not every share sheet throws a DOMException for a cancel.
+    const aborted = Object.assign(new Error("cancelled"), { name: "AbortError" });
+    sheetTakesFiles(() => Promise.reject(aborted));
+    expect(await share(SKETCH, "Triangle")).toBe(true);
+  });
+
   it("counts a sheet that threw something else as not served either", async () => {
     sheetTakesFiles(() => Promise.reject(new TypeError("no")));
     expect(await share(SKETCH, "Triangle")).toBe(false);

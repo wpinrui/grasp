@@ -27,7 +27,9 @@ beforeEach(() => {
       write: vi.fn().mockResolvedValue(undefined),
       releaseUntitled: vi.fn().mockResolvedValue(undefined),
       recent: () => [],
-      startingDocument: vi.fn().mockResolvedValue({ name: "Untitled 1", path: null, text: null }),
+      startingDocument: vi
+        .fn()
+        .mockResolvedValue({ name: "Rosette", path: "/sketches/Rosette.grasp", text: null }),
       confirmUnsaved: vi.fn().mockResolvedValue("discard"),
       reportError: vi.fn().mockResolvedValue(undefined),
     },
@@ -43,18 +45,24 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-/** The document surface, over a real sketch, as the app assembles it. */
-function open() {
-  return renderHook(() => {
+/**
+ * The document surface, over a real sketch, as the app assembles it. The
+ * document it opens on is fetched, so the hook is let settle before anything
+ * asks it what is open.
+ */
+async function open() {
+  const rendered = renderHook(() => {
     const sketch = useSketch();
     return useDocument(sketch, { read: () => DEFAULT_PREFS, onOpen: () => undefined });
   });
+  await act(async () => undefined);
+  return rendered;
 }
 
 describe("sharing", () => {
   it("hands the sketch over and stops there when the device takes it", async () => {
     share.mockResolvedValue(true);
-    const { result } = open();
+    const { result } = await open();
 
     await act(async () => {
       expect(await result.current.share()).toBe(true);
@@ -65,13 +73,13 @@ describe("sharing", () => {
 
   it("shares the sketch under the name the document is open as", async () => {
     share.mockResolvedValue(true);
-    const { result } = open();
+    const { result } = await open();
 
     await act(async () => {
       await result.current.share();
     });
     const [text, name] = share.mock.calls[0];
-    expect(name).toBe("Untitled 1");
+    expect(name).toBe("Rosette");
     expect(JSON.parse(text).format).toBe("grasp-sketch");
   });
 
@@ -79,7 +87,7 @@ describe("sharing", () => {
     // Which is every desktop, and any browser that will not take a .grasp.
     share.mockResolvedValue(false);
     saveAs.mockResolvedValue({ path: "/tmp/Untitled 1.grasp", name: "Untitled 1" });
-    const { result } = open();
+    const { result } = await open();
 
     await act(async () => {
       expect(await result.current.share()).toBe(true);
@@ -90,7 +98,7 @@ describe("sharing", () => {
   it("says so when the save it fell back to was called off too", async () => {
     share.mockResolvedValue(false);
     saveAs.mockResolvedValue(null);
-    const { result } = open();
+    const { result } = await open();
 
     await act(async () => {
       expect(await result.current.share()).toBe(false);
