@@ -134,11 +134,16 @@ export const API_REFERENCE: { heading: string; entries: ApiEntry[] }[] = [
     ],
   },
   {
-    heading: "Names and how things are drawn",
+    heading: "Names, what is in view, and how things are drawn",
     entries: [
       { call: "label(handle, name) -> handle", says: "Name something and show the name." },
-      { call: "show(handle) -> handle", says: "Show its name." },
-      { call: "hide(handle) -> handle", says: "Stop showing its name." },
+      { call: "showLabel(handle) -> handle", says: "Show its name." },
+      { call: "hideLabel(handle) -> handle", says: "Stop showing its name." },
+      {
+        call: "hide(handle) -> handle",
+        says: "Take it out of view, name and all. It keeps its place in the figure and everything built on it stays where it is, so a construction helper can hold the figure together without being drawn.",
+      },
+      { call: "show(handle) -> handle", says: "Put something hidden back in view." },
       {
         call: "style(handle, { colour, weight, pattern })",
         says: 'How it is drawn. Colours are "--color-ink-black", "-grey", "-red", "-orange", "-green", "-blue", "-purple", "-magenta". Weight is "hairline", "thin", "medium" or "thick". Pattern is "solid", "dashed" or "dotted".',

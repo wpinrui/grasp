@@ -41,8 +41,10 @@ const CALLS = [
   "caption",
   "measure",
   "label",
-  "show",
+  "showLabel",
+  "hideLabel",
   "hide",
+  "show",
   "style",
   "size",
   "all",
@@ -116,4 +118,63 @@ describe("running a script", () => {
     if (!second.ok) return;
     expect(second.objects.filter(isPoint)).toHaveLength(2);
   });
+});
+
+/**
+ * The two halves the words used to be muddled between: what is drawn at all,
+ * and whether the name beside it is drawn.
+ */
+describe("taking something out of view", () => {
+  function ran(script: string) {
+    const result = evaluate(script, { objects: [], sheet: SHEET });
+    expect(result.ok).toBe(true);
+    return result.ok ? result.objects : [];
+  }
+
+  it("hides the object itself, not its name", () => {
+    const [made] = ran('const a = point(0, 0); label(a, "A"); hide(a);');
+    expect(made.hidden).toBe(true);
+    expect(made.label?.shown).toBe(true);
+  });
+
+  it("brings a hidden object back", () => {
+    const [made] = ran("const a = point(0, 0); hide(a); show(a);");
+    expect(made.hidden).toBe(false);
+  });
+
+  it("leaves what was built on a hidden object where it is", () => {
+    const objects = ran(
+      "const a = point(0, 0); const b = point(100, 0); const m = midpoint(a, b); hide(m); segment(a, m);",
+    );
+    // Hiding takes one object out of view and nothing else with it, unlike
+    // remove, which takes the dependents too.
+    expect(objects.filter((object) => object.hidden === true)).toHaveLength(1);
+    const points = objects.filter(isPoint);
+    expect(points).toHaveLength(3);
+    expect(objects.filter(isLine)).toHaveLength(1);
+    // The midpoint is out of view and still worked out, so the segment drawn to
+    // it still runs where it did.
+    expect(points[2]).toMatchObject({ x: 50, y: 0 });
+  });
+
+  it("takes a name off without taking the object off", () => {
+    const [made] = ran('const a = point(0, 0); label(a, "A"); hideLabel(a);');
+    expect(made.label?.shown).toBe(false);
+    expect(made.hidden).toBeUndefined();
+  });
+
+  it("puts a name back", () => {
+    const [made] = ran('const a = point(0, 0); label(a, "A"); hideLabel(a); showLabel(a);');
+    expect(made.label?.shown).toBe(true);
+  });
+
+  it.each(["hide", "show", "hideLabel", "showLabel"])(
+    "says so when there is nothing by that name for %s to work on",
+    (call) => {
+      const result = evaluate(`${call}("nothing");`, { objects: [], sheet: SHEET });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.errors).toEqual(['There is nothing here called "nothing".']);
+    },
+  );
 });
