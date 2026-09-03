@@ -217,6 +217,8 @@ export function useSketch() {
     cancelGesture,
     undo,
     redo,
+    canUndo: store.canUndo,
+    canRedo: store.canRedo,
     remove,
     restyle,
     touch: store.touch,

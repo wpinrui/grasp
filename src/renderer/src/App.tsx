@@ -28,9 +28,11 @@ import {
 } from "./components/TableDataDialog";
 import { TitleBar } from "./components/TitleBar";
 import { Toolbox } from "./components/Toolbox";
+import { TouchBar } from "./components/TouchBar";
 import { TransformDialog } from "./components/TransformDialog";
 import { TOOLS } from "./components/tools";
 import { DEFAULT_ALIGN, DEFAULT_CAPTION } from "./components/typeset";
+import { usePhone } from "./phone";
 import {
   type Armed,
   DEFAULT_PATTERN,
@@ -231,6 +233,7 @@ function settingsFrom(prefs: Prefs): Partial<Held> {
 }
 
 export function App() {
+  const phone = usePhone();
   const [activeTool, setActiveTool] = useState("arrow");
   /** How big the sheet is on screen, which is how far a new locus reaches. */
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -533,18 +536,8 @@ export function App() {
     }
   }
 
-  /**
-   * SPIKE, not for merge. On a phone the Snap panel is not on screen, so the
-   * one switch that stands in for it says what it wants from outside the
-   * renderer and this puts it through the same door the panel would have.
-   */
-  useEffect(() => {
-    function onSpikeSnap(event: Event) {
-      keepSnapping((event as CustomEvent<Partial<Snapping>>).detail);
-    }
-    window.addEventListener("spike:snap", onSpikeSnap);
-    return () => window.removeEventListener("spike:snap", onSpikeSnap);
-  });
+  /** What Escape does to the sheet, for the phone's Cancel key to do the same. */
+  const cancelSheet = useRef(() => {});
 
   function keepSnapping(part: Partial<Snapping>) {
     keepDock({
@@ -600,7 +593,7 @@ export function App() {
   const [targets, setTargets] = useState<(string | null)[]>([]);
   const [depth, setDepth] = useState(DEFAULT_DEPTH);
   const sketch = useSketch();
-  const { undo, redo, remove, restyle, selectAll } = sketch;
+  const { undo, redo, canUndo, canRedo, remove, restyle, selectAll } = sketch;
   // Whether a point that lands says its name straight away, told to the sketch
   // rather than read there, since every way of making a point goes through it.
   sketch.labelNewPoints(labelNew);
@@ -2187,6 +2180,7 @@ export function App() {
         >
           <Canvas
             activeTool={activeTool}
+            cancelRef={cancelSheet}
             zoomable={prefs.zoom === true}
             sketch={sketch}
             pointSize={pointSize}
@@ -2291,6 +2285,21 @@ export function App() {
           }}
         />
       </div>
+      {phone && (
+        <TouchBar
+          canUndo={canUndo}
+          onUndo={undo}
+          canRedo={canRedo}
+          onRedo={redo}
+          snapping={snapping.length || snapping.angle}
+          onSnapping={(on) => keepSnapping({ length: on, angle: on })}
+          onCancel={() => {
+            cancelSheet.current();
+            setActiveTool("arrow");
+            pickVariant("arrow", "all");
+          }}
+        />
+      )}
       <PageBar
         pages={sketch.pages}
         activeId={sketch.activeId}

@@ -185,6 +185,8 @@
   --pagebar-height: 36px;
   --toolbox-width: 58px;
   --scrollbar-size: 14px;
+  /* The bar of keys along the bottom of a phone. */
+  --touchbar-height: 52px;
   --tool-size: 44px;
   --tool-gap: 6px;
 }

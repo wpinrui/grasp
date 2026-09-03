@@ -33,15 +33,6 @@ function tap(code: string, name: string, modified = false) {
 }
 
 /**
- * What the sheet snaps to on a phone, in the two states the button switches
- * between. Objects are snapped to either way. Snapping a move is off in both:
- * a finger is nowhere near accurate enough for the steps to help while dragging
- * something that is already drawn.
- */
-export const SNAP_OFF = { objects: true, length: false, angle: false, moving: false };
-export const SNAP_ON = { objects: true, length: true, angle: true, moving: false };
-
-/**
  * The on state again, in the shape the stored settings keep it in rather than
  * the shape the sheet reads. Seeded before the first frame, so a phone opens
  * snapping whatever the desktop was left set to.
@@ -60,102 +51,6 @@ export const SNAP_ON_SETTINGS = {
   snapAngle: true,
   snapMoving: false,
 };
-
-/**
- * The icons, drawn on the same 20 by 20 box and in the same stroked line the
- * toolbox icons use, so the bar does not read as something bolted on from
- * somewhere else. Each one is the path data only; the box round it is shared.
- */
-const ICONS = {
-  undo: "M7.5 5.5 L4 9 L7.5 12.5 M4 9 h7.5 a4 4 0 1 1 0 8 h-2.5",
-  redo: "M12.5 5.5 L16 9 L12.5 12.5 M16 9 h-7.5 a4 4 0 1 0 0 8 h2.5",
-  // The magnet the Snap panel is marked with, which is the panel this button
-  // stands in for now that the panel is not on screen.
-  snap: "M5.4 5 L5.4 10.6 A 4.6 4.6 0 0 0 14.6 10.6 L14.6 5 M5.4 3.4 L5.4 6.4 M14.6 3.4 L14.6 6.4",
-  escape: "M5.5 5.5 L14.5 14.5 M14.5 5.5 L5.5 14.5",
-  share:
-    "M10 2.8 V12 M6.6 6.2 L10 2.8 L13.4 6.2 M4.6 11 V16.2 A1 1 0 0 0 5.6 17.2 H14.4 A1 1 0 0 0 15.4 16.2 V11",
-};
-
-function icon(path: string): SVGElement {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  // An inline SVG with no size given fills whatever holds it, which in a flex
-  // row is the whole key.
-  svg.setAttribute("width", "17");
-  svg.setAttribute("height", "17");
-  svg.setAttribute("viewBox", "0 0 20 20");
-  svg.setAttribute("aria-hidden", "true");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "1.6");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  const shape = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  shape.setAttribute("d", path);
-  svg.append(shape);
-  return svg;
-}
-
-/**
- * One key on the bar. `holds` is the difference between a key that stays down
- * until it is pressed again, which lights up, and one that fires and is done.
- */
-function button(
-  label: string,
-  path: string,
-  onPress: (on: boolean) => void,
-  holds: boolean,
-  starts = false,
-) {
-  const element = document.createElement("button");
-  element.type = "button";
-  element.className = "spike-touchbar__key";
-  element.title = label;
-  element.setAttribute("aria-label", label);
-  const name = document.createElement("span");
-  name.className = "spike-touchbar__name";
-  name.textContent = label;
-  element.append(icon(path), name);
-  let on = starts;
-  element.addEventListener("click", () => {
-    on = holds ? !on : false;
-    if (holds) {
-      element.classList.toggle("spike-touchbar__key--on", on);
-      element.setAttribute("aria-pressed", String(on));
-    }
-    onPress(on);
-  });
-  if (holds) {
-    element.classList.toggle("spike-touchbar__key--on", on);
-    element.setAttribute("aria-pressed", String(on));
-  }
-  return element;
-}
-
-function build(): HTMLElement {
-  const bar = document.createElement("div");
-  bar.className = "spike-touchbar";
-
-  bar.append(
-    button("Undo", ICONS.undo, () => tap("KeyZ", "z", true), false),
-    button("Redo", ICONS.redo, () => tap("KeyR", "r", true), false),
-    // Off snaps to what is on the sheet and nothing else. On adds the length
-    // and angle steps, which is the state the Snap panel would have been opened
-    // to set, and that panel is not on a phone.
-    button(
-      "Snap",
-      ICONS.snap,
-      (on) => {
-        window.dispatchEvent(new CustomEvent("spike:snap", { detail: on ? SNAP_ON : SNAP_OFF }));
-      },
-      true,
-      true,
-    ),
-    button("Esc", ICONS.escape, () => tap("Escape", "Escape"), false),
-  );
-
-  return bar;
-}
 
 /**
  * Two fingers pan the sheet.
@@ -350,6 +245,27 @@ function installLongPressFlyouts() {
  */
 const SHARE_ICON_SIZE = 22;
 
+/** The share mark: an arrow leaving an open box. */
+const SHARE_PATH =
+  "M10 2.8 V12 M6.6 6.2 L10 2.8 L13.4 6.2 M4.6 11 V16.2 A1 1 0 0 0 5.6 17.2 H14.4 A1 1 0 0 0 15.4 16.2 V11";
+
+function shareIcon(): SVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", String(SHARE_ICON_SIZE));
+  svg.setAttribute("height", String(SHARE_ICON_SIZE));
+  svg.setAttribute("viewBox", "0 0 20 20");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "1.6");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  const shape = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  shape.setAttribute("d", SHARE_PATH);
+  svg.append(shape);
+  return svg;
+}
+
 function installShare() {
   let wanted = false;
 
@@ -379,10 +295,7 @@ function installShare() {
   button.className = "tool spike-share";
   button.title = "Share this sketch";
   button.setAttribute("aria-label", "Share this sketch");
-  const mark = icon(ICONS.share);
-  mark.setAttribute("width", String(SHARE_ICON_SIZE));
-  mark.setAttribute("height", String(SHARE_ICON_SIZE));
-  button.append(mark);
+  button.append(shareIcon());
   button.addEventListener("click", () => {
     wanted = true;
     tap("KeyS", "s", true);
@@ -435,7 +348,6 @@ export function onAPhone(): boolean {
 export function installMobileSpike() {
   if (!onAPhone()) return;
   document.body.classList.add("spike-mobile");
-  document.body.append(build());
   installTwoFingerPan();
   installLongPressFlyouts();
   installShare();

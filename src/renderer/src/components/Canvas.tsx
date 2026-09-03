@@ -368,6 +368,11 @@ function clampScale(scale: number): number {
 
 interface CanvasProps {
   activeTool: string;
+  /**
+   * Filled in with what Escape does to the sheet, so a control outside the
+   * canvas can do the same. A phone has no Escape key to press.
+   */
+  cancelRef?: RefObject<() => void>;
   sketch: Sketch;
   pointSize: PointSize;
   /** Where the page is being looked at. It belongs to the page, not here. */
@@ -493,6 +498,7 @@ export function Canvas({
   zoomable,
   captionWanted,
   captionLook,
+  cancelRef,
 }: CanvasProps) {
   const sheet = useRef<HTMLDivElement>(null);
   const horizontal = useRef<HTMLDivElement>(null);
@@ -2781,6 +2787,9 @@ export function Canvas({
     setPending(null);
     setTracing(null);
   };
+  // The same again for whoever asked for the handle. The ref the key listener
+  // reads stays the one declared here, so that listener is bound once.
+  if (cancelRef) cancelRef.current = cancel.current;
 
   /** Right-click drops a half-drawn line, and never opens a menu on the sheet. */
   function handleContextMenu(event: MouseEvent<HTMLDivElement>) {
