@@ -1,4 +1,6 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { buttonActions } from "./app/buttons";
+import { customActions } from "./app/customs";
 import { valueActions } from "./app/values";
 import { AboutDialog } from "./components/AboutDialog";
 import { ButtonDialog, type ButtonForm } from "./components/ButtonDialog";
@@ -42,7 +44,7 @@ import {
 } from "./sketch/armed";
 import { type Building, canBuild, wouldBuild } from "./sketch/builds";
 import { captionRowName } from "./sketch/captions";
-import { canDefine, customImager } from "./sketch/custom";
+import { canDefine } from "./sketch/custom";
 import { canSeed, DEFAULT_DEPTH, iterated } from "./sketch/iterate";
 import {
   markableAngle,
@@ -54,12 +56,8 @@ import {
 import { readingOf, readingText, sheetOf, writeIn } from "./sketch/measure";
 import {
   asPasted,
-  type ButtonAction,
-  createButton,
-  createCustomTransform,
   DEFAULT_POINT_SIZE,
   isArc,
-  isButton,
   isCaption,
   isCircle,
   isInterior,
@@ -70,7 +68,6 @@ import {
   isParameter,
   isPoint,
   isTable,
-  isTransform,
   isValue,
   kinOf,
   type LabelState,
@@ -114,7 +111,6 @@ import {
 } from "./sketch/text";
 import {
   DEFAULT_VALUES,
-  imagedBy,
   type Marks,
   makerFor,
   NO_MARKS,
@@ -162,13 +158,6 @@ const BUILDS = new Set<MenuAction>([
   "measure-ratio",
   "measure-value",
 ]);
-
-/**
- * How long a Presentation button waits between the buttons it presses, in
- * milliseconds. One after another is only worth having if there is time to see
- * each one happen.
- */
-const IN_TURN = 600;
 
 /** The clear sheet left round a figure a sketch was opened framed on. */
 const FRAME_MARGIN = 32;
@@ -660,6 +649,22 @@ export function App() {
     setInsert,
     setTableDialog,
     collecting,
+  });
+  /** The buttons on the sheet, and what pressing one does. */
+  const { buttonWants, landButton, pressButton } = buttonActions({
+    sketch,
+    building,
+    selection,
+    setButtonDialog,
+    spot: valueSpot,
+    hideObjects: (ids, hidden) => hideObjects(ids, hidden),
+  });
+  /** The transforms this page was shown by example. */
+  const { customs, defineCustom, applyCustom, dropCustom, renameCustom } = customActions({
+    sketch,
+    objects,
+    selection,
+    setCustomDialog,
   });
 
   // A sketch that asked to be framed is put on its figure rather than on the
@@ -1268,119 +1273,6 @@ export function App() {
       // The point it acted on stays picked, since it is what you are working
       // on. Merging two leaves the one that survived.
       selection: [splitMerge.kind === "join" ? splitMerge.to : splitMerge.point],
-    });
-  }
-
-  /** What a new action button would act on, which the menu greys out without. */
-  function buttonWants(form: ButtonForm): string[] {
-    if (form === "hide-show") return selection;
-    if (form === "scroll") return chosenPoints.length === 1 ? [chosenPoints[0].id] : [];
-    if (form === "present") return selected.filter(isButton).map((one) => one.id);
-    return [];
-  }
-
-  /** A new button, holding what was selected when it was made. */
-  function landButton(name: string, does: ButtonAction) {
-    const form = does.form;
-    setButtonDialog(null);
-    const wants = buttonWants(form);
-    if (form !== "link" && wants.length === 0) return;
-    const filled: ButtonAction =
-      does.form === "scroll"
-        ? { ...does, point: wants[0] }
-        : does.form === "link"
-          ? does
-          : { ...does, of: wants };
-    sketch.addObjects([createButton(name, filled, valueSpot())]);
-  }
-
-  /**
-   * Pressing one. A Presentation button presses the others, so this reaches
-   * back into itself; the ids it holds cannot include itself, since it was made
-   * after them, so it always comes to a stop.
-   */
-  function pressButton(id: string) {
-    const found = objects.find((object) => object.id === id);
-    if (!found || !isButton(found)) return;
-    const does = found.does;
-    if (does.form === "hide-show") {
-      // A toggle reads the sheet rather than remembering: everything away means
-      // bring it back, and anything showing means put it away.
-      const away = does.of.every(
-        (one) => objects.find((object) => object.id === one)?.hidden === true,
-      );
-      const hiding = does.does === "toggle" ? !away : does.does === "hide";
-      hideObjects(does.of, hiding);
-      return;
-    }
-    if (does.form === "link") {
-      sketch.selectPage(does.page);
-      return;
-    }
-    if (does.form === "scroll") {
-      const spot = geometry.points.get(does.point);
-      if (!spot) return;
-      const { scale } = sketch.view;
-      const across = does.to === "centre" ? viewport.width / scale / 2 : 0;
-      const down = does.to === "centre" ? viewport.height / scale / 2 : 0;
-      sketch.setView({ ...sketch.view, x: spot.x - across, y: spot.y - down });
-      return;
-    }
-    if (does.order === "together") {
-      for (const one of does.of) pressButton(one);
-      return;
-    }
-    // One after another, with a pause between, so a presentation can be
-    // followed rather than happening all at once.
-    does.of.forEach((one, nth) => {
-      window.setTimeout(() => pressButton(one), nth * IN_TURN);
-    });
-  }
-
-  /** The custom transforms this page holds, in the order they were defined. */
-  const customs = objects.filter(isTransform);
-
-  /** Define Custom Transform: the example is the selection, so it wants a name. */
-  function defineCustom(name: string) {
-    setCustomDialog(null);
-    if (!canDefine(objects, selection)) return;
-    // The seed keeps the selection, since it is still what the example is on.
-    sketch.addObjects([createCustomTransform(name, selection[0], selection[1])], selection);
-  }
-
-  /**
-   * Applying one: every point of the selection goes through the whole example
-   * again, and what the selection holds is rebuilt on the images, exactly as a
-   * rotation rebuilds it.
-   */
-  function applyCustom(id: string) {
-    const found = objects.find((object) => object.id === id);
-    if (!found || !isTransform(found)) return;
-    const made = imagedBy(selection, objects, customImager(found, objects));
-    if (made.length > 0) sketch.addObjects(made);
-  }
-
-  /**
-   * Taking one off the menu. Nothing hangs off the transform itself, since what
-   * it made hangs off the example's points, so its images stay where they are
-   * and stay live.
-   */
-  function dropCustom(id: string) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.filter((object) => object.id !== id),
-      selection: before.selection.filter((held) => held !== id),
-    });
-  }
-
-  function renameCustom(id: string, name: string) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isTransform(object) ? { ...object, name } : object,
-      ),
     });
   }
 
