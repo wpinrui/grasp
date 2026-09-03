@@ -4,6 +4,7 @@ import { customActions } from "./app/customs";
 import { labelActions } from "./app/labels";
 import { paletteState } from "./app/palette";
 import { useKeys } from "./app/useKeys";
+import { prefsFrom, useSettings } from "./app/useSettings";
 import { valueActions } from "./app/values";
 import { AboutDialog } from "./components/AboutDialog";
 import { ButtonDialog, type ButtonForm } from "./components/ButtonDialog";
@@ -26,7 +27,7 @@ import { ParameterDialog } from "./components/ParameterDialog";
 import { PreferencesDialog } from "./components/PreferencesDialog";
 import { PrintPreviewDialog } from "./components/PrintPreviewDialog";
 import { NEW_PAGE, ScriptDialog, type ScriptWay } from "./components/ScriptDialog";
-import { SnapPanel, type Snapping } from "./components/SnapPanel";
+import { SnapPanel } from "./components/SnapPanel";
 import { AddTableDataDialog, RemoveTableDataDialog } from "./components/TableDataDialog";
 import { TitleBar } from "./components/TitleBar";
 import { Toolbox } from "./components/Toolbox";
@@ -44,7 +45,7 @@ import {
   markableRatio,
   markableVector,
 } from "./sketch/markable";
-import { sheetOf, writeIn } from "./sketch/measure";
+import { sheetOf } from "./sketch/measure";
 import {
   asPasted,
   DEFAULT_POINT_SIZE,
@@ -74,10 +75,9 @@ import {
   sharedPointSize,
   withFamily,
 } from "./sketch/model";
-import { type PageSetup, PX_PER_CM, printableArea } from "./sketch/paper";
 import { togglePick } from "./sketch/picking";
-import { type Drawn, drawPicture, type PictureOptions, pictureSvg } from "./sketch/picture";
-import { canvasTokens, type Prefs } from "./sketch/prefs";
+import { drawPicture } from "./sketch/picture";
+import { canvasTokens } from "./sketch/prefs";
 import { buildPrompt } from "./sketch/prompt";
 import { splitMerged, splitMergeFor } from "./sketch/relink";
 import { rolesFor } from "./sketch/roles";
@@ -134,49 +134,6 @@ const FRAME_MARGIN = 32;
 
 /** How far framing will shrink a figure, matching the canvas's own floor. */
 const MIN_FRAME_SCALE = 0.1;
-
-type Held = ReturnType<typeof window.api.settings.read>;
-
-/** What a new sketch starts on, out of what was remembered between runs. */
-function prefsFrom(held: Held): Prefs {
-  return {
-    units: {
-      angle: held.angleUnit,
-      anglePlaces: held.anglePlaces,
-      distance: held.distanceUnit,
-      distancePlaces: held.distancePlaces,
-      otherPlaces: held.otherPlaces,
-    },
-    colours: {
-      point: held.colourPoint,
-      path: held.colourPath,
-      fill: held.colourFill,
-      mark: held.colourMark,
-      label: held.colourLabel,
-      sheet: held.colourSheet,
-    },
-    text: { font: held.captionFont, size: held.captionSize },
-  };
-}
-
-/** The same the other way round, for New Sketches to remember. */
-function settingsFrom(prefs: Prefs): Partial<Held> {
-  return {
-    angleUnit: prefs.units.angle,
-    anglePlaces: prefs.units.anglePlaces,
-    distanceUnit: prefs.units.distance,
-    distancePlaces: prefs.units.distancePlaces,
-    otherPlaces: prefs.units.otherPlaces,
-    colourPoint: prefs.colours.point,
-    colourPath: prefs.colours.path,
-    colourFill: prefs.colours.fill,
-    colourMark: prefs.colours.mark,
-    colourLabel: prefs.colours.label,
-    colourSheet: prefs.colours.sheet,
-    captionFont: prefs.text.font,
-    captionSize: prefs.text.size,
-  };
-}
 
 export function App() {
   const phone = usePhone();
@@ -299,178 +256,6 @@ export function App() {
   /** The straight object Reflect mirrors across, picked the same way. */
   const [mirror, setMirror] = useState<string | null>(null);
   /**
-   * The dock as it was left last run, read on the first frame so the chrome
-   * comes up in place rather than opening a default and correcting it.
-   */
-  const [dock, setDock] = useState(() => window.api.settings.read());
-  const panels = dock.panels;
-  /** Whether the palette bar is under the sheet. It comes up on. */
-  const showPalette = dock.showPalette;
-  /** Remembered as it changes, so quitting is not a thing to think about. */
-  function keepDock(part: {
-    panels?: string[];
-    showPalette?: boolean;
-    panelWidth?: number;
-    labelNewPoints?: boolean;
-    snapObjects?: boolean;
-    snapLength?: boolean;
-    snapLengthCm?: number;
-    snapAngle?: boolean;
-    snapAngleDegrees?: number;
-    exportBackground?: PictureOptions["background"];
-    exportInk?: PictureOptions["ink"];
-    exportPoints?: boolean;
-    exportFill?: PictureOptions["fill"];
-    paper?: PageSetup["paper"];
-    landscape?: boolean;
-    marginCm?: number;
-    printFit?: PageSetup["fit"];
-    printInk?: PageSetup["ink"];
-    printPoints?: boolean;
-    printFill?: PageSetup["fill"];
-  }) {
-    setDock((was) => ({ ...was, ...part }));
-    window.api.settings.write(part);
-  }
-  /**
-   * Whether a new point comes out with its label showing. It stays where it is
-   * left for as long as this sketch is open, and a sketch opened after it
-   * starts wherever the toggle was last left anywhere, which is what was
-   * remembered between runs.
-   */
-  const labelNew = dock.labelNewPoints;
-  /**
-   * What the drawing tools hold themselves to. It keeps itself the same way the
-   * labels toggle does: where it is left for as long as this sketch is open,
-   * and remembered so the next sketch starts where this one was left.
-   */
-  const snapping: Snapping = {
-    objects: dock.snapObjects,
-    length: dock.snapLength,
-    lengthCm: dock.snapLengthCm,
-    angle: dock.snapAngle,
-    angleDegrees: dock.snapAngleDegrees,
-    // A finger is nowhere near accurate enough for the steps to help while
-    // dragging something that is already drawn, and a phone has no Snap panel
-    // to turn it off with, so there it is off whatever a desk was left set to.
-    moving: phone ? false : dock.snapMoving,
-  };
-  /**
-   * How a picture is drawn. The dialog remembers the last used options for the
-   * sketch that is open, and the most recent options are the ones a sketch
-   * opened afterwards starts on.
-   */
-  const picture: PictureOptions = {
-    background: dock.exportBackground,
-    ink: dock.exportInk,
-    points: dock.exportPoints,
-    fill: dock.exportFill,
-  };
-  function keepPicture(next: PictureOptions) {
-    keepDock({
-      exportBackground: next.background,
-      exportInk: next.ink,
-      exportPoints: next.points,
-      exportFill: next.fill,
-    });
-  }
-
-  /**
-   * What this sketch does by default. A new one starts on what Preferences was
-   * last left set for new sketches; one opened from a file starts on whatever
-   * it was saved under, which is why a sketch carries its own.
-   */
-  const [prefs, setPrefs] = useState<Prefs>(() => prefsFrom(window.api.settings.read()));
-  /** What the dialog is holding while it is open, and where its changes land. */
-  const [drafted, setDrafted] = useState<Prefs | null>(null);
-  const [scope, setScope] = useState({ toSketch: true, toNew: false });
-  const showing = drafted ?? prefs;
-  // Every reading is written in this sketch's units, so they are set as it draws.
-  writeIn(showing.units);
-  // Save reads what the sketch is on now, not what it was on when it rendered.
-  const prefsAt = useRef(prefs);
-  prefsAt.current = prefs;
-
-  /** OK: what was drafted goes to this sketch, to new sketches, or to both. */
-  function applyPrefs() {
-    const next = drafted ?? prefs;
-    if (scope.toSketch) {
-      setPrefs(next);
-      // Preferences are saved with the sketch, so changing them changes the
-      // sketch and the title bar has to say there is something to save.
-      sketch.touch();
-    }
-    if (scope.toNew) window.api.settings.write(settingsFrom(next));
-    setDrafted(null);
-  }
-
-  /** Whether Page Setup and Print Preview are up. */
-  const [setupOpen, setSetupOpen] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
-
-  /**
-   * Page Setup: what a printed page is, and how the figure is drawn on it. It
-   * belongs to the app rather than to any sketch, and it is remembered, so the
-   * paper is set once and not again.
-   */
-  const pageSetup: PageSetup = {
-    paper: dock.paper,
-    landscape: dock.landscape,
-    marginCm: dock.marginCm,
-    fit: dock.printFit,
-    ink: dock.printInk,
-    points: dock.printPoints,
-    fill: dock.printFill,
-  };
-  function keepPage(next: PageSetup) {
-    keepDock({
-      paper: next.paper,
-      landscape: next.landscape,
-      marginCm: next.marginCm,
-      printFit: next.fit,
-      printInk: next.ink,
-      printPoints: next.points,
-      printFill: next.fill,
-    });
-  }
-
-  /**
-   * The whole page as it will print: the sheet's own picture, drawn the way
-   * Page Setup says, on nothing so the paper shows through. A selection is not
-   * what is printed; the page is.
-   */
-  function pagePicture(): Drawn | null {
-    return pictureSvg(
-      {
-        background: "transparent",
-        ink: pageSetup.ink,
-        points: pageSetup.points,
-        fill: pageSetup.fill,
-      },
-      null,
-    );
-  }
-
-  /** Print: the picture goes to the printer on the paper Page Setup says. */
-  async function printPage() {
-    const drawn = pagePicture();
-    if (!drawn) return;
-    setSetupOpen(false);
-    setPreviewing(false);
-    const area = printableArea(pageSetup);
-    await window.api.print.page({
-      svg: drawn.svg,
-      paper: pageSetup.paper,
-      landscape: pageSetup.landscape,
-      margin: Math.round(pageSetup.marginCm * PX_PER_CM),
-      toPage: pageSetup.fit === "page",
-      width: drawn.width,
-      height: drawn.height,
-      area,
-    });
-  }
-
-  /**
    * Export: the selection where there is one, and the whole page where there
    * is not. The picture goes over in both forms, since the save dialog is what
    * settles which one is written.
@@ -493,16 +278,6 @@ export function App() {
   /** What Escape does to the sheet, for the phone's Cancel key to do the same. */
   const cancelSheet = useRef(() => {});
 
-  function keepSnapping(part: Partial<Snapping>) {
-    keepDock({
-      ...(part.objects === undefined ? {} : { snapObjects: part.objects }),
-      ...(part.length === undefined ? {} : { snapLength: part.length }),
-      ...(part.lengthCm === undefined ? {} : { snapLengthCm: part.lengthCm }),
-      ...(part.angle === undefined ? {} : { snapAngle: part.angle }),
-      ...(part.angleDegrees === undefined ? {} : { snapAngleDegrees: part.angleDegrees }),
-      ...(part.moving === undefined ? {} : { snapMoving: part.moving }),
-    });
-  }
   /**
    * The kinds being kept out of the way wholesale, which is a different thing
    * from hiding an object: it says nothing about any one of them, and letting
@@ -548,6 +323,35 @@ export function App() {
   const [depth, setDepth] = useState(DEFAULT_DEPTH);
   const sketch = useSketch();
   const { undo, redo, canUndo, canRedo, remove, restyle, selectAll } = sketch;
+  /** What the window remembers between runs: the dock, the steps, the paper. */
+  const {
+    dock,
+    panels,
+    showPalette,
+    keepDock,
+    labelNew,
+    snapping,
+    keepSnapping,
+    picture,
+    keepPicture,
+    prefs,
+    setPrefs,
+    prefsAt,
+    drafted,
+    setDrafted,
+    scope,
+    setScope,
+    showing,
+    applyPrefs,
+    pageSetup,
+    keepPage,
+    pagePicture,
+    printPage,
+    setupOpen,
+    setSetupOpen,
+    previewing,
+    setPreviewing,
+  } = useSettings({ sketch, phone });
   // Whether a point that lands says its name straight away, told to the sketch
   // rather than read there, since every way of making a point goes through it.
   sketch.labelNewPoints(labelNew);
