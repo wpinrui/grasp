@@ -6,6 +6,7 @@ import { paletteState } from "./app/palette";
 import { useDialogs } from "./app/useDialogs";
 import { useKeys } from "./app/useKeys";
 import { prefsFrom, useSettings } from "./app/useSettings";
+import { useTransforms } from "./app/useTransforms";
 import { valueActions } from "./app/values";
 import { AboutDialog } from "./components/AboutDialog";
 import { ButtonDialog, type ButtonForm } from "./components/ButtonDialog";
@@ -36,9 +37,9 @@ import { TouchBar } from "./components/TouchBar";
 import { TransformDialog } from "./components/TransformDialog";
 import { usePhone, useVisibleViewport } from "./phone";
 import type { Armed } from "./sketch/armed";
-import { type Building, canBuild, wouldBuild } from "./sketch/builds";
+import { type Building, canBuild } from "./sketch/builds";
 import { canDefine } from "./sketch/custom";
-import { canSeed, DEFAULT_DEPTH, iterated } from "./sketch/iterate";
+import { canSeed } from "./sketch/iterate";
 import {
   markableAngle,
   markableDistances,
@@ -54,20 +55,15 @@ import {
   isCircle,
   isLine,
   isLocus,
-  isMark,
   isParameter,
   isPoint,
   isTable,
-  isValue,
   kinOf,
   type LineForm,
   MAX_SAMPLES,
   MIN_SAMPLES,
   namesFor,
   type PointSize,
-  partsOfAngle,
-  partsOfRatio,
-  pathIn,
   type SketchCircle,
   type SketchLine,
   type SketchObject,
@@ -80,19 +76,8 @@ import { togglePick } from "./sketch/picking";
 import { drawPicture } from "./sketch/picture";
 import { canvasTokens } from "./sketch/prefs";
 import { buildPrompt } from "./sketch/prompt";
-import { splitMerged, splitMergeFor } from "./sketch/relink";
-import { rolesFor } from "./sketch/roles";
 import { runScript } from "./sketch/script";
-import {
-  DEFAULT_VALUES,
-  type Marks,
-  makerFor,
-  NO_MARKS,
-  type TransformKind,
-  type TransformValues,
-  transformable,
-  transformed,
-} from "./sketch/transforms";
+import { transformable } from "./sketch/transforms";
 import { useDocument } from "./sketch/useDocument";
 import { useSketch } from "./sketch/useSketch";
 import "./App.css";
@@ -184,16 +169,6 @@ export function App() {
   const [pointSize, setPointSize] = useState<PointSize>(DEFAULT_POINT_SIZE);
   /** The Construct entry under the pointer, which the sheet previews. */
   const [hovered, setHovered] = useState<MenuAction | null>(null);
-  /** The open dialog, and what its fields were last left holding. */
-  const [dialog, setDialog] = useState<TransformKind | "iterate" | null>(null);
-  /**
-   * What the sketch has marked for a transform to follow. It stays marked until
-   * something of the same kind replaces it, so turning several things by the
-   * same angle does not mean marking it again.
-   */
-  const [follows, setFollows] = useState<Marks>(NO_MARKS);
-  /** The clicks collected so far, for a mark that takes more than one. */
-  const marking = useRef<string[]>([]);
   /**
    * What the object clipboard is holding, so Paste knows whether it has
    * anything to do. It belongs to the app, so it is read again as a menu opens:
@@ -206,15 +181,6 @@ export function App() {
    * have opened something since this one last looked.
    */
   const [recent, setRecent] = useState<string[]>(() => window.api.file.recent());
-  const [values, setValues] = useState<TransformValues>(DEFAULT_VALUES);
-  /**
-   * The point Rotate and Dilate turn about. It belongs to the dialogs, which is
-   * where it is picked, and it is kept between them so that turning several
-   * things about the same point does not mean picking it every time.
-   */
-  const [centre, setCentre] = useState<string | null>(null);
-  /** The straight object Reflect mirrors across, picked the same way. */
-  const [mirror, setMirror] = useState<string | null>(null);
   /**
    * Export: the selection where there is one, and the whole page where there
    * is not. The picture goes over in both forms, since the save dialog is what
@@ -264,10 +230,6 @@ export function App() {
   const editor = useRef<HTMLDivElement | null>(null);
   /** Counted up by a double-click on the Text tool, which asks for a caption. */
   const [captionWanted, setCaptionWanted] = useState(0);
-  /** Iterate's map: the seeds it was opened on, and where each one goes. */
-  const [seeds, setSeeds] = useState<string[]>([]);
-  const [targets, setTargets] = useState<(string | null)[]>([]);
-  const [depth, setDepth] = useState(DEFAULT_DEPTH);
   /** Which dialog is open, and what it is holding while it is. */
   const dialogs = useDialogs();
   const sketch = useSketch();
@@ -310,6 +272,20 @@ export function App() {
   /** The sketch as an expression reads it, for the Calculator's preview. */
   const readable = sheetOf(objects, geometry);
   const names = namesFor(objects);
+  /** The transform dialogs, what they are holding, and what they would make. */
+  const moves = useTransforms({
+    sketch,
+    building,
+    objects,
+    selection,
+    geometry,
+    names,
+    pointSize,
+    hovered,
+    calculating: dialogs.calculator !== null,
+    setInsert: dialogs.setInsert,
+  });
+
   /** The numbers the sketch holds, and the dialogs that write them. */
   const numbers = valueActions({
     sketch,
@@ -379,25 +355,6 @@ export function App() {
     doc.framed();
   }, [doc, viewport, geometry, sketch]);
 
-  // What the open dialog would make, worked out fresh on every keystroke and
-  // every pick. Nothing to show means it cannot be answered yet, which is also
-  // what greys its button.
-  const transform = dialog === "iterate" ? null : dialog;
-  const maker =
-    transform && transformable(selection, objects)
-      ? makerFor(transform, { values, objects, centre, mirror, marks: follows })
-      : null;
-  const orbit = dialog === "iterate" ? iterated(objects, { seeds, targets, depth }) : [];
-  const preview: SketchObject[] = maker
-    ? transformed(selection, maker, { objects, size: pointSize })
-    : dialog
-      ? orbit
-      : // No dialog: the sheet shows what the Construct entry under the pointer
-        // would build, so hovering Ray says which way it would run.
-        wouldBuild(building, hovered);
-  /** The row an Iterate click fills: the first empty one, then round again. */
-  const nextSeed = Math.max(targets.indexOf(null), 0);
-
   const named = naming.labelRows();
   const away = naming.hiddenRows();
 
@@ -464,36 +421,6 @@ export function App() {
     dialogs.setScriptWay(null);
   }
 
-  const marks = [
-    // Hovering Interior: the corners numbered in the order they were picked,
-    // since that order is the whole reason the fill comes out the shape it does.
-    ...(hovered === "interior" && preview.length > 0
-      ? chosenPoints.map((point, index) => ({ id: point.id, label: `${index + 1}` }))
-      : []),
-    // Hovering anything else that gives its objects different jobs: each one
-    // says which job it has, so the order they were picked in is visible
-    // before the entry is clicked rather than after.
-    ...(preview.length > 0 ? rolesFor(building, hovered) : []),
-    // The centre and the mirror are only ever shown while the dialog that uses
-    // them is open.
-    ...(centre && (dialog === "rotate" || dialog === "dilate")
-      ? [{ id: centre, label: "CENTER" }]
-      : []),
-    ...(mirror && dialog === "reflect" ? [{ id: mirror, label: "MIRROR" }] : []),
-    ...(dialog === "iterate"
-      ? [
-          ...seeds.map((id, index) => ({ id, label: `SEED ${index + 1}` })),
-          ...targets.flatMap((id, index) => (id ? [{ id, label: `IMAGE ${index + 1}` }] : [])),
-        ]
-      : []),
-    ...(dialog === "translate" && values.translate.mode === "marked"
-      ? [
-          ...(values.translate.from ? [{ id: values.translate.from, label: "FROM" }] : []),
-          ...(values.translate.to ? [{ id: values.translate.to, label: "TO" }] : []),
-        ]
-      : []),
-  ];
-
   /** Open one of the dock's panels, or close it again. */
   function openPanel(id: string) {
     setSpotlight(null);
@@ -548,193 +475,6 @@ export function App() {
   }
 
   /**
-   * Marking by clicking while a transform dialog is open, which is how the
-   * reference marks one without leaving the dialog. What a click means depends
-   * on what the dialog has been told to follow. Answers whether it took it.
-   */
-  function markFromSheet(hit: SketchObject): boolean {
-    const wantsAngle =
-      (dialog === "rotate" && values.rotate.marked) ||
-      (dialog === "translate" && values.translate.markedAngle);
-    const wantsRatio = dialog === "dilate" && values.dilate.marked;
-    const wantsOneDistance = dialog === "translate" && values.translate.markedDistance;
-    const wantsTwoDistances = dialog === "translate" && values.translate.markedPair;
-    const held = geometry.values.get(hit.id) ?? null;
-    const bare = held !== null && held.length === 0 && held.angle === 0;
-    const isAngleValue = held !== null && held.angle === 1 && held.length === 0;
-    const isDistanceValue = held !== null && held.length === 1 && held.angle === 0;
-
-    if (wantsAngle) {
-      // An angle marker is three points: an arm, the corner, the other arm.
-      if (isMark(hit) && "corner" in hit) {
-        setFollows({
-          ...follows,
-          angle: { kind: "points", a: hit.arms[0], corner: hit.corner, b: hit.arms[1] },
-        });
-        return true;
-      }
-      if (isAngleValue) {
-        setFollows({ ...follows, angle: { kind: "value", of: hit.id } });
-        return true;
-      }
-    }
-    if (wantsRatio) {
-      if (bare) {
-        setFollows({ ...follows, ratio: { kind: "value", of: hit.id } });
-        return true;
-      }
-      // Two segments, clicked one after the other: the first over the second.
-      if (isLine(hit) && hit.form === "segment") {
-        const got = [...marking.current, hit.id];
-        if (got.length < 2) {
-          marking.current = got;
-          return true;
-        }
-        marking.current = [];
-        setFollows({ ...follows, ratio: { kind: "segments", top: got[0], bottom: got[1] } });
-        return true;
-      }
-    }
-    if ((wantsOneDistance || wantsTwoDistances) && isDistanceValue) {
-      const wanted = wantsTwoDistances ? 2 : 1;
-      const got = [...marking.current, hit.id];
-      if (got.length < wanted) {
-        marking.current = got;
-        return true;
-      }
-      marking.current = [];
-      setFollows({ ...follows, distances: got });
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * What Split/Merge would do with the selection as it stands, which is also
-   * what the entry calls itself rather than naming both halves at once.
-   */
-  const splitMerge = splitMergeFor(objects, selection);
-
-  function runSplitMerge() {
-    if (!splitMerge) return;
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: splitMerged(before.objects, splitMerge, {
-        settled: geometry,
-        paths: (id: string) => pathIn(geometry, id),
-      }),
-      // The point it acted on stays picked, since it is what you are working
-      // on. Merging two leaves the one that survived.
-      selection: [splitMerge.kind === "join" ? splitMerge.to : splitMerge.point],
-    });
-  }
-
-  /** A Mark entry, which sets what future transforms follow and leaves the selection alone. */
-  function mark(action: MenuAction) {
-    if (action === "mark-mirror") {
-      const found = markableMirror(building);
-      if (found) setMirror(found);
-      return;
-    }
-    if (action === "mark-vector") {
-      const ends = markableVector(building);
-      if (ends)
-        setValues({ ...values, translate: { ...values.translate, from: ends[0], to: ends[1] } });
-      return;
-    }
-    if (action === "mark-angle") {
-      const angle = markableAngle(building);
-      if (angle) setFollows({ ...follows, angle });
-      return;
-    }
-    if (action === "mark-ratio") {
-      const ratio = markableRatio(building);
-      if (ratio) setFollows({ ...follows, ratio });
-      return;
-    }
-    const distances = markableDistances(building);
-    if (distances.length > 0) setFollows({ ...follows, distances });
-  }
-
-  /**
-   * What is still marked: a mark whose objects have been deleted is no mark at
-   * all, the same rule the centre and the mirror already follow.
-   */
-  function livingMarks(): Marks {
-    const there = (id: string) => objects.some((object) => object.id === id);
-    return {
-      angle: follows.angle && partsOfAngle(follows.angle).every(there) ? follows.angle : null,
-      ratio: follows.ratio && partsOfRatio(follows.ratio).every(there) ? follows.ratio : null,
-      distances: follows.distances.every(there) ? follows.distances : [],
-    };
-  }
-
-  /** A click on the sheet while a dialog is open feeds the dialog. */
-  function pick(id: string) {
-    const hit = objects.find((object) => object.id === id);
-    if (!hit) return;
-    // The Calculator takes numbers off the sheet, which is quicker than
-    // spelling their names and is how the reference app does it too.
-    if (dialogs.calculator) {
-      if (isValue(hit)) dialogs.setInsert(names.get(hit.id) ?? null);
-      return;
-    }
-    // Reflect wants a straight object to mirror across; everything else wants
-    // a point, so a click on the wrong kind of thing is left alone.
-    if (markFromSheet(hit)) return;
-    if (dialog === "reflect") {
-      if (!isPoint(hit)) setMirror(id);
-      return;
-    }
-    if (!isPoint(hit)) return;
-    if (dialog === "iterate") {
-      setTargets(targets.map((target, index) => (index === nextSeed ? id : target)));
-      return;
-    }
-    if (dialog !== "translate" || values.translate.mode !== "marked") {
-      setCentre(id);
-      return;
-    }
-    const vector = values.translate;
-    // First click is From, the next is To, a third starts again from From.
-    const ends = vector.from === null || vector.to !== null ? { from: id, to: null } : { to: id };
-    setValues({ ...values, translate: { ...vector, ...ends } });
-  }
-
-  function openIterate() {
-    setSeeds([...selection]);
-    setTargets(selection.map(() => null));
-    setDialog("iterate");
-  }
-
-  function applyIterate() {
-    if (orbit.length === 0) return;
-    // The seeds stay selected: they are still what the orbit was built on.
-    sketch.addObjects(orbit, selection);
-    setDialog(null);
-  }
-
-  function openDialog(kind: TransformKind) {
-    // A point picked before a delete is no point at all.
-    const alive = (id: string | null) =>
-      id && objects.some((object) => object.id === id) ? id : null;
-    marking.current = [];
-    setFollows(livingMarks());
-    setCentre(alive(centre));
-    setMirror(alive(mirror));
-    setValues({
-      ...values,
-      translate: {
-        ...values.translate,
-        from: alive(values.translate.from),
-        to: alive(values.translate.to),
-      },
-    });
-    setDialog(kind);
-  }
-
-  /**
    * Plus and minus step what is selected: a locus by its samples, a parameter by
    * the adjustment the places it was typed to set. Both at once where both are
    * selected, since either key means the same thing to either.
@@ -768,16 +508,6 @@ export function App() {
     });
   }
 
-  function construct(action: MenuAction) {
-    sketch.addObjects(wouldBuild(building, action));
-  }
-
-  function applyDialog() {
-    if (!maker) return;
-    sketch.addObjects(transformed(selection, maker, { objects, size: pointSize }));
-    setDialog(null);
-  }
-
   /** Greyed when an entry has nothing to act on. */
   function isEnabled(action: MenuAction): boolean {
     // Nothing drawn is nothing to print, the same way nothing is to export.
@@ -795,7 +525,7 @@ export function App() {
       const form = action.slice("button-".length) as ButtonForm;
       return form === "link" ? sketch.pages.length > 0 : buttons.buttonWants(form).length > 0;
     }
-    if (action === "split-merge") return splitMerge !== null;
+    if (action === "split-merge") return moves.splitMerge !== null;
     if (action === "edit-definition") return numbers.editable() !== null;
     if (action === "define-custom") return canDefine(objects, selection);
     if (action === "edit-custom") return custom.customs.length > 0;
@@ -897,7 +627,7 @@ export function App() {
   }, [editing]);
 
   useKeys({
-    dialogOpen: dialog !== null || dialogs.anyOpen,
+    dialogOpen: moves.dialog !== null || dialogs.anyOpen,
     pickTool: setActiveTool,
     newSketch: doc.newSketch,
     openSketch: () => void doc.open(),
@@ -919,11 +649,11 @@ export function App() {
     selectKin,
     labelPanel: () => openPanel("labels"),
     calculate: () => dialogs.setCalculator({}),
-    midpoint: () => construct("midpoint"),
-    segment: () => construct("segment"),
-    cross: () => construct("intersection"),
+    midpoint: () => moves.construct("midpoint"),
+    segment: () => moves.construct("segment"),
+    cross: () => moves.construct("intersection"),
     newParameter: () => dialogs.setParameterDialog({}),
-    fill: () => construct("interior"),
+    fill: () => moves.construct("interior"),
     applyCustom: (nth) => {
       const found = custom.customs[nth];
       if (found) custom.applyCustom(found.id);
@@ -980,7 +710,7 @@ export function App() {
         }
         isEnabled={isEnabled}
         transforms={custom.customs.map((one) => ({ id: one.id, name: one.name }))}
-        labels={splitMerge ? { "split-merge": splitMerge.label } : {}}
+        labels={moves.splitMerge ? { "split-merge": moves.splitMerge.label } : {}}
         onAsk={() => {
           dialogs.setScriptErrors([]);
           dialogs.setScriptWay("ask");
@@ -1033,7 +763,7 @@ export function App() {
             );
           } else if (action.startsWith("button-")) {
             dialogs.setButtonDialog(action.slice("button-".length) as ButtonForm);
-          } else if (action === "split-merge") runSplitMerge();
+          } else if (action === "split-merge") moves.runSplitMerge();
           else if (action === "edit-definition") {
             const found = numbers.editable();
             if (found) numbers.editValue(found);
@@ -1041,7 +771,7 @@ export function App() {
           else if (action === "edit-custom") dialogs.setCustomDialog("edit");
           else if (action.startsWith("apply-transform:")) {
             custom.applyCustom(action.slice("apply-transform:".length));
-          } else if (action.startsWith("mark-")) mark(action);
+          } else if (action.startsWith("mark-")) moves.mark(action);
           else if (action === "new-function") dialogs.setCalculator({ forFunction: true });
           else if (action === "derivative") numbers.defineDerivative();
           else if (action === "tabulate") numbers.tabulate();
@@ -1049,15 +779,15 @@ export function App() {
           else if (action === "remove-table-data") dialogs.setTableDialog("remove");
           else if (action === "new-parameter") dialogs.setParameterDialog({});
           else if (action === "calculate") dialogs.setCalculator({});
-          else if (action === "iterate") openIterate();
-          else if (BUILDS.has(action)) construct(action);
+          else if (action === "iterate") moves.openIterate();
+          else if (BUILDS.has(action)) moves.construct(action);
           else if (
             action === "translate" ||
             action === "rotate" ||
             action === "dilate" ||
             action === "reflect"
           ) {
-            openDialog(action);
+            moves.openDialog(action);
           } else {
             // One move: the selection is resized and the birth size is reset.
             const size = action.slice("point-size:".length) as PointSize;
@@ -1094,13 +824,13 @@ export function App() {
             onView={sketch.setView}
             lineForm={(variants.straightedge ?? "segment") as LineForm}
             polygonKind={variants.polygon ?? "interior"}
-            picking={dialog !== null || dialogs.calculator !== null}
-            onPick={pick}
-            preview={preview}
-            marks={marks}
+            picking={moves.dialog !== null || dialogs.calculator !== null}
+            onPick={moves.pick}
+            preview={moves.preview}
+            marks={moves.marks}
             onRename={naming.rename}
             onEditValue={numbers.editValue}
-            onMarkMirror={setMirror}
+            onMarkMirror={moves.setMirror}
             onPressButton={buttons.pressButton}
             onCaptureRow={numbers.captureRow}
             onDropRow={(id) => numbers.dropRows(id, false)}
@@ -1403,31 +1133,31 @@ export function App() {
           onCancel={() => dialogs.setExportTo(null)}
         />
       )}
-      {dialog === "iterate" && (
+      {moves.dialog === "iterate" && (
         <IterateDialog
-          targets={targets}
-          active={nextSeed}
-          depth={depth}
-          onDepth={setDepth}
-          canApply={orbit.length > 0}
-          onApply={applyIterate}
-          onCancel={() => setDialog(null)}
+          targets={moves.targets}
+          active={moves.nextSeed}
+          depth={moves.depth}
+          onDepth={moves.setDepth}
+          canApply={moves.orbit.length > 0}
+          onApply={moves.applyIterate}
+          onCancel={() => moves.setDialog(null)}
         />
       )}
-      {transform && (
+      {moves.transform && (
         <TransformDialog
-          kind={transform}
-          values={values}
-          onChange={setValues}
+          kind={moves.transform}
+          values={moves.values}
+          onChange={moves.setValues}
           marked={{
-            angle: follows.angle !== null,
-            ratio: follows.ratio !== null,
-            distances: follows.distances.length,
+            angle: moves.follows.angle !== null,
+            ratio: moves.follows.ratio !== null,
+            distances: moves.follows.distances.length,
           }}
-          canApply={maker !== null}
-          centred={transform === "reflect" ? mirror !== null : centre !== null}
-          onApply={applyDialog}
-          onCancel={() => setDialog(null)}
+          canApply={moves.maker !== null}
+          centred={moves.transform === "reflect" ? moves.mirror !== null : moves.centre !== null}
+          onApply={moves.applyDialog}
+          onCancel={() => moves.setDialog(null)}
         />
       )}
       {openMenu && (
