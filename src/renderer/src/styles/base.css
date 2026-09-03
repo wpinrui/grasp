@@ -55,11 +55,6 @@ button {
 }
 
 /*
-  A touch screen. The page is the window and nothing scrolls behind it. A phone
-  browser hands the page a viewport that changes height as its own chrome slides
-  away, which dvh follows and vh does not.
-*/
-/*
   An overlay that covers the window, and the panel it holds in the middle: the
   About box, the print preview, the AI dialog and the prompts the web build
   draws for itself. Each carries its own z-index and its own looks; this is the
@@ -74,6 +69,11 @@ button {
   background: var(--color-scrim);
 }
 
+/*
+  A touch screen. The page is the window and nothing scrolls behind it. A phone
+  browser hands the page a viewport that changes height as its own chrome slides
+  away, which dvh follows and vh does not.
+*/
 @media (pointer: coarse) {
   body,
   #root {
