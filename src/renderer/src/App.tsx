@@ -3,6 +3,7 @@ import { buttonActions } from "./app/buttons";
 import { customActions } from "./app/customs";
 import { labelActions } from "./app/labels";
 import { paletteState } from "./app/palette";
+import { useDialogs } from "./app/useDialogs";
 import { useKeys } from "./app/useKeys";
 import { prefsFrom, useSettings } from "./app/useSettings";
 import { valueActions } from "./app/values";
@@ -26,7 +27,7 @@ import { Palette } from "./components/Palette";
 import { ParameterDialog } from "./components/ParameterDialog";
 import { PreferencesDialog } from "./components/PreferencesDialog";
 import { PrintPreviewDialog } from "./components/PrintPreviewDialog";
-import { NEW_PAGE, ScriptDialog, type ScriptWay } from "./components/ScriptDialog";
+import { NEW_PAGE, ScriptDialog } from "./components/ScriptDialog";
 import { SnapPanel } from "./components/SnapPanel";
 import { AddTableDataDialog, RemoveTableDataDialog } from "./components/TableDataDialog";
 import { TitleBar } from "./components/TitleBar";
@@ -186,25 +187,6 @@ export function App() {
   /** The open dialog, and what its fields were last left holding. */
   const [dialog, setDialog] = useState<TransformKind | "iterate" | null>(null);
   /**
-   * The Calculator: whether it is making a calculation or a function, and which
-   * one it is changing where it is not a new one.
-   */
-  const [calculator, setCalculator] = useState<{
-    forFunction?: boolean;
-    editing?: string;
-  } | null>(null);
-  /**
-   * New Parameter. It can be opened from the Calculator as well as from the
-   * menu, and one opened that way drops the parameter it makes into the
-   * expression, which is what `fromCalculator` is for.
-   */
-  const [parameterDialog, setParameterDialog] = useState<{
-    editing?: string;
-    fromCalculator?: boolean;
-  } | null>(null);
-  /** A name waiting to be dropped into the Calculator at its cursor. */
-  const [insert, setInsert] = useState<string | null>(null);
-  /**
    * What the sketch has marked for a transform to follow. It stays marked until
    * something of the same kind replaces it, so turning several things by the
    * same angle does not mean marking it again.
@@ -212,28 +194,6 @@ export function App() {
   const [follows, setFollows] = useState<Marks>(NO_MARKS);
   /** The clicks collected so far, for a mark that takes more than one. */
   const marking = useRef<string[]>([]);
-  /** Which of the two table dialogs is open, over the one table selected. */
-  const [tableDialog, setTableDialog] = useState<"add" | "remove" | null>(null);
-  /** Which of the two custom transform dialogs is open. */
-  const [customDialog, setCustomDialog] = useState<"define" | "edit" | null>(null);
-  /** The kind of action button being made, while its dialog is open. */
-  const [buttonDialog, setButtonDialog] = useState<ButtonForm | null>(null);
-  const [docOptions, setDocOptions] = useState(false);
-  /**
-   * A run of automatic collection: the table filling up, how many rows are
-   * still wanted, how fast they may be taken, and when the last one was. It
-   * ends of its own accord once the rows are in.
-   */
-  const collecting = useRef<{
-    table: string;
-    left: number;
-    perSecond: number;
-    at: number;
-  } | null>(null);
-  /** Which export is open, and so where its picture goes. */
-  const [exportTo, setExportTo] = useState<ExportTo | null>(null);
-  /** Whether the About box is up. */
-  const [about, setAbout] = useState(false);
   /**
    * What the object clipboard is holding, so Paste knows whether it has
    * anything to do. It belongs to the app, so it is read again as a menu opens:
@@ -261,7 +221,7 @@ export function App() {
    * settles which one is written.
    */
   async function exportPicture(to: ExportTo) {
-    setExportTo(null);
+    dialogs.setExportTo(null);
     const wanted = selection.length > 0 ? new Set(selection) : null;
     try {
       const drawn = await drawPicture(settings.picture, wanted);
@@ -298,29 +258,18 @@ export function App() {
   if (toolsOff[activeTool]) setActiveTool("arrow");
   /** The object the label panel is pointing at, lit up on the sheet. */
   const [spotlight, setSpotlight] = useState<string | null>(null);
-  /**
-   * The scripting modal: which button opened it, what was asked for, the script
-   * last put in the box, and where a run is to draw. The request and the script
-   * outlive the modal being shut, so neither is lost by closing it.
-   */
-  const [scriptWay, setScriptWay] = useState<ScriptWay | null>(null);
-  const [request, setRequest] = useState("");
-  const [script, setScript] = useState("");
-  const [scriptTarget, setScriptTarget] = useState<string>(NEW_PAGE);
-  const [scriptErrors, setScriptErrors] = useState<string[]>([]);
-  const [scriptRunning, setScriptRunning] = useState(false);
   /** The caption being typed into. It belongs to the window, not to the page. */
   const [editing, setEditing] = useState<string | null>(null);
   /** Where the text palette reaches the caption being typed into. */
   const editor = useRef<HTMLDivElement | null>(null);
   /** Counted up by a double-click on the Text tool, which asks for a caption. */
   const [captionWanted, setCaptionWanted] = useState(0);
-  /** A rename waiting on what to do about the name already being in use. */
-  const [clash, setClash] = useState<{ id: string; name: string; holder: string } | null>(null);
   /** Iterate's map: the seeds it was opened on, and where each one goes. */
   const [seeds, setSeeds] = useState<string[]>([]);
   const [targets, setTargets] = useState<(string | null)[]>([]);
   const [depth, setDepth] = useState(DEFAULT_DEPTH);
+  /** Which dialog is open, and what it is holding while it is. */
+  const dialogs = useDialogs();
   const sketch = useSketch();
   const { undo, redo, canUndo, canRedo, remove, restyle, selectAll } = sketch;
   /** What the window remembers between runs: the dock, the steps, the paper. */
@@ -368,22 +317,22 @@ export function App() {
     selection,
     names,
     readable,
-    calculator,
-    setCalculator,
-    parameterDialog,
-    setParameterDialog,
-    setInsert,
-    setTableDialog,
-    collecting,
+    calculator: dialogs.calculator,
+    setCalculator: dialogs.setCalculator,
+    parameterDialog: dialogs.parameterDialog,
+    setParameterDialog: dialogs.setParameterDialog,
+    setInsert: dialogs.setInsert,
+    setTableDialog: dialogs.setTableDialog,
+    collecting: dialogs.collecting,
   });
   /** Names, labels, and what is out of view. */
-  const naming = labelActions({ sketch, objects, selection, geometry, setClash });
+  const naming = labelActions({ sketch, objects, selection, geometry, setClash: dialogs.setClash });
   /** The buttons on the sheet, and what pressing one does. */
   const buttons = buttonActions({
     sketch,
     building,
     selection,
-    setButtonDialog,
+    setButtonDialog: dialogs.setButtonDialog,
     spot: numbers.valueSpot,
     hideObjects: naming.hideObjects,
   });
@@ -392,7 +341,7 @@ export function App() {
     sketch,
     objects,
     selection,
-    setCustomDialog,
+    setCustomDialog: dialogs.setCustomDialog,
   });
 
   // A sketch that asked to be framed is put on its figure rather than on the
@@ -479,10 +428,10 @@ export function App() {
   });
 
   function promptForRequest(): string {
-    const editing = scriptTarget !== NEW_PAGE;
-    const page = sketch.pages.find((one) => one.id === scriptTarget);
+    const editing = dialogs.scriptTarget !== NEW_PAGE;
+    const page = sketch.pages.find((one) => one.id === dialogs.scriptTarget);
     return buildPrompt({
-      request,
+      request: dialogs.request,
       sheet: scriptSheet(),
       target:
         editing && page
@@ -492,27 +441,27 @@ export function App() {
   }
 
   async function runTheScript() {
-    setScriptRunning(true);
-    setScriptErrors([]);
-    const wanted = sketch.pages.find((one) => one.id === scriptTarget);
+    dialogs.setScriptRunning(true);
+    dialogs.setScriptErrors([]);
+    const wanted = sketch.pages.find((one) => one.id === dialogs.scriptTarget);
     // The page a script works on is the page it is run from, so GRASP goes
     // there first and the objects it hands back are committed where they land.
     if (wanted) sketch.selectPage(wanted.id);
     else sketch.addPage();
     const before = sketch.read();
-    const result = await runScript(script, {
+    const result = await runScript(dialogs.script, {
       objects: before.objects,
       sheet: scriptSheet(),
       pointSize: pointSize,
     });
-    setScriptRunning(false);
+    dialogs.setScriptRunning(false);
     if (!result.ok) {
-      setScriptErrors(result.errors);
+      dialogs.setScriptErrors(result.errors);
       return;
     }
     sketch.commit({ objects: result.objects, selection: [] });
-    setScriptErrors([]);
-    setScriptWay(null);
+    dialogs.setScriptErrors([]);
+    dialogs.setScriptWay(null);
   }
 
   const marks = [
@@ -727,8 +676,8 @@ export function App() {
     if (!hit) return;
     // The Calculator takes numbers off the sheet, which is quicker than
     // spelling their names and is how the reference app does it too.
-    if (calculator) {
-      if (isValue(hit)) setInsert(names.get(hit.id) ?? null);
+    if (dialogs.calculator) {
+      if (isValue(hit)) dialogs.setInsert(names.get(hit.id) ?? null);
       return;
     }
     // Reflect wants a straight object to mirror across; everything else wants
@@ -896,11 +845,11 @@ export function App() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: it runs when the figure moves, which is what a row records
   useEffect(() => {
-    const run = collecting.current;
+    const run = dialogs.collecting.current;
     if (!run) return;
     const table = objects.find((object) => object.id === run.table);
     if (!table || !isTable(table)) {
-      collecting.current = null;
+      dialogs.collecting.current = null;
       return;
     }
     const now = Date.now();
@@ -919,7 +868,7 @@ export function App() {
     if (!moved) return;
     run.at = now;
     run.left -= 1;
-    if (run.left <= 0) collecting.current = null;
+    if (run.left <= 0) dialogs.collecting.current = null;
     numbers.captureRow(table.id);
   }, [objects]);
 
@@ -948,15 +897,7 @@ export function App() {
   }, [editing]);
 
   useKeys({
-    dialogOpen:
-      dialog !== null ||
-      calculator !== null ||
-      parameterDialog !== null ||
-      tableDialog !== null ||
-      customDialog !== null ||
-      buttonDialog !== null ||
-      scriptWay !== null ||
-      docOptions,
+    dialogOpen: dialog !== null || dialogs.anyOpen,
     pickTool: setActiveTool,
     newSketch: doc.newSketch,
     openSketch: () => void doc.open(),
@@ -977,17 +918,17 @@ export function App() {
     hide: () => naming.hideObjects(selection, true),
     selectKin,
     labelPanel: () => openPanel("labels"),
-    calculate: () => setCalculator({}),
+    calculate: () => dialogs.setCalculator({}),
     midpoint: () => construct("midpoint"),
     segment: () => construct("segment"),
     cross: () => construct("intersection"),
-    newParameter: () => setParameterDialog({}),
+    newParameter: () => dialogs.setParameterDialog({}),
     fill: () => construct("interior"),
     applyCustom: (nth) => {
       const found = custom.customs[nth];
       if (found) custom.applyCustom(found.id);
     },
-    documentOptions: () => setDocOptions(true),
+    documentOptions: () => dialogs.setDocOptions(true),
     editDefinition: () => {
       const found = numbers.editable();
       if (found) numbers.editValue(found);
@@ -1010,6 +951,8 @@ export function App() {
     },
     step: stepSelection,
   });
+  // Read out of the bundle so what is open narrows inside the callbacks below.
+  const { clash, exportTo } = dialogs;
 
   return (
     <div className="app">
@@ -1039,20 +982,20 @@ export function App() {
         transforms={custom.customs.map((one) => ({ id: one.id, name: one.name }))}
         labels={splitMerge ? { "split-merge": splitMerge.label } : {}}
         onAsk={() => {
-          setScriptErrors([]);
-          setScriptWay("ask");
+          dialogs.setScriptErrors([]);
+          dialogs.setScriptWay("ask");
         }}
         onScript={() => {
-          setScriptErrors([]);
-          setScriptWay("script");
+          dialogs.setScriptErrors([]);
+          dialogs.setScriptWay("script");
         }}
         onAction={(action) => {
           if (action === "new-sketch") doc.newSketch();
           else if (action === "open") void doc.open();
-          else if (action === "about") setAbout(true);
+          else if (action === "about") dialogs.setAbout(true);
           else if (action === "preferences") settings.setDrafted(settings.prefs);
           else if (action === "page-setup") settings.setSetupOpen(true);
-          else if (action === "document-options") setDocOptions(true);
+          else if (action === "document-options") dialogs.setDocOptions(true);
           else if (action === "print-preview") settings.setPreviewing(true);
           else if (action === "print") void settings.printPage();
           else if (action === "clear-recent") {
@@ -1080,8 +1023,8 @@ export function App() {
           else if (action === "hidden-panel") openPanel("hidden");
           else if (action === "palette") settings.keepDock({ showPalette: !settings.showPalette });
           else if (action === "snap-panel") openPanel("snap");
-          else if (action === "export-file") setExportTo("file");
-          else if (action === "export-clipboard") setExportTo("clipboard");
+          else if (action === "export-file") dialogs.setExportTo("file");
+          else if (action === "export-clipboard") dialogs.setExportTo("clipboard");
           else if (action === "hide-objects") naming.hideObjects(selection, true);
           else if (action === "show-all-hidden") {
             naming.hideObjects(
@@ -1089,23 +1032,23 @@ export function App() {
               false,
             );
           } else if (action.startsWith("button-")) {
-            setButtonDialog(action.slice("button-".length) as ButtonForm);
+            dialogs.setButtonDialog(action.slice("button-".length) as ButtonForm);
           } else if (action === "split-merge") runSplitMerge();
           else if (action === "edit-definition") {
             const found = numbers.editable();
             if (found) numbers.editValue(found);
-          } else if (action === "define-custom") setCustomDialog("define");
-          else if (action === "edit-custom") setCustomDialog("edit");
+          } else if (action === "define-custom") dialogs.setCustomDialog("define");
+          else if (action === "edit-custom") dialogs.setCustomDialog("edit");
           else if (action.startsWith("apply-transform:")) {
             custom.applyCustom(action.slice("apply-transform:".length));
           } else if (action.startsWith("mark-")) mark(action);
-          else if (action === "new-function") setCalculator({ forFunction: true });
+          else if (action === "new-function") dialogs.setCalculator({ forFunction: true });
           else if (action === "derivative") numbers.defineDerivative();
           else if (action === "tabulate") numbers.tabulate();
-          else if (action === "add-table-data") setTableDialog("add");
-          else if (action === "remove-table-data") setTableDialog("remove");
-          else if (action === "new-parameter") setParameterDialog({});
-          else if (action === "calculate") setCalculator({});
+          else if (action === "add-table-data") dialogs.setTableDialog("add");
+          else if (action === "remove-table-data") dialogs.setTableDialog("remove");
+          else if (action === "new-parameter") dialogs.setParameterDialog({});
+          else if (action === "calculate") dialogs.setCalculator({});
           else if (action === "iterate") openIterate();
           else if (BUILDS.has(action)) construct(action);
           else if (
@@ -1151,7 +1094,7 @@ export function App() {
             onView={sketch.setView}
             lineForm={(variants.straightedge ?? "segment") as LineForm}
             polygonKind={variants.polygon ?? "interior"}
-            picking={dialog !== null || calculator !== null}
+            picking={dialog !== null || dialogs.calculator !== null}
             onPick={pick}
             preview={preview}
             marks={marks}
@@ -1277,45 +1220,47 @@ export function App() {
         tabs={settings.prefs.pageTabs !== false}
         objectCount={sketch.state.objects.length}
       />
-      {calculator && (
+      {dialogs.calculator && (
         <CalculatorDialog
-          start={numbers.calculationHeld(calculator.editing)}
-          forFunction={calculator.forFunction}
+          start={numbers.calculationHeld(dialogs.calculator.editing)}
+          forFunction={dialogs.calculator.forFunction}
           lead={
-            calculator.editing ? (names.get(calculator.editing) ?? "f") : numbers.nextFunctionName()
+            dialogs.calculator.editing
+              ? (names.get(dialogs.calculator.editing) ?? "f")
+              : numbers.nextFunctionName()
           }
           values={numbers.offeredValues()}
           functions={numbers.offeredFunctions()}
           named={numbers.namedInSketch}
           sheet={readable}
           names={names}
-          insert={insert}
-          onInserted={() => setInsert(null)}
-          onNewParameter={() => setParameterDialog({ fromCalculator: true })}
-          quiet={parameterDialog !== null}
+          insert={dialogs.insert}
+          onInserted={() => dialogs.setInsert(null)}
+          onNewParameter={() => dialogs.setParameterDialog({ fromCalculator: true })}
+          quiet={dialogs.parameterDialog !== null}
           onApply={numbers.landCalculation}
-          onCancel={() => setCalculator(null)}
+          onCancel={() => dialogs.setCalculator(null)}
         />
       )}
 
-      {parameterDialog && (
+      {dialogs.parameterDialog && (
         <ParameterDialog
-          start={numbers.parameterHeld(parameterDialog.editing)}
+          start={numbers.parameterHeld(dialogs.parameterDialog.editing)}
           angleUnit={settings.prefs.units.angle === "radians" ? "radians" : "degrees"}
           distanceUnit={settings.prefs.units.distance}
           onApply={numbers.landParameter}
-          onCancel={() => setParameterDialog(null)}
+          onCancel={() => dialogs.setParameterDialog(null)}
         />
       )}
 
-      {docOptions && (
+      {dialogs.docOptions && (
         <DocumentOptionsDialog
           pages={sketch.pages}
           activeId={sketch.activeId}
           tabs={settings.prefs.pageTabs !== false}
           onShow={sketch.selectPage}
           onApply={(wanted, tabs) => {
-            setDocOptions(false);
+            dialogs.setDocOptions(false);
             sketch.reshapePages(wanted);
             if (tabs !== (settings.prefs.pageTabs !== false)) {
               // The tabs are saved with the sketch, so the title bar has to say
@@ -1324,68 +1269,71 @@ export function App() {
               sketch.touch();
             }
           }}
-          onCancel={() => setDocOptions(false)}
+          onCancel={() => dialogs.setDocOptions(false)}
         />
       )}
 
-      {buttonDialog && (
+      {dialogs.buttonDialog && (
         <ButtonDialog
-          form={buttonDialog}
-          count={buttons.buttonWants(buttonDialog).length}
+          form={dialogs.buttonDialog}
+          count={buttons.buttonWants(dialogs.buttonDialog).length}
           pages={sketch.pages}
           onApply={buttons.landButton}
-          onCancel={() => setButtonDialog(null)}
+          onCancel={() => dialogs.setButtonDialog(null)}
         />
       )}
 
-      {customDialog === "define" && (
+      {dialogs.customDialog === "define" && (
         <DefineTransformDialog
           onApply={custom.defineCustom}
-          onCancel={() => setCustomDialog(null)}
+          onCancel={() => dialogs.setCustomDialog(null)}
         />
       )}
 
-      {customDialog === "edit" && (
+      {dialogs.customDialog === "edit" && (
         <EditTransformsDialog
           transforms={custom.customs.map((one) => ({ id: one.id, name: one.name }))}
           onRename={custom.renameCustom}
           onDelete={custom.dropCustom}
-          onClose={() => setCustomDialog(null)}
+          onClose={() => dialogs.setCustomDialog(null)}
         />
       )}
 
-      {tableDialog === "add" && (
-        <AddTableDataDialog onApply={numbers.startAdding} onCancel={() => setTableDialog(null)} />
+      {dialogs.tableDialog === "add" && (
+        <AddTableDataDialog
+          onApply={numbers.startAdding}
+          onCancel={() => dialogs.setTableDialog(null)}
+        />
       )}
 
-      {tableDialog === "remove" && (
+      {dialogs.tableDialog === "remove" && (
         <RemoveTableDataDialog
           rows={numbers.chosenTable()?.rows.length ?? 0}
           onApply={(all) => {
             const table = numbers.chosenTable();
-            setTableDialog(null);
+            dialogs.setTableDialog(null);
             if (table) numbers.dropRows(table.id, all);
           }}
-          onCancel={() => setTableDialog(null)}
+          onCancel={() => dialogs.setTableDialog(null)}
         />
       )}
 
-      {scriptWay && (
+      {dialogs.scriptWay && (
         <ScriptDialog
-          way={scriptWay}
-          request={request}
-          onRequest={setRequest}
-          script={script}
-          onScript={setScript}
-          target={scriptTarget}
-          onTarget={setScriptTarget}
+          way={dialogs.scriptWay}
+          request={dialogs.request}
+          onRequest={dialogs.setRequest}
+          script={dialogs.script}
+          onScript={dialogs.setScript}
+          target={dialogs.scriptTarget}
+          onTarget={dialogs.setScriptTarget}
           pages={sketch.pages}
           buildPrompt={promptForRequest}
-          onCopied={() => setRequest("")}
+          onCopied={() => dialogs.setRequest("")}
           onRun={() => void runTheScript()}
-          errors={scriptErrors}
-          running={scriptRunning}
-          onClose={() => setScriptWay(null)}
+          errors={dialogs.scriptErrors}
+          running={dialogs.scriptRunning}
+          onClose={() => dialogs.setScriptWay(null)}
         />
       )}
 
@@ -1398,19 +1346,19 @@ export function App() {
               (object) => namesFor(objects).get(object.id) === clash.name,
             );
             naming.pinName(clash.id, clash.name, { freed: holder?.id });
-            setClash(null);
+            dialogs.setClash(null);
           }}
           onBoth={() => {
             const holder = objects.find(
               (object) => namesFor(objects).get(object.id) === clash.name,
             );
             naming.pinName(clash.id, clash.name, { kept: holder?.id });
-            setClash(null);
+            dialogs.setClash(null);
           }}
-          onCancel={() => setClash(null)}
+          onCancel={() => dialogs.setClash(null)}
         />
       )}
-      {about && <AboutDialog onClose={() => setAbout(false)} />}
+      {dialogs.about && <AboutDialog onClose={() => dialogs.setAbout(false)} />}
       {settings.drafted && (
         <PreferencesDialog
           prefs={settings.drafted}
@@ -1452,7 +1400,7 @@ export function App() {
           options={settings.picture}
           onChange={settings.keepPicture}
           onApply={() => void exportPicture(exportTo)}
-          onCancel={() => setExportTo(null)}
+          onCancel={() => dialogs.setExportTo(null)}
         />
       )}
       {dialog === "iterate" && (
