@@ -210,9 +210,10 @@ body.spike-mobile .flyout__item {
 /* Dialogs. On a desktop one is a small draggable panel placed wherever it was
    left; on a phone there is nowhere to drag it to and a keyboard waiting to
    cover the bottom of the screen. So each one is pinned across the top of what
-   is actually visible and held to half of it, which is the half the keyboard
-   never reaches. The placement is inline, from the drag, so it takes an
-   important to override.
+   is actually visible. It is not held to half of that: the visible viewport
+   already stops where the keyboard starts, so halving it again only made the
+   dialog too small to reach the bottom of. The placement is inline, from the
+   drag, so it takes an important to override.
 
    The height comes from the visual viewport rather than the window, so when the
    keyboard opens and that shrinks, the dialog shrinks with it and stays whole
@@ -222,7 +223,7 @@ body.spike-mobile .dialog {
   left: 8px !important;
   right: 8px !important;
   width: auto !important;
-  max-height: calc(var(--spike-seen-height, 100dvh) / 2);
+  max-height: calc(var(--spike-seen-height, 100dvh) - 16px);
   display: flex;
   flex-direction: column;
 }
@@ -255,8 +256,7 @@ body.spike-mobile .canvas__zoom {
    that comes back should not bring a broken dialog with it.
 
    Same treatment, done at the scrim: it is pulled onto the visible viewport and
-   its contents pushed to the top of that, which is the half a keyboard never
-   covers. */
+   its contents pushed to the top of that. */
 body.spike-mobile .script__scrim,
 body.spike-mobile .about__scrim,
 body.spike-mobile .preview__scrim,
@@ -275,7 +275,7 @@ body.spike-mobile .web-prompt__box {
   width: 100%;
   max-width: none;
   min-width: 0;
-  max-height: calc(var(--spike-seen-height, 100dvh) / 2);
+  max-height: calc(var(--spike-seen-height, 100dvh) - 16px);
   display: flex;
   flex-direction: column;
 }
@@ -293,7 +293,7 @@ body.spike-mobile .script__code,
 body.spike-mobile .script__prompt,
 body.spike-mobile .script__type {
   height: auto;
-  max-height: 30vh;
+  max-height: calc(var(--spike-seen-height, 100dvh) * 0.34);
 }
 
 /* The two popovers that are not dialogs at all.
