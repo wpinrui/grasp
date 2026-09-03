@@ -255,9 +255,7 @@ export function ScriptDialog({
                 {showing && <pre className="script__prompt">{prompt}</pre>}
               </div>
             )}
-            <p className="script__say">
-              {way === "ask" ? "Paste the script here:" : "Paste the script."}
-            </p>
+            <p className="script__say">Paste the script here:</p>
             <div className="script__code">
               <pre
                 className="script__paint"
