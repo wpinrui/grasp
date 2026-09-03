@@ -1,14 +1,15 @@
 import { useState } from "react";
+import { usePhone } from "../phone";
 import { MenuCheckIcon, SubmenuArrowIcon } from "./icons";
 import {
   customItems,
   isImplemented,
-  MENUS,
   type MenuAction,
   type MenuEntry,
   type MenuItem,
   recentItems,
   shownItems,
+  shownMenus,
 } from "./menus";
 import "./MenuBar.css";
 
@@ -50,9 +51,10 @@ export function MenuBar({
   onAsk,
   onScript,
 }: MenuBarProps) {
+  const phone = usePhone();
   return (
     <div className="menubar">
-      {MENUS.map((menu) => (
+      {shownMenus(phone).map((menu) => (
         <div className="menubar__anchor" key={menu.label}>
           <button
             type="button"
@@ -69,6 +71,7 @@ export function MenuBar({
                 menu.label === "Transform"
                   ? [...menu.items, ...customItems(transforms)]
                   : menu.items,
+                phone,
               )}
               recent={recent}
               isTicked={isTicked}
@@ -93,10 +96,12 @@ export function MenuBar({
         <SparkleIcon />
         AI
       </button>
-      <button type="button" className="menubar__tool" title="Run a script" onClick={onScript}>
-        <ScriptIcon />
-        Script
-      </button>
+      {!phone && (
+        <button type="button" className="menubar__tool" title="Run a script" onClick={onScript}>
+          <ScriptIcon />
+          Script
+        </button>
+      )}
     </div>
   );
 }

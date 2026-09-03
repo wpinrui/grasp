@@ -80,27 +80,6 @@ body.spike-mobile .pagebar {
   display: none;
 }
 
-/* The menu bar. Measure, Number, Window and Help go on a phone: the last three
-   are desk work, panels that are not on screen here, and an about box. Five
-   titles are left.
-
-   Hiding the titles is not the same as taking the actions away. Everything
-   these three held is still reachable from a desktop, and a sketch made here
-   still carries whatever they made. */
-body.spike-mobile .menubar__anchor:nth-child(6),
-body.spike-mobile .menubar__anchor:nth-child(7),
-body.spike-mobile .menubar__anchor:nth-child(8),
-body.spike-mobile .menubar__anchor:nth-child(9) {
-  display: none;
-}
-
-/* Script is the twelfth child of the bar, after the nine titles, the spacer and
-   AI. Writing a script by hand is not phone work; asking for one is the whole
-   point of being here. */
-body.spike-mobile .menubar > *:nth-child(12) {
-  display: none;
-}
-
 /* AI is held against the right edge and taken out of the row to do it, so the
    titles cannot push it off however many of them there are.
 

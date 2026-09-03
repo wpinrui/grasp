@@ -139,69 +139,67 @@ export function isImplemented(item: MenuItem): boolean {
 }
 
 /**
- * SPIKE, not for merge. What a phone leaves out of the menus: the entries that
- * need hardware or a desk that is not there, and the two the bar along the
- * bottom already carries. Everything cut here is still on the desktop, and a
- * sketch made on a phone still carries whatever those entries made.
+ * What a phone leaves out of the menus: the entries that need hardware or a
+ * desk that is not there, and the two the bar along the bottom already carries.
+ * Nothing here is removed from GRASP. A sketch made on a phone still carries
+ * whatever these made, and opening it at a desk gets all of them back.
  */
-export const PHONE_CUT = {
-  on: false,
-  actions: new Set<string>([
-    // Undo and Redo are keys on the bottom bar.
-    "undo",
-    "redo",
-    // A tab is not a window to close or an application to quit.
-    "close",
-    "quit",
-    // Printing, and the page setup that only serves printing.
-    "page-setup",
-    "print-preview",
-    "print",
-    // An image on the clipboard is not something a phone can go on to use.
-    "export-clipboard",
-    // The palette bar is not drawn on a phone, so its switch has nothing to do.
-    "palette",
-    // Naming, adding and reordering pages, and a switch for the page tabs, on a
-    // build that is one page with no tabs.
-    "document-options",
-    // A second browser tab to juggle.
-    "new-sketch",
-    // A picture download, where the rail's share button already hands the whole
-    // sketch to the device.
-    "export-file",
-    // Dialog work: building a transform rather than using one.
-    "iterate",
-    "define-custom",
-    "edit-custom",
-    // Relational editing, all of which asks for a selection precise enough that
-    // a finger cannot reliably make it.
-    "select-parents",
-    "select-children",
-    "split-merge",
-    "edit-definition",
-    "preferences",
-    // Hiding something needs it selected first, and getting it back needs a
-    // panel that is not on a phone.
-    "hide-objects",
-    "show-all-hidden",
-    // Each of these opens a dialog that wants a number typed and a marked
-    // reference picked before it will do anything.
-    "translate",
-    "rotate",
-    "dilate",
-    "reflect",
-  ]),
-  /** Submenus are cut by name, having no action of their own to cut them by. */
-  labels: new Set<string>([
-    "Action Buttons",
-    // Recents are kept as handles to files on a machine, which a phone browser
-    // mostly cannot hold on to, and reopening one needs a picker it may not
-    // have either. A list that cannot open what it lists is worse than no list.
-    "Open Recent",
-    // Point styling: how a point is drawn is not what a phone is opened for.
-    "Point Style",
-  ]),
-};
+const CUT_ACTIONS = new Set<string>([
+  // Undo and Redo are keys on the bottom bar.
+  "undo",
+  "redo",
+  // A tab is not a window to close or an application to quit.
+  "close",
+  "quit",
+  // Printing, and the page setup that only serves printing.
+  "page-setup",
+  "print-preview",
+  "print",
+  // An image on the clipboard is not something a phone can go on to use.
+  "export-clipboard",
+  // The palette bar is not drawn on a phone, so its switch has nothing to do.
+  "palette",
+  // Naming, adding and reordering pages, and a switch for the page tabs, on a
+  // build that is one page with no tabs.
+  "document-options",
+  // A second browser tab to juggle.
+  "new-sketch",
+  // A picture download, where the rail's share button already hands the whole
+  // sketch to the device.
+  "export-file",
+  // Dialog work: building a transform rather than using one.
+  "iterate",
+  "define-custom",
+  "edit-custom",
+  // Relational editing, all of which asks for a selection precise enough that
+  // a finger cannot reliably make it.
+  "select-parents",
+  "select-children",
+  "split-merge",
+  "edit-definition",
+  "preferences",
+  // Hiding something needs it selected first, and getting it back needs a
+  // panel that is not on a phone.
+  "hide-objects",
+  "show-all-hidden",
+  // Each of these opens a dialog that wants a number typed and a marked
+  // reference picked before it will do anything.
+  "translate",
+  "rotate",
+  "dilate",
+  "reflect",
+]);
+
+/** Submenus are cut by name, having no action of their own to cut them by. */
+const CUT_LABELS = new Set<string>([
+  "Action Buttons",
+  // Recents are kept as handles to files on a machine, which a phone browser
+  // mostly cannot hold on to, and reopening one needs a picker it may not
+  // have either. A list that cannot open what it lists is worse than no list.
+  "Open Recent",
+  // Point styling: how a point is drawn is not what a phone is opened for.
+  "Point Style",
+]);
 
 /** Whether a separator has anything left on both sides of it to separate. */
 function tidied(items: MenuEntry[]): MenuEntry[] {
@@ -217,16 +215,13 @@ function tidied(items: MenuEntry[]): MenuEntry[] {
 }
 
 /** A menu as a phone shows it, which off a phone is the menu unchanged. */
-export function shownItems(items: MenuEntry[]): MenuEntry[] {
-  if (!PHONE_CUT.on) return items;
+export function shownItems(items: MenuEntry[], phone: boolean): MenuEntry[] {
+  if (!phone) return items;
   return tidied(
     items.filter(
       (entry) =>
         entry === "separator" ||
-        !(
-          (entry.action && PHONE_CUT.actions.has(entry.action)) ||
-          PHONE_CUT.labels.has(entry.label)
-        ),
+        !((entry.action && CUT_ACTIONS.has(entry.action)) || CUT_LABELS.has(entry.label)),
     ),
   );
 }
@@ -464,4 +459,10 @@ export function recentItems(recent: string[]): MenuEntry[] {
     "separator",
     { label: "Clear Recents", action: "clear-recent" },
   ];
+}
+
+/** The titles a phone shows, in the order the bar draws them. */
+export function shownMenus(phone: boolean): Menu[] {
+  if (!phone) return MENUS;
+  return MENUS.filter((menu) => shownItems(menu.items, true).length > 0);
 }
