@@ -3,6 +3,7 @@ import { buttonActions } from "./app/buttons";
 import { customActions } from "./app/customs";
 import { labelActions } from "./app/labels";
 import { paletteState } from "./app/palette";
+import { useKeys } from "./app/useKeys";
 import { valueActions } from "./app/values";
 import { AboutDialog } from "./components/AboutDialog";
 import { ButtonDialog, type ButtonForm } from "./components/ButtonDialog";
@@ -31,7 +32,6 @@ import { TitleBar } from "./components/TitleBar";
 import { Toolbox } from "./components/Toolbox";
 import { TouchBar } from "./components/TouchBar";
 import { TransformDialog } from "./components/TransformDialog";
-import { TOOLS } from "./components/tools";
 import { usePhone, useVisibleViewport } from "./phone";
 import type { Armed } from "./sketch/armed";
 import { type Building, canBuild, wouldBuild } from "./sketch/builds";
@@ -66,7 +66,6 @@ import {
   partsOfAngle,
   partsOfRatio,
   pathIn,
-  SAMPLE_STEP,
   type SketchCircle,
   type SketchLine,
   type SketchObject,
@@ -96,9 +95,6 @@ import {
 import { useDocument } from "./sketch/useDocument";
 import { useSketch } from "./sketch/useSketch";
 import "./App.css";
-
-/** The key each tool answers to, as the toolbox tooltips advertise it. */
-const TOOL_KEYS = new Map(TOOLS.map((tool) => [tool.key.toLowerCase(), tool.id]));
 
 /** The entries that build something, and so can be previewed and constructed. */
 const BUILDS = new Set<MenuAction>([
@@ -806,48 +802,14 @@ export function App() {
       : []),
   ];
 
-  // The key handler is bound once, so it reaches these through refs rather
-  // than through a closure it would have to be rebound to keep fresh.
-  const dialogOpen = useRef(false);
-  dialogOpen.current =
-    dialog !== null ||
-    calculator !== null ||
-    parameterDialog !== null ||
-    tableDialog !== null ||
-    customDialog !== null ||
-    buttonDialog !== null ||
-    scriptWay !== null ||
-    docOptions;
-  const midpoint = useRef(() => {});
-  midpoint.current = () => construct("midpoint");
-  const segment = useRef(() => {});
-  segment.current = () => construct("segment");
-  const cross = useRef(() => {});
-  cross.current = () => construct("intersection");
-  const customKeys = useRef((nth: number) => {
-    void nth;
-  });
-  customKeys.current = (nth) => {
-    const found = customs[nth];
-    if (found) applyCustom(found.id);
-  };
-  const editDefinition = useRef(() => {});
-  editDefinition.current = () => {
-    const found = editable();
-    if (found) editValue(found);
-  };
-  const docKeys = useRef(() => {});
-  docKeys.current = () => setDocOptions(true);
-  const newParameter = useRef(() => {});
-  newParameter.current = () => setParameterDialog({});
-  const calculate = useRef(() => {});
-  calculate.current = () => setCalculator({});
-  const fill = useRef(() => {});
-  fill.current = () => construct("interior");
-  const samples = useRef((step: number) => {
-    void step;
-  });
-  samples.current = stepSelection;
+  /** Open one of the dock's panels, or close it again. */
+  function openPanel(id: string) {
+    setSpotlight(null);
+    keepDock({
+      panels: panels.includes(id) ? panels.filter((open) => open !== id) : [...panels, id],
+    });
+  }
+
   /**
    * Copy: what is selected and everything it hangs off, since a segment cannot
    * be pasted without its ends. The clipboard belongs to the app rather than to
@@ -890,45 +852,6 @@ export function App() {
     }
     sketch.addObjects(asPasted(taken, held.step));
   }
-
-  const clipKeys = useRef({ copy: () => {}, cut: () => {}, paste: () => {} });
-  clipKeys.current = { copy: copySelection, cut: cutSelection, paste: pasteObjects };
-  const paletteKey = useRef(() => {});
-  paletteKey.current = () => keepDock({ showPalette: !showPalette });
-  const kinKeys = useRef((way: "parents" | "children") => {
-    void way;
-  });
-  kinKeys.current = selectKin;
-  const labels = useRef(() => {});
-  labels.current = toggleLabels;
-  const hide = useRef(() => {});
-  const removeKey = useRef(() => {});
-  hide.current = () => hideObjects(selection, true);
-  // Del on a picked label takes the label off and leaves what it names. With
-  // no label picked it deletes the selection, the way it always has.
-  removeKey.current = () => {
-    if (!labelsPicked) {
-      remove();
-      return;
-    }
-    styleLabel({ shown: false });
-    setLabelPick([]);
-  };
-  const showHidden = useRef(() => {});
-  showHidden.current = () =>
-    hideObjects(
-      objects.filter((object) => object.hidden === true).map((object) => object.id),
-      false,
-    );
-  const panelKey = useRef((id: string) => {
-    void id;
-  });
-  panelKey.current = (id: string) => {
-    setSpotlight(null);
-    keepDock({
-      panels: panels.includes(id) ? panels.filter((open) => open !== id) : [...panels, id],
-    });
-  };
 
   /**
    * Marking by clicking while a transform dialog is open, which is how the
@@ -1279,73 +1202,69 @@ export function App() {
     }
   }, [editing]);
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      // Anything being typed into is taking the keys: a page being renamed, a
-      // caption being written, a request or a script being pasted.
-      const target = event.target as HTMLElement | null;
-      const typing =
-        target?.tagName === "INPUT" ||
-        target?.tagName === "TEXTAREA" ||
-        target?.tagName === "SELECT" ||
-        target?.isContentEditable === true;
-      if (typing) return;
-      // An open dialog owns the keyboard, and handles Escape and Enter itself.
-      if (dialogOpen.current) return;
-      const modified = event.ctrlKey || event.metaKey;
-      const key = event.key.toLowerCase();
-      // A bare letter picks a tool. With a modifier down it belongs to a menu
-      // shortcut, and Alt is the zoom tool's modifier.
-      const picked = !modified && !event.altKey ? TOOL_KEYS.get(key) : undefined;
-      if (picked) setActiveTool(picked);
-      else if (modified && key === "n") doc.newSketch();
-      else if (modified && key === "o") void doc.open();
-      else if (modified && key === "s") void doc.save();
-      else if (modified && key === "w") doc.close();
-      else if (modified && key === "q") void doc.quit();
-      else if (modified && key === "a") selectAll();
-      else if (modified && key === "x") clipKeys.current.cut();
-      else if (modified && key === "c") clipKeys.current.copy();
-      else if (modified && key === "v") clipKeys.current.paste();
-      else if (modified && key === "k") labels.current();
-      else if (modified && event.shiftKey && key === "t") paletteKey.current();
-      else if (modified && event.shiftKey && key === "h") showHidden.current();
-      else if (modified && key === "h") hide.current();
-      // Alt and an arrow walks the family tree, up to the parents and down to
-      // the children.
-      else if (event.altKey && event.key === "ArrowUp") kinKeys.current("parents");
-      else if (event.altKey && event.key === "ArrowDown") kinKeys.current("children");
-      // Alt+/ opens the panel that names things, and closes it again.
-      else if (event.altKey && key === "/") panelKey.current("labels");
-      // Alt+= opens the Calculator, before plus and minus can take the key.
-      else if (event.altKey && key === "=") calculate.current();
-      else if (modified && key === "m") midpoint.current();
-      else if (modified && key === "l") segment.current();
-      else if (modified && event.shiftKey && key === "i") cross.current();
-      else if (modified && event.shiftKey && key === "p") newParameter.current();
-      else if (modified && key === "p") fill.current();
-      else if (modified && /^[1-9]$/.test(key)) customKeys.current(Number(key) - 1);
-      else if (modified && event.shiftKey && key === "d") docKeys.current();
-      else if (modified && key === "e") editDefinition.current();
-      else if (modified && key === "z") undo();
-      else if (modified && key === "r") redo();
-      else if (event.key === "Delete") removeKey.current();
-      // Escape puts the plain Arrow up, from any tool and from any arrow. What
-      // the tool was halfway through is dropped by the sheet's own handler, so
-      // one press both lets go of the gesture and hands the sheet back.
-      else if (event.key === "Escape") {
-        setActiveTool("arrow");
-        pickVariant("arrow", "all");
+  useKeys({
+    dialogOpen:
+      dialog !== null ||
+      calculator !== null ||
+      parameterDialog !== null ||
+      tableDialog !== null ||
+      customDialog !== null ||
+      buttonDialog !== null ||
+      scriptWay !== null ||
+      docOptions,
+    pickTool: setActiveTool,
+    newSketch: doc.newSketch,
+    openSketch: () => void doc.open(),
+    saveSketch: () => void doc.save(),
+    closeSketch: doc.close,
+    quit: () => void doc.quit(),
+    selectAll,
+    cut: cutSelection,
+    copy: copySelection,
+    paste: pasteObjects,
+    toggleLabels,
+    togglePalette: () => keepDock({ showPalette: !showPalette }),
+    showHidden: () =>
+      hideObjects(
+        objects.filter((object) => object.hidden === true).map((object) => object.id),
+        false,
+      ),
+    hide: () => hideObjects(selection, true),
+    selectKin,
+    labelPanel: () => openPanel("labels"),
+    calculate: () => setCalculator({}),
+    midpoint: () => construct("midpoint"),
+    segment: () => construct("segment"),
+    cross: () => construct("intersection"),
+    newParameter: () => setParameterDialog({}),
+    fill: () => construct("interior"),
+    applyCustom: (nth) => {
+      const found = customs[nth];
+      if (found) applyCustom(found.id);
+    },
+    documentOptions: () => setDocOptions(true),
+    editDefinition: () => {
+      const found = editable();
+      if (found) editValue(found);
+    },
+    undo,
+    redo,
+    // Del on a picked label takes the label off and leaves what it names. With
+    // no label picked it deletes the selection, the way it always has.
+    remove: () => {
+      if (!labelsPicked) {
+        remove();
+        return;
       }
-      // Plus and minus belong to whatever locus is selected.
-      else if (!modified && (key === "+" || key === "=")) samples.current(SAMPLE_STEP);
-      else if (!modified && key === "-") samples.current(-SAMPLE_STEP);
-      else return;
-      event.preventDefault();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo, selectAll, doc, pickVariant]);
+      styleLabel({ shown: false });
+      setLabelPick([]);
+    },
+    escape: () => {
+      setActiveTool("arrow");
+      pickVariant("arrow", "all");
+    },
+    step: stepSelection,
+  });
 
   return (
     <div className="app">
@@ -1412,10 +1331,10 @@ export function App() {
           else if (action === "select-parents") selectKin("parents");
           else if (action === "select-children") selectKin("children");
           else if (action === "show-labels") toggleLabels();
-          else if (action === "label-panel") panelKey.current("labels");
-          else if (action === "hidden-panel") panelKey.current("hidden");
+          else if (action === "label-panel") openPanel("labels");
+          else if (action === "hidden-panel") openPanel("hidden");
           else if (action === "palette") keepDock({ showPalette: !showPalette });
-          else if (action === "snap-panel") panelKey.current("snap");
+          else if (action === "snap-panel") openPanel("snap");
           else if (action === "export-file") setExportTo("file");
           else if (action === "export-clipboard") setExportTo("clipboard");
           else if (action === "hide-objects") hideObjects(selection, true);
@@ -1540,7 +1459,7 @@ export function App() {
         </div>
         <Dock
           open={panels}
-          onToggle={(id) => panelKey.current(id)}
+          onToggle={openPanel}
           width={dock.panelWidth}
           onWidth={(panelWidth) => keepDock({ panelWidth })}
           panes={{
