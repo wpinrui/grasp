@@ -1,6 +1,6 @@
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef } from "react";
 import type { Position, SketchTable, View } from "../sketch/model";
-import { DEFAULT_CAPTION } from "./typeset";
+import { drawnAs } from "../sketch/text";
 import "./TableBox.css";
 
 /** Pointer travel that turns a press on a table into a drag. */
@@ -111,9 +111,7 @@ export function TableBox({
       style={{
         left: `${(table.x - view.x) * scale}px`,
         top: `${(table.y - view.y) * scale}px`,
-        fontFamily: `"${table.font ?? DEFAULT_CAPTION.font}", serif`,
-        fontSize: `${table.size ?? DEFAULT_CAPTION.size}pt`,
-        color: `var(${table.colour ?? DEFAULT_CAPTION.colour})`,
+        ...drawnAs(table),
         pointerEvents: tool === "arrow" && !ghost ? "auto" : "none",
       }}
       onPointerDown={ghost ? undefined : startDrag}
