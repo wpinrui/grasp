@@ -34,6 +34,7 @@ import {
   type ArcGeometry,
   alongPath,
   type CaptionAlign,
+  centreOf,
   clipToRect,
   contentBounds,
   createAngleMark,
@@ -85,10 +86,13 @@ import {
   nearMark,
   objectAt,
   objectsTouching,
+  type PanFrom,
   type PathGeometry,
   type PointSize,
   type Position,
   PX_PER_CM,
+  pannedView,
+  panTravel,
   pathIn,
   pointOnPath,
   pointsOf,
@@ -133,6 +137,9 @@ import "./Canvas.css";
 
 /** Pointer travel on screen, in pixels, that turns a click into a drag. */
 const DRAG_THRESHOLD = 3;
+
+/** How many fingers on the sheet mean panning rather than drawing. */
+const PAN_FINGERS = 2;
 
 /** The room left between one angle mark at a corner and the next one out. */
 const ANGLE_ROOM = 9;
@@ -368,6 +375,11 @@ function clampScale(scale: number): number {
 
 interface CanvasProps {
   activeTool: string;
+  /**
+   * Filled in with what Escape does to the sheet, so a control outside the
+   * canvas can do the same. A phone has no Escape key to press.
+   */
+  cancelRef?: RefObject<() => void>;
   sketch: Sketch;
   pointSize: PointSize;
   /** Where the page is being looked at. It belongs to the page, not here. */
@@ -452,7 +464,7 @@ interface Grab {
   movingIds: string[];
   marquee: Rect | null;
   /** Set for a hand drag: the view and the pointer where the pan began. */
-  pan: { view: Position; clientX: number; clientY: number } | null;
+  pan: PanFrom | null;
   /** Set when the press took hold of a locus arrowhead. */
   handle: { handle: Handle; span: [number, number] } | null;
   /** Set when this press is what started the object being drawn. */
@@ -493,6 +505,7 @@ export function Canvas({
   zoomable,
   captionWanted,
   captionLook,
+  cancelRef,
 }: CanvasProps) {
   const sheet = useRef<HTMLDivElement>(null);
   const horizontal = useRef<HTMLDivElement>(null);
@@ -524,6 +537,49 @@ export function Canvas({
    * clears the selection when there is nothing half drawn.
    */
   const cancel = useRef(() => {});
+
+  /**
+   * Where each finger on the sheet is. One finger draws, exactly as a mouse
+   * does; two pan, which is the only way the sheet moves on a touch screen,
+   * there being no second button to drag with and no key to hold.
+   */
+  const fingers = useRef(new Map<number, Position>());
+
+  /** The point between the fingers, which is what a two-finger pan follows. */
+  function betweenFingers(): Position {
+    return centreOf([...fingers.current.values()]);
+  }
+
+  /**
+   * Let go of everything a press had begun, landing none of it. This is not
+   * the same as letting go at the end of a gesture: nothing is recorded, the
+   * half-drawn construction goes, and the sheet is left as it was before the
+   * finger came down.
+   */
+  function dropGesture() {
+    const dropped = grab.current;
+    grab.current = null;
+    setMarquee(null);
+    setBoxing(null);
+    setTravel(null);
+    sketch.cancelGesture();
+    setPending(null);
+    setTracing(null);
+    // The angle tools hold a corner between the press and the release. Left
+    // set, it stays drawn on the sheet and a later tap on nothing at all can
+    // land a mark on it.
+    setArming(null);
+    armFrom.current = null;
+    // A marquee selects as it sweeps, so one abandoned leaves nothing selected
+    // rather than whatever it had got as far as.
+    if (tool === "arrow" && dropped?.marquee) sketch.select([]);
+  }
+
+  /** Take the sheet as far as a pan has carried it, from wherever it began. */
+  function panTo(from: PanFrom, at: Position) {
+    if (panTravel(from, at) >= DRAG_THRESHOLD) panMoved.current = true;
+    onView({ ...viewNow.current, ...pannedView(from, at, scale) });
+  }
 
   /** What a plotting tool would land on, lit up while the pointer is over it. */
   const [snap, setSnap] = useState<Snap | null>(null);
@@ -1244,6 +1300,29 @@ export function Canvas({
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") {
+      fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (fingers.current.size >= PAN_FINGERS) {
+        // Whatever the first finger had begun is dropped rather than landed:
+        // the press that added the second finger changed what was being asked
+        // for, and half a construction is not what was wanted.
+        dropGesture();
+        const at = betweenFingers();
+        grab.current = {
+          origin: positionOf(event) ?? { x: 0, y: 0 },
+          pressed: Date.now(),
+          hitId: null,
+          moved: false,
+          moving: null,
+          movingIds: [],
+          marquee: null,
+          pan: { view, clientX: at.x, clientY: at.y },
+          handle: null,
+          started: false,
+        };
+        return;
+      }
+    }
     // The right button pans from anywhere, whatever tool is up and whether or
     // not a dialog is picking. A press that never moves is a right-click still,
     // and the context menu handler cancels on it.
@@ -2363,6 +2442,9 @@ export function Canvas({
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch" && fingers.current.has(event.pointerId)) {
+      fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
     // A marking tool lights the midpoint of a segment it would snap to.
     if (marking && !picking && !grab.current) {
       const over = positionOf(event);
@@ -2442,14 +2524,13 @@ export function Canvas({
     // The sheet follows the hand, so the view goes the other way. Measured off
     // the pointer, because the sheet is moving underneath it.
     if (state.pan) {
-      const moved = {
-        x: (event.clientX - state.pan.clientX) / scale,
-        y: (event.clientY - state.pan.clientY) / scale,
-      };
-      if (Math.abs(moved.x) * scale + Math.abs(moved.y) * scale >= DRAG_THRESHOLD) {
-        panMoved.current = true;
-      }
-      onView({ ...viewNow.current, x: state.pan.view.x - moved.x, y: state.pan.view.y - moved.y });
+      // Two fingers are followed by the point between them, so the sheet does
+      // not lurch when one of them moves more than the other.
+      const at =
+        fingers.current.size >= PAN_FINGERS
+          ? betweenFingers()
+          : { x: event.clientX, y: event.clientY };
+      panTo(state.pan, at);
       return;
     }
 
@@ -2534,6 +2615,17 @@ export function Canvas({
   }
 
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") {
+      fingers.current.delete(event.pointerId);
+      const held = grab.current;
+      // Still enough fingers to be panning, so the pan carries on from where
+      // the ones left on the glass are now rather than ending under them.
+      if (held?.pan && fingers.current.size >= PAN_FINGERS) {
+        const at = betweenFingers();
+        held.pan = { view: viewNow.current, clientX: at.x, clientY: at.y };
+        return;
+      }
+    }
     const state = grab.current;
     grab.current = null;
     setMarquee(null);
@@ -2781,6 +2873,9 @@ export function Canvas({
     setPending(null);
     setTracing(null);
   };
+  // The same again for whoever asked for the handle. The ref the key listener
+  // reads stays the one declared here, so that listener is bound once.
+  if (cancelRef) cancelRef.current = cancel.current;
 
   /** Right-click drops a half-drawn line, and never opens a menu on the sheet. */
   function handleContextMenu(event: MouseEvent<HTMLDivElement>) {
@@ -2820,7 +2915,8 @@ export function Canvas({
     if (hit && isLine(hit)) onMarkMirror(hit.id);
   }
 
-  function handlePointerCancel() {
+  function handlePointerCancel(event?: PointerEvent<HTMLDivElement>) {
+    if (event?.pointerType === "touch") fingers.current.delete(event.pointerId);
     const state = grab.current;
     grab.current = null;
     setMarquee(null);

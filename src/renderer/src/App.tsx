@@ -28,9 +28,11 @@ import {
 } from "./components/TableDataDialog";
 import { TitleBar } from "./components/TitleBar";
 import { Toolbox } from "./components/Toolbox";
+import { TouchBar } from "./components/TouchBar";
 import { TransformDialog } from "./components/TransformDialog";
 import { TOOLS } from "./components/tools";
 import { DEFAULT_ALIGN, DEFAULT_CAPTION } from "./components/typeset";
+import { usePhone, useVisibleViewport } from "./phone";
 import {
   type Armed,
   DEFAULT_PATTERN,
@@ -110,6 +112,7 @@ import {
   type SketchMeasurement,
   type SketchObject,
   type SketchTable,
+  setPickReach,
   settle,
   sharedPointSize,
   type TextLook,
@@ -231,6 +234,11 @@ function settingsFrom(prefs: Prefs): Partial<Held> {
 }
 
 export function App() {
+  const phone = usePhone();
+  useVisibleViewport();
+  // How much room a click is given is settled once, here, where what kind of
+  // screen this is is already known. The model does not ask the browser.
+  useEffect(() => setPickReach(phone), [phone]);
   const [activeTool, setActiveTool] = useState("arrow");
   /** How big the sheet is on screen, which is how far a new locus reaches. */
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -396,7 +404,10 @@ export function App() {
     lengthCm: dock.snapLengthCm,
     angle: dock.snapAngle,
     angleDegrees: dock.snapAngleDegrees,
-    moving: dock.snapMoving,
+    // A finger is nowhere near accurate enough for the steps to help while
+    // dragging something that is already drawn, and a phone has no Snap panel
+    // to turn it off with, so there it is off whatever a desk was left set to.
+    moving: phone ? false : dock.snapMoving,
   };
   /**
    * How a picture is drawn. The dialog remembers the last used options for the
@@ -533,6 +544,9 @@ export function App() {
     }
   }
 
+  /** What Escape does to the sheet, for the phone's Cancel key to do the same. */
+  const cancelSheet = useRef(() => {});
+
   function keepSnapping(part: Partial<Snapping>) {
     keepDock({
       ...(part.objects === undefined ? {} : { snapObjects: part.objects }),
@@ -587,7 +601,7 @@ export function App() {
   const [targets, setTargets] = useState<(string | null)[]>([]);
   const [depth, setDepth] = useState(DEFAULT_DEPTH);
   const sketch = useSketch();
-  const { undo, redo, remove, restyle, selectAll } = sketch;
+  const { undo, redo, canUndo, canRedo, remove, restyle, selectAll } = sketch;
   // Whether a point that lands says its name straight away, told to the sketch
   // rather than read there, since every way of making a point goes through it.
   sketch.labelNewPoints(labelNew);
@@ -2158,6 +2172,7 @@ export function App() {
       <div className="app__workspace">
         <Toolbox
           activeTool={activeTool}
+          onShare={phone ? () => void doc.share() : undefined}
           onSelectTool={setActiveTool}
           variants={variants}
           onPickVariant={pickVariant}
@@ -2174,6 +2189,7 @@ export function App() {
         >
           <Canvas
             activeTool={activeTool}
+            cancelRef={cancelSheet}
             zoomable={prefs.zoom === true}
             sketch={sketch}
             pointSize={pointSize}
@@ -2278,6 +2294,21 @@ export function App() {
           }}
         />
       </div>
+      {phone && (
+        <TouchBar
+          canUndo={canUndo}
+          onUndo={undo}
+          canRedo={canRedo}
+          onRedo={redo}
+          snapping={snapping.length || snapping.angle}
+          onSnapping={(on) => keepSnapping({ length: on, angle: on })}
+          onCancel={() => {
+            cancelSheet.current();
+            setActiveTool("arrow");
+            pickVariant("arrow", "all");
+          }}
+        />
+      )}
       <PageBar
         pages={sketch.pages}
         activeId={sketch.activeId}

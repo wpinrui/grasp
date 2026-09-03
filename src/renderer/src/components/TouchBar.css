@@ -1,0 +1,68 @@
+/*
+  The bar along the bottom of a phone. A row of keys, each an icon beside its
+  name, sharing the width evenly so every one is the same size to aim at.
+*/
+
+.touchbar {
+  height: var(--touchbar-height);
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-evenly;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
+.touchbar__key {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  line-height: 1;
+  /* The double tap to zoom a browser would otherwise wait for costs every press
+     a delay, and there is nothing here to zoom. */
+  touch-action: manipulation;
+}
+
+.touchbar__name {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Pressed. A finger covers the key it is on, so the mark it leaves has to be
+   wider than the fingertip to be seen at all, which is why the whole key fills
+   rather than anything inside it changing. */
+.touchbar__key:active:not(:disabled) {
+  background: var(--color-surface-hover-strong);
+}
+
+/* Held down, as Snap is until it is pressed again. */
+.touchbar__key--on {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.touchbar__key--on:active:not(:disabled) {
+  background: var(--color-accent);
+}
+
+/*
+  Nothing to do. Greyed rather than hidden, so the row keeps its shape and a key
+  stays where it was learnt to be.
+
+  Muted rather than the disabled grey the rest of the chrome uses: that grey is
+  meant for text with a control drawn around it, and here the colour is the only
+  thing saying the key is spent, so it has to be legible on its own.
+*/
+.touchbar__key:disabled {
+  color: var(--color-text-muted);
+}

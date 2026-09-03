@@ -3,13 +3,10 @@
  * the figure where it will land. It covers the window, since there is nothing
  * to do on the sheet while it is up.
  */
+/* Placed and shaded by `.scrim` in base.css; what is left is how far up it
+   sits over everything else. */
 .preview__scrim {
-  position: fixed;
-  inset: 0;
   z-index: 80;
-  display: grid;
-  place-items: center;
-  background: var(--color-scrim);
 }
 
 .preview {

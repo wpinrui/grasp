@@ -225,3 +225,56 @@ describe("opening a sketch from disk", () => {
     expect(result.current.dirty).toBe(false);
   });
 });
+
+describe("whether there is anything to undo", () => {
+  it("has nothing either way on a fresh sketch", () => {
+    const { result } = renderHook(() => useSketch());
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+  });
+
+  it("has something to undo once something has been drawn", () => {
+    const { result } = renderHook(() => useSketch());
+    act(() => result.current.commit({ objects: [point({ x: 0, y: 0 })], selection: [] }));
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+  });
+
+  it("swaps ends as the sketch is walked back and forward", () => {
+    const { result } = renderHook(() => useSketch());
+    act(() => result.current.commit({ objects: [point({ x: 0, y: 0 })], selection: [] }));
+
+    act(() => result.current.undo());
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(true);
+
+    act(() => result.current.redo());
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.canRedo).toBe(false);
+  });
+
+  it("has nothing to redo once something new is drawn over it", () => {
+    const { result } = renderHook(() => useSketch());
+    act(() => result.current.commit({ objects: [point({ x: 0, y: 0 })], selection: [] }));
+    act(() => result.current.undo());
+    expect(result.current.canRedo).toBe(true);
+
+    act(() => result.current.commit({ objects: [point({ x: 90, y: 0 })], selection: [] }));
+    expect(result.current.canRedo).toBe(false);
+  });
+
+  it("answers for the page that is up, not for the sketch", () => {
+    // Each page keeps its own history, so undo on a fresh page must not offer
+    // to put back something drawn on the one before it.
+    const { result } = renderHook(() => useSketch());
+    act(() => result.current.commit({ objects: [point({ x: 0, y: 0 })], selection: [] }));
+    const first = result.current.pages[0].id;
+    expect(result.current.canUndo).toBe(true);
+
+    act(() => result.current.addPage());
+    expect(result.current.canUndo).toBe(false);
+
+    act(() => result.current.selectPage(first));
+    expect(result.current.canUndo).toBe(true);
+  });
+});

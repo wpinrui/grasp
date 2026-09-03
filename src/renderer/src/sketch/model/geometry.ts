@@ -1,8 +1,13 @@
 import type { Quantity } from "../expression";
 import type { LineForm, SketchPoint } from "./figures";
 
-/** Slack around an object that a click still counts as a hit. */
+/**
+ * Slack around an object that a click still counts as a hit, for a pointer and
+ * for a finger. A fingertip covers several millimetres of glass and hides what
+ * is under it, so it is given a good deal more room.
+ */
 const PICK_SLACK = 5;
+const FINGER_SLACK = 13;
 
 /** Far enough that a ray or a line always leaves any rectangle we clip to. */
 export const FAR = 1e9;
@@ -25,9 +30,21 @@ export interface Rect {
   height: number;
 }
 
+/**
+ * How much room a click is given, which is a property of what is doing the
+ * aiming rather than of any one hit test. The app settles it once at startup;
+ * the model does not ask the browser anything.
+ */
+let reach = PICK_SLACK;
+
+/** Say which kind of screen is being aimed at. Called once, by the app. */
+export function setPickReach(coarse: boolean): void {
+  reach = coarse ? FINGER_SLACK : PICK_SLACK;
+}
+
 /** How far, in sheet pixels, a click still counts as on an object. */
 export function slackAt(scale: number): number {
-  return PICK_SLACK / scale;
+  return reach / scale;
 }
 
 /** Where a line runs, and how far along it it actually exists. */

@@ -1,4 +1,9 @@
-/** The window buttons and the marks a menu draws beside what it offers. */
+import { MAGNET_PATH, MAGNET_PRONGS, MarkSvg } from "./frame";
+
+/**
+ * The chrome icons: the window buttons, the marks a menu draws beside what it
+ * offers, the share button and the keys on the touch bar.
+ */
 
 export function MinimizeIcon() {
   return (
@@ -67,4 +72,31 @@ export function FlyoutMarker() {
       <path d="M5 0 L5 5 L0 5 Z" fill="currentColor" />
     </svg>
   );
+}
+
+/** Share: something leaving an open box. */
+export function ShareIcon() {
+  return (
+    <MarkSvg d="M10 2.8 V12 M6.6 6.2 L10 2.8 L13.4 6.2 M4.6 11 V16.2 A1 1 0 0 0 5.6 17.2 H14.4 A1 1 0 0 0 15.4 16.2 V11" />
+  );
+}
+
+/** The keys on the touch bar, drawn a little smaller than the tools. */
+const KEY = "17";
+
+export function UndoIcon() {
+  return <MarkSvg size={KEY} d="M7.5 5.5 L4 9 L7.5 12.5 M4 9 h7.5 a4 4 0 1 1 0 8 h-2.5" />;
+}
+
+export function RedoIcon() {
+  return <MarkSvg size={KEY} d="M12.5 5.5 L16 9 L12.5 12.5 M16 9 h-7.5 a4 4 0 1 0 0 8 h2.5" />;
+}
+
+/** The same magnet the Snap panel is marked with, which this key stands in for. */
+export function SnapKeyIcon() {
+  return <MarkSvg size={KEY} d={[MAGNET_PATH, ...MAGNET_PRONGS].join(" ")} />;
+}
+
+export function CancelIcon() {
+  return <MarkSvg size={KEY} d="M5.5 5.5 L14.5 14.5 M14.5 5.5 L5.5 14.5" />;
 }

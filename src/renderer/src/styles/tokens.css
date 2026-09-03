@@ -185,6 +185,29 @@
   --pagebar-height: 36px;
   --toolbox-width: 58px;
   --scrollbar-size: 14px;
+  /* The bar of keys along the bottom of a phone. */
+  --touchbar-height: 52px;
+  /*
+    The part of the window that is actually visible, which on a phone is what a
+    keyboard leaves of it. Overwritten as that changes; these are what holds
+    until the first measurement, and all there ever is anywhere else.
+  */
+  --seen-height: 100dvh;
+  --seen-top: 0px;
   --tool-size: 44px;
   --tool-gap: 6px;
+}
+
+/*
+  A touch screen. The keys on the rail and the height of the menu bar go up,
+  because a finger is not a pointer and these are what it aims at most; the gap
+  between the keys comes down to pay for some of it. The rail itself is the
+  width it always was. Everything downstream is written in these three.
+*/
+@media (pointer: coarse) {
+  :root {
+    --tool-size: 50px;
+    --tool-gap: 4px;
+    --menubar-height: 45px;
+  }
 }

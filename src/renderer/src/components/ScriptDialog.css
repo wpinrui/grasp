@@ -1,13 +1,9 @@
 /* The stepped way to a figure: the request, the prompt, the script. */
 
+/* Placed and shaded by `.scrim` in base.css; what is left is how far up it
+   sits over everything else. */
 .script__scrim {
-  position: fixed;
-  inset: 0;
   z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-scrim);
 }
 
 .script {
@@ -266,4 +262,38 @@
 .script__key:disabled {
   color: var(--color-text-disabled);
   cursor: default;
+}
+
+/*
+  A touch screen. What is left here is the panes inside the body, which are
+  drawn at a desktop's fixed heights and have to give on a phone.
+*/
+@media (pointer: coarse) {
+  /* The scrim and the panel are placed and sized by the rule in base.css. */
+  .script {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The body gives way, so the bar and the step buttons stay put. */
+  .script__body {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /*
+    The two panes drawn at a desktop's fixed heights are allowed to give. Only
+    these two: the textarea and the painted text behind it are laid across this
+    box and take their size from it, so they are left alone. A floor as well as
+    a ceiling, since a script box collapsed to one line is worse than a tall one.
+  */
+  .script__code {
+    height: auto;
+    min-height: 132px;
+    max-height: calc(var(--seen-height) * 0.34);
+  }
+
+  .script__prompt {
+    max-height: calc(var(--seen-height) * 0.34);
+  }
 }

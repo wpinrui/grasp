@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePhone } from "../phone";
 import { MenuCheckIcon, SubmenuArrowIcon } from "./icons";
 import {
   customItems,
@@ -9,6 +10,7 @@ import {
   type MenuItem,
   recentItems,
 } from "./menus";
+import { phoneMenus } from "./menus.phone";
 import "./MenuBar.css";
 
 interface MenuBarProps {
@@ -49,9 +51,10 @@ export function MenuBar({
   onAsk,
   onScript,
 }: MenuBarProps) {
+  const phone = usePhone();
   return (
     <div className="menubar">
-      {MENUS.map((menu) => (
+      {(phone ? phoneMenus() : MENUS).map((menu) => (
         <div className="menubar__anchor" key={menu.label}>
           <button
             type="button"
@@ -64,6 +67,9 @@ export function MenuBar({
           </button>
           {openMenu === menu.label && (
             <Flyout
+              // The menus a phone shows come cut. The reader's own transforms
+              // are added after that, so nothing they have named can be
+              // mistaken for an entry the cut list means.
               items={
                 menu.label === "Transform"
                   ? [...menu.items, ...customItems(transforms)]
@@ -85,17 +91,19 @@ export function MenuBar({
       <div className="menubar__spacer" />
       <button
         type="button"
-        className="menubar__tool"
+        className="menubar__tool menubar__tool--ai"
         title="Ask an AI for a figure"
         onClick={onAsk}
       >
         <SparkleIcon />
         AI
       </button>
-      <button type="button" className="menubar__tool" title="Run a script" onClick={onScript}>
-        <ScriptIcon />
-        Script
-      </button>
+      {!phone && (
+        <button type="button" className="menubar__tool" title="Run a script" onClick={onScript}>
+          <ScriptIcon />
+          Script
+        </button>
+      )}
     </div>
   );
 }

@@ -62,10 +62,15 @@
   cursor: default;
 }
 
-/* A tool's variants, opened on hover in place of its tooltip. */
+/*
+  A tool's variants, opened on hover in place of its tooltip.
+
+  Placed on the screen rather than inside the rail: the rail scrolls on a touch
+  screen, and a scrolling box clips what leaves it, which is exactly what these
+  do. Both are given their place by whoever opens them, from the button.
+*/
 .variants {
-  position: absolute;
-  left: 100%;
+  position: fixed;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -128,8 +133,7 @@
 }
 
 .tooltip {
-  position: absolute;
-  left: 54px;
+  position: fixed;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -161,4 +165,57 @@
   border-bottom-width: 2px;
   font-size: 11px;
   color: var(--color-text-secondary);
+}
+
+/*
+  Share, which is not one of the drawing tools and does not sit in their run.
+  It goes to the foot of the rail with the space between pushing it there.
+*/
+.tool--share {
+  margin-top: auto;
+  color: var(--color-text);
+}
+
+/*
+  A touch screen. The rail was never meant to run out of room, so on a short
+  screen the tools past the fold would simply be unreachable; it scrolls
+  instead, without drawing a bar for it. The variants open sideways into a width
+  no phone has, so they scroll the other way.
+*/
+@media (pointer: coarse) {
+  .toolbox {
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+  }
+
+  .toolbox::-webkit-scrollbar {
+    display: none;
+  }
+
+  .variants {
+    max-width: calc(100vw - var(--toolbox-width) - 16px);
+    overflow-x: auto;
+  }
+
+  /* Above the sheet, which the rail is drawn over here. */
+  .variants,
+  .tooltip {
+    z-index: 40;
+  }
+
+  /*
+    The rail scrolls here, and a finger held on a scrollable thing is a possible
+    scroll, so the browser takes the gesture and cancels the pointer before a
+    press has been held long enough to mean anything. Saying the rail only ever
+    pans up and down leaves a press that does not move to GRASP.
+
+    The callout and the selection go with it: a long press is the browser's own
+    gesture for both, and either one cancels the pointer the same way.
+  */
+  .tool {
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
 }

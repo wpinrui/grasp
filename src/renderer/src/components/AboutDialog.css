@@ -3,13 +3,10 @@
  * unlike the transform dialogs there is nothing to do on the sheet while it is
  * up, and because that is where an about box belongs.
  */
+/* Placed and shaded by `.scrim` in base.css; what is left is how far up it
+   sits over everything else. */
 .about__scrim {
-  position: fixed;
-  inset: 0;
   z-index: 80;
-  display: grid;
-  place-items: center;
-  background: var(--color-scrim);
 }
 
 .about {

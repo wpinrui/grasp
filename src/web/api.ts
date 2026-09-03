@@ -185,6 +185,29 @@ async function writeTo(path: string, text: string): Promise<void> {
   download(new Blob([text], { type: "application/json" }), `${name}.grasp`);
 }
 
+/**
+ * Hand the sketch to the device's own share sheet, answering whether it went.
+ *
+ * A browser that has no share sheet, or one that will not take a file with an
+ * extension it does not know, says so before anything is shown to the reader,
+ * and the caller falls back to saving. A reader who opens the sheet and backs
+ * out of it has still been served: that is a share that happened and was
+ * declined, not a share that could not be offered.
+ */
+async function shareSketch(text: string, suggested: string): Promise<boolean> {
+  const file = new File([text], `${suggested}.grasp`, { type: "application/json" });
+  if (!navigator.canShare?.({ files: [file] })) return false;
+  try {
+    await navigator.share({ files: [file], title: suggested });
+  } catch (error) {
+    // Backing out of the sheet is a share that was offered and declined, which
+    // is served. Anything else failed, and saying otherwise would leave the
+    // reader with neither a share nor the save that stands in for one.
+    return (error as { name?: string } | null)?.name === "AbortError";
+  }
+  return true;
+}
+
 async function saveSketchAs(text: string, suggested: string): Promise<SavedDocument | null> {
   if (hasPicker()) {
     let handle: FileSystemFileHandle;
@@ -314,6 +337,7 @@ const api = {
     },
     write: writeTo,
     saveAs: saveSketchAs,
+    share: shareSketch,
     confirmUnsaved: askUnsaved,
     reportError: sayError,
     quit: async (): Promise<void> => window.close(),
