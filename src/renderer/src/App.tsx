@@ -3,19 +3,18 @@ import { buttonActions } from "./app/buttons";
 import { customActions } from "./app/customs";
 import { Dialogs } from "./app/Dialogs";
 import { labelActions } from "./app/labels";
+import { Menus } from "./app/Menus";
 import { paletteState } from "./app/palette";
 import { useDialogs } from "./app/useDialogs";
 import { useKeys } from "./app/useKeys";
 import { prefsFrom, useSettings } from "./app/useSettings";
 import { useTransforms } from "./app/useTransforms";
 import { valueActions } from "./app/values";
-import type { ButtonForm } from "./components/ButtonDialog";
 import { Canvas } from "./components/Canvas";
 import { Dock } from "./components/Dock";
 import type { ExportTo } from "./components/ExportDialog";
 import { type HiddenKinds, HiddenPanel } from "./components/HiddenPanel";
 import { LabelPanel } from "./components/LabelPanel";
-import { MenuBar } from "./components/MenuBar";
 import type { MenuAction } from "./components/menus";
 import { PageBar } from "./components/PageBar";
 import { Palette } from "./components/Palette";
@@ -26,16 +25,7 @@ import { Toolbox } from "./components/Toolbox";
 import { TouchBar } from "./components/TouchBar";
 import { usePhone, useVisibleViewport } from "./phone";
 import type { Armed } from "./sketch/armed";
-import { type Building, canBuild } from "./sketch/builds";
-import { canDefine } from "./sketch/custom";
-import { canSeed } from "./sketch/iterate";
-import {
-  markableAngle,
-  markableDistances,
-  markableMirror,
-  markableRatio,
-  markableVector,
-} from "./sketch/markable";
+import type { Building } from "./sketch/builds";
 import { sheetOf } from "./sketch/measure";
 import {
   asPasted,
@@ -66,43 +56,9 @@ import { drawPicture } from "./sketch/picture";
 import { canvasTokens } from "./sketch/prefs";
 import { buildPrompt } from "./sketch/prompt";
 import { runScript } from "./sketch/script";
-import { transformable } from "./sketch/transforms";
 import { useDocument } from "./sketch/useDocument";
 import { useSketch } from "./sketch/useSketch";
 import "./App.css";
-
-/** The entries that build something, and so can be previewed and constructed. */
-const BUILDS = new Set<MenuAction>([
-  "segment",
-  "ray",
-  "line",
-  "parallel",
-  "perpendicular",
-  "bisector",
-  "intersection",
-  "midpoint",
-  "point-on-object",
-  "interior",
-  "circle-interior",
-  "arc-sector",
-  "arc-segment",
-  "arc-on-circle",
-  "arc-through",
-  "circle-centre-point",
-  "circle-centre-radius",
-  "locus",
-  "measure-length",
-  "measure-distance",
-  "measure-perimeter",
-  "measure-circumference",
-  "measure-angle",
-  "measure-area",
-  "measure-arc-angle",
-  "measure-arc-length",
-  "measure-radius",
-  "measure-ratio",
-  "measure-value",
-]);
 
 /** The clear sheet left round a figure a sketch was opened framed on. */
 const FRAME_MARGIN = 32;
@@ -497,58 +453,6 @@ export function App() {
     });
   }
 
-  /** Greyed when an entry has nothing to act on. */
-  function isEnabled(action: MenuAction): boolean {
-    // Nothing drawn is nothing to print, the same way nothing is to export.
-    if (action === "print" || action === "print-preview") {
-      return objects.some((object) => object.hidden !== true);
-    }
-    if (action === "cut" || action === "copy") return selection.length > 0;
-    if (action === "select-parents" || action === "select-children") return selection.length > 0;
-    if (action === "paste") return clipHeld !== null;
-    if (action === "export-file" || action === "export-clipboard") {
-      // Nothing drawn is nothing to export.
-      return objects.some((object) => object.hidden !== true);
-    }
-    if (action.startsWith("button-")) {
-      const form = action.slice("button-".length) as ButtonForm;
-      return form === "link" ? sketch.pages.length > 0 : buttons.buttonWants(form).length > 0;
-    }
-    if (action === "split-merge") return moves.splitMerge !== null;
-    if (action === "edit-definition") return numbers.editable() !== null;
-    if (action === "define-custom") return canDefine(objects, selection);
-    if (action === "edit-custom") return custom.customs.length > 0;
-    if (action.startsWith("apply-transform:")) return transformable(selection, objects);
-    if (action === "mark-mirror") return markableMirror(building) !== null;
-    if (action === "mark-vector") return markableVector(building) !== null;
-    if (action === "mark-angle") return markableAngle(building) !== null;
-    if (action === "mark-ratio") return markableRatio(building) !== null;
-    if (action === "mark-distance") return markableDistances(building).length > 0;
-    if (action === "derivative") return numbers.chosenFunction() !== undefined;
-    if (action === "tabulate") return numbers.chosenValues().length > 0;
-    if (action === "add-table-data" || action === "remove-table-data") {
-      return numbers.chosenTable() !== undefined;
-    }
-    if (action === "hide-objects") return selection.length > 0;
-    if (action === "show-all-hidden") return objects.some((object) => object.hidden === true);
-    if (action === "iterate") return canSeed(objects, selection);
-    // Everything the Construct and Measure menus draw or write is answered by
-    // whether there is anything to draw or write.
-    const built = canBuild(building, action);
-    if (built !== null) return built;
-    // Every transform asks for what it turns about, or mirrors across, once it
-    // is open, so all any of them needs is something it can act on.
-    if (
-      action === "translate" ||
-      action === "rotate" ||
-      action === "dilate" ||
-      action === "reflect"
-    ) {
-      return transformable(selection, objects);
-    }
-    return true;
-  }
-
   /** Deleting a page cannot be undone, so it is asked about first. */
   async function deletePage(id: string) {
     const page = sketch.pages.find((candidate) => candidate.id === id);
@@ -677,111 +581,38 @@ export function App() {
           or close, so GRASP draws none on the web. The document name and its
           star are in the tab title either way. */}
       {window.api.platform !== "web" && <TitleBar title={doc.title} />}
-      <MenuBar
+      <Menus
+        sketch={sketch}
+        doc={doc}
+        dialogs={dialogs}
+        numbers={numbers}
+        naming={naming}
+        buttons={buttons}
+        custom={custom}
+        settings={settings}
+        moves={moves}
+        building={building}
+        objects={objects}
+        selection={selection}
         openMenu={openMenu}
-        onOpenMenu={(menu) => {
-          setOpenMenu(menu);
-          if (menu) {
-            setRecent(window.api.file.recent());
-            setClipHeld(window.api.objects.peek());
-          } else setHovered(null);
-        }}
-        onHoverAction={setHovered}
+        setOpenMenu={setOpenMenu}
+        setHovered={setHovered}
         recent={recent}
-        isTicked={(action) =>
-          action === `point-size:${shared}` ||
-          (action === "label-panel" && settings.panels.includes("labels")) ||
-          (action === "hidden-panel" && settings.panels.includes("hidden")) ||
-          (action === "palette" && settings.showPalette) ||
-          (action === "snap-panel" && settings.panels.includes("snap"))
-        }
-        isEnabled={isEnabled}
-        transforms={custom.customs.map((one) => ({ id: one.id, name: one.name }))}
-        labels={moves.splitMerge ? { "split-merge": moves.splitMerge.label } : {}}
-        onAsk={() => {
-          dialogs.setScriptErrors([]);
-          dialogs.setScriptWay("ask");
-        }}
-        onScript={() => {
-          dialogs.setScriptErrors([]);
-          dialogs.setScriptWay("script");
-        }}
-        onAction={(action) => {
-          if (action === "new-sketch") doc.newSketch();
-          else if (action === "open") void doc.open();
-          else if (action === "about") dialogs.setAbout(true);
-          else if (action === "preferences") settings.setDrafted(settings.prefs);
-          else if (action === "page-setup") settings.setSetupOpen(true);
-          else if (action === "document-options") dialogs.setDocOptions(true);
-          else if (action === "print-preview") settings.setPreviewing(true);
-          else if (action === "print") void settings.printPage();
-          else if (action === "clear-recent") {
-            void window.api.file.clearRecent();
-            setRecent([]);
-          } else if (action.startsWith("open-recent:")) {
-            void doc.open(action.slice("open-recent:".length)).then(() => {
-              setRecent(window.api.file.recent());
-            });
-          } else if (action === "save") void doc.save();
-          else if (action === "save-as") void doc.saveAs();
-          else if (action === "close") doc.close();
-          else if (action === "quit") void doc.quit();
-          else if (action === "undo") undo();
-          else if (action === "redo") redo();
-          else if (action === "clear") remove();
-          else if (action === "cut") cutSelection();
-          else if (action === "copy") copySelection();
-          else if (action === "paste") pasteObjects();
-          else if (action === "select-all") selectAll();
-          else if (action === "select-parents") selectKin("parents");
-          else if (action === "select-children") selectKin("children");
-          else if (action === "show-labels") naming.toggleLabels();
-          else if (action === "label-panel") openPanel("labels");
-          else if (action === "hidden-panel") openPanel("hidden");
-          else if (action === "palette") settings.keepDock({ showPalette: !settings.showPalette });
-          else if (action === "snap-panel") openPanel("snap");
-          else if (action === "export-file") dialogs.setExportTo("file");
-          else if (action === "export-clipboard") dialogs.setExportTo("clipboard");
-          else if (action === "hide-objects") naming.hideObjects(selection, true);
-          else if (action === "show-all-hidden") {
-            naming.hideObjects(
-              objects.filter((object) => object.hidden === true).map((object) => object.id),
-              false,
-            );
-          } else if (action.startsWith("button-")) {
-            dialogs.setButtonDialog(action.slice("button-".length) as ButtonForm);
-          } else if (action === "split-merge") moves.runSplitMerge();
-          else if (action === "edit-definition") {
-            const found = numbers.editable();
-            if (found) numbers.editValue(found);
-          } else if (action === "define-custom") dialogs.setCustomDialog("define");
-          else if (action === "edit-custom") dialogs.setCustomDialog("edit");
-          else if (action.startsWith("apply-transform:")) {
-            custom.applyCustom(action.slice("apply-transform:".length));
-          } else if (action.startsWith("mark-")) moves.mark(action);
-          else if (action === "new-function") dialogs.setCalculator({ forFunction: true });
-          else if (action === "derivative") numbers.defineDerivative();
-          else if (action === "tabulate") numbers.tabulate();
-          else if (action === "add-table-data") dialogs.setTableDialog("add");
-          else if (action === "remove-table-data") dialogs.setTableDialog("remove");
-          else if (action === "new-parameter") dialogs.setParameterDialog({});
-          else if (action === "calculate") dialogs.setCalculator({});
-          else if (action === "iterate") moves.openIterate();
-          else if (BUILDS.has(action)) moves.construct(action);
-          else if (
-            action === "translate" ||
-            action === "rotate" ||
-            action === "dilate" ||
-            action === "reflect"
-          ) {
-            moves.openDialog(action);
-          } else {
-            // One move: the selection is resized and the birth size is reset.
-            const size = action.slice("point-size:".length) as PointSize;
-            setPointSize(size);
-            restyle(size);
-          }
-        }}
+        setRecent={setRecent}
+        clipHeld={clipHeld}
+        setClipHeld={setClipHeld}
+        shared={shared}
+        setPointSize={setPointSize}
+        undo={undo}
+        redo={redo}
+        remove={remove}
+        restyle={restyle}
+        selectAll={selectAll}
+        cut={cutSelection}
+        copy={copySelection}
+        paste={pasteObjects}
+        selectKin={selectKin}
+        openPanel={openPanel}
       />
       <div className="app__workspace">
         <Toolbox
