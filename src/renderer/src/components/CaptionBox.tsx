@@ -8,6 +8,7 @@ import {
 } from "react";
 import { withNames } from "../sketch/captions";
 import type { CaptionAlign, Position, SketchCaption, View } from "../sketch/model";
+import { drawnAs } from "../sketch/text";
 import { SLOT } from "./typeset";
 import "./CaptionBox.css";
 
@@ -324,9 +325,7 @@ export function CaptionBox({
         top: `${(caption.y - view.y) * scale}px`,
         width: `${caption.width}px`,
         textAlign: caption.align,
-        fontFamily: `"${caption.font}", serif`,
-        fontSize: `${caption.size}pt`,
-        color: `var(${caption.colour})`,
+        ...drawnAs(caption),
         pointerEvents: held ? "auto" : "none",
       }}
       onPointerDown={startDrag}

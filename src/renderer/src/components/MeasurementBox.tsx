@@ -9,7 +9,7 @@ import {
   type SketchParameter,
   type View,
 } from "../sketch/model";
-import { DEFAULT_CAPTION } from "./typeset";
+import { drawnAs } from "../sketch/text";
 import "./MeasurementBox.css";
 
 /** Pointer travel that turns a press on a measurement into a drag. */
@@ -189,9 +189,7 @@ export function MeasurementBox({
       style={{
         left: `${(measurement.x - view.x) * scale}px`,
         top: `${(measurement.y - view.y) * scale}px`,
-        fontFamily: `"${measurement.font ?? DEFAULT_CAPTION.font}", serif`,
-        fontSize: `${measurement.size ?? DEFAULT_CAPTION.size}pt`,
-        color: `var(${measurement.colour ?? DEFAULT_CAPTION.colour})`,
+        ...drawnAs(measurement),
         pointerEvents: held && !ghost ? "auto" : "none",
       }}
       onMouseEnter={ghost ? undefined : () => onHover?.(measurement.id)}

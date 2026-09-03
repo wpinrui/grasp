@@ -73,7 +73,6 @@ import {
   createFunction,
   createParameter,
   createTable,
-  DEFAULT_LABEL,
   DEFAULT_POINT_SIZE,
   isArc,
   isButton,
@@ -109,7 +108,6 @@ import {
   type SketchCaption,
   type SketchCircle,
   type SketchLine,
-  type SketchMeasurement,
   type SketchObject,
   type SketchTable,
   setPickReach,
@@ -120,12 +118,22 @@ import {
   withFamily,
 } from "./sketch/model";
 import { type PageSetup, PX_PER_CM, printableArea } from "./sketch/paper";
+import { togglePick } from "./sketch/picking";
 import { type Drawn, drawPicture, type PictureOptions, pictureSvg } from "./sketch/picture";
 import { canvasTokens, type Prefs } from "./sketch/prefs";
 import { buildPrompt } from "./sketch/prompt";
 import { splitMerged, splitMergeFor } from "./sketch/relink";
 import { rolesFor } from "./sketch/roles";
 import { runScript } from "./sketch/script";
+import {
+  inkAgreed,
+  isWritten,
+  lookOf,
+  lookOfLabel,
+  marksOfLabels,
+  type TextStyling,
+  textStyling,
+} from "./sketch/text";
 import {
   DEFAULT_VALUES,
   imagedBy,
@@ -257,24 +265,25 @@ export function App() {
     setVariants((armed) => ({ ...armed, [tool]: variant }));
   }, []);
   /**
+   * The labels picked on the sheet, held as the objects they name, since a
+   * label belongs to what it names rather than standing on its own. Picking one
+   * lets go of the selection, but the two are held apart rather than kept in
+   * step: selecting something afterwards leaves these held and simply wins, and
+   * they let go on a tool switch the way the rest of what a tool was doing does.
+   */
+  const [labelPick, setLabelPick] = useState<string[]>([]);
+  /**
    * What the palette has been set to for the tool that is up, which is how the
    * next thing that tool draws comes out. Switching tools puts it back on the
    * defaults, so a tool is always picked up on what GRASP says rather than on
    * what it was left on the last time it was held.
    */
-  /**
-   * The label picked on the sheet, held as the object it names, since a label
-   * belongs to what it names rather than standing on its own. It is picked
-   * alone, so nothing else is selected while it is, and it lets go on a tool
-   * switch the way the rest of what a tool was doing does.
-   */
-  const [labelPick, setLabelPick] = useState<string | null>(null);
   const [armed, setArmed] = useState<Armed>({});
   const toolWas = useRef(activeTool);
   if (toolWas.current !== activeTool) {
     toolWas.current = activeTool;
     setArmed({});
-    setLabelPick(null);
+    setLabelPick([]);
   }
   /** The size a new point is born at, which every Point Style pick resets. */
   const [pointSize, setPointSize] = useState<PointSize>(DEFAULT_POINT_SIZE);
@@ -702,50 +711,58 @@ export function App() {
     (selection.length === 1 ? (captions.find((one) => one.id === selection[0]) ?? null) : null);
 
   /**
-   * The label the palette is set on: the one picked on the sheet. A label that
-   * has since been hidden or whose object has gone is no longer there to set.
+   * The labels the palette is set on: the ones picked on the sheet. A label
+   * that has since been hidden or whose object has gone is no longer there to
+   * set. Anything selected wins, and so does a caption open to type into, since
+   * the bar is then set on what the caret is in.
    */
-  const labelled = labelPick ? objects.find((object) => object.id === labelPick) : undefined;
-  // Anything selected on the sheet wins: the label is picked on its own or not at all.
-  const chosenLabel = selection.length === 0 && labelled?.label?.shown ? labelled.label : null;
-
-  /** The measurements the palette is set on: whichever ones are picked. */
-  const chosenReadings = objects.filter(
-    (object): object is SketchMeasurement => isMeasurement(object) && selection.includes(object.id),
-  );
-
-  /**
-   * How whatever the palette is set on reads now: the caption's own setting, or
-   * the one the picked measurements share. Null when there is nothing to set.
-   */
-  const chosenLook: TextLook | null = chosenLabel
-    ? {
-        font: chosenLabel.font ?? DEFAULT_LABEL.font,
-        size: chosenLabel.size ?? DEFAULT_LABEL.size,
-        colour: chosenLabel.colour ?? prefs.colours.label,
-      }
-    : chosenCaption
-      ? { font: chosenCaption.font, size: chosenCaption.size, colour: chosenCaption.colour }
-      : chosenReadings.length > 0
-        ? {
-            font: chosenReadings[0].font ?? DEFAULT_CAPTION.font,
-            size: chosenReadings[0].size ?? DEFAULT_CAPTION.size,
-            colour: chosenReadings[0].colour ?? DEFAULT_CAPTION.colour,
-          }
-        : null;
+  const chosenLabels =
+    selection.length === 0 && editing === null
+      ? objects.filter((object) => labelPick.includes(object.id) && object.label?.shown === true)
+      : [];
+  const labelsPicked = chosenLabels.length > 0;
 
   /**
-   * What the palette's top row is set on: what the selection shares, and what
-   * of the three it can take at all. A stroked object takes a weight and a
-   * pattern, a mark takes a weight but has no pattern, and a fill or a point
-   * takes neither.
+   * Everything the palette would set: what is selected, and the caption being
+   * typed into, which takes the bar along with it.
    */
-  const agreed = <T,>(read: (object: SketchObject) => T | undefined): T | null => {
-    if (selected.length === 0) return null;
-    const first = read(selected[0]);
+  const written = editing ? objects.find((object) => object.id === editing) : undefined;
+  const picked = written && !selection.includes(written.id) ? [...selected, written] : selected;
+
+  /**
+   * The writing among it: everything picked that carries a face and a size,
+   * whatever kind of object it is. A reading, a parameter, a calculation, a
+   * function, a table and a button are all set the way a caption is, so the row
+   * reaches them all.
+   */
+  const writing = picked.filter(isWritten);
+
+  /**
+   * How whatever the palette is set on reads now, and what of it that writing
+   * agrees about. Null when there is nothing to set.
+   */
+  const chosenText: TextStyling | null = labelsPicked
+    ? textStyling(
+        chosenLabels.map((object) => lookOfLabel(object.label ?? {}, prefs.colours.label)),
+      )
+    : textStyling(writing.map(lookOf));
+
+  /** The three style keys over the picked labels, or null when none is picked. */
+  const labelMarks = labelsPicked
+    ? marksOfLabels(chosenLabels.map((object) => object.label ?? {}))
+    : null;
+
+  /** What a pick shares, or null where it does not share one, over any list. */
+  const agreed = <T,>(
+    over: SketchObject[],
+    read: (object: SketchObject) => T | undefined,
+  ): T | null => {
+    if (over.length === 0) return null;
+    const first = read(over[0]);
     if (first === undefined) return null;
-    return selected.every((object) => read(object) === first) ? first : null;
+    return over.every((object) => read(object) === first) ? first : null;
   };
+
   const stroked = selected.filter(
     (object) => isLine(object) || isCircle(object) || isArc(object) || isLocus(object),
   );
@@ -771,11 +788,16 @@ export function App() {
   const chosenWeighs = stroked.length > 0 || selected.some(isMark);
   const chosenPatterns = stroked.length > 0;
 
-  const styling: Styling = chosenLabel
+  /**
+   * What the palette's top row is set on: what the pick shares, and what of the
+   * three it can take at all. A stroked object takes a weight and a pattern, a
+   * mark takes a weight but has no pattern, and a fill or a point takes neither.
+   */
+  const styling: Styling = labelsPicked
     ? {
         // A label is written rather than stroked, so the ink is all of the top
         // row it can take.
-        colour: chosenLabel.colour ?? prefs.colours.label,
+        colour: chosenText?.colour ?? null,
         weight: null,
         pattern: null,
         canColour: true,
@@ -788,29 +810,33 @@ export function App() {
         // A point selected under the straightedge says nothing about weight,
         // but the segment about to be drawn does, so the row stays live and
         // arms the tool instead of greying out.
+        //
+        // The ink is judged over everything it would land on, writing included,
+        // so a red segment picked with a black caption lights neither.
         colour:
-          selected.length > 0
-            ? agreed((object) => object.colour)
+          picked.length > 0
+            ? inkAgreed(picked)
             : (armed.colour ?? (draws.length > 0 ? defaultColour(draws[0]) : null)),
         weight: chosenWeighs
-          ? agreed((object) => object.weight)
+          ? agreed(selected, (object) => object.weight)
           : (armed.weight ?? (takesWeight(draws) ? DEFAULT_WEIGHT : null)),
         pattern: chosenPatterns
-          ? agreed((object) => object.pattern)
+          ? agreed(selected, (object) => object.pattern)
           : (armed.pattern ?? (takesPattern(draws) ? DEFAULT_PATTERN : null)),
-        canColour: selected.length > 0 || draws.length > 0,
+        canColour: picked.length > 0 || draws.length > 0,
         canWeight: chosenWeighs || takesWeight(draws),
         canPattern: chosenPatterns || takesPattern(draws),
       };
 
-  /** How the picked label is set, as one undo step. */
+  /** How every picked label is set, as one undo step. */
   function styleLabel(change: Partial<LabelState>) {
-    if (!labelPick) return;
+    const setting = new Set(chosenLabels.map((object) => object.id));
+    if (setting.size === 0) return;
     const before = sketch.read();
     sketch.commit({
       ...before,
       objects: before.objects.map((object) =>
-        object.id === labelPick ? { ...object, label: { ...object.label, ...change } } : object,
+        setting.has(object.id) ? { ...object, label: { ...object.label, ...change } } : object,
       ),
     });
   }
@@ -820,12 +846,14 @@ export function App() {
    * ink the tool that writes has been armed with, or what a new one comes out
    * in where it has not been touched.
    */
-  const armedLook: TextLook | null = takesText(draws)
-    ? {
-        font: armed.font ?? prefs.text.font,
-        size: armed.size ?? prefs.text.size,
-        colour: armed.colour ?? DEFAULT_CAPTION.colour,
-      }
+  const armedWriting: TextStyling | null = takesText(draws)
+    ? textStyling([
+        {
+          font: armed.font ?? prefs.text.font,
+          size: armed.size ?? prefs.text.size,
+          colour: armed.colour ?? DEFAULT_CAPTION.colour,
+        },
+      ])
     : null;
 
   /**
@@ -861,7 +889,7 @@ export function App() {
   function styleSelection(change: { colour?: string; weight?: LineWidth; pattern?: LinePattern }) {
     // A picked label takes the ink and nothing else, and takes it on its own:
     // it is not what the tool is about to draw.
-    if (chosenLabel) {
+    if (labelsPicked) {
       if (change.colour !== undefined) styleLabel({ colour: change.colour });
       return;
     }
@@ -893,13 +921,14 @@ export function App() {
   }
 
   /**
-   * The palette changing how a caption is set, as one undo step. Face, size and
-   * ink go to the picked measurements too, since they are set the same way; the
-   * rest of the palette belongs to a caption, which is the only writing with
-   * runs to range and notation to type into.
+   * The palette changing how writing is set, as one undo step. Face, size and
+   * ink reach every selected object that carries them, whatever kind it is,
+   * since they are all set the same way; the rest of the palette belongs to a
+   * caption, which is the only writing with runs to range and notation to type
+   * into.
    */
-  function styleCaption(change: Partial<SketchCaption>) {
-    if (chosenLabel) {
+  function styleWriting(change: Partial<SketchCaption>) {
+    if (labelsPicked) {
       const { font, size, colour } = change;
       styleLabel({
         ...(font !== undefined ? { font } : {}),
@@ -918,12 +947,14 @@ export function App() {
       if (change.align !== undefined && takesMarks(draws)) arming.align = change.align;
       if (Object.keys(arming).length > 0) setArmed((was) => ({ ...was, ...arming }));
     }
-    const look: Partial<SketchMeasurement> = {};
+    const look: Partial<TextLook> = {};
     if (change.font !== undefined) look.font = change.font;
     if (change.size !== undefined) look.size = change.size;
     if (change.colour !== undefined) look.colour = change.colour;
-    const readings = Object.keys(look).length > 0 ? new Set(chosenReadings.map((r) => r.id)) : null;
-    if (!chosenCaption && !readings?.size) return;
+    // The face, the size and the ink go to every piece of writing that is
+    // picked; the rest of the change is a caption's alone.
+    const spread = Object.keys(look).length > 0 ? new Set(writing.map((one) => one.id)) : null;
+    if (!chosenCaption && !spread?.size) return;
     const before = sketch.read();
     sketch.commit({
       ...before,
@@ -931,7 +962,7 @@ export function App() {
         if (chosenCaption && object.id === chosenCaption.id && isCaption(object)) {
           return { ...object, ...change };
         }
-        if (readings?.has(object.id) && isMeasurement(object)) return { ...object, ...look };
+        if (spread?.has(object.id) && isWritten(object)) return { ...object, ...look };
         return object;
       }),
     });
@@ -1116,12 +1147,12 @@ export function App() {
   // Del on a picked label takes the label off and leaves what it names. With
   // no label picked it deletes the selection, the way it always has.
   removeKey.current = () => {
-    if (!chosenLabel) {
+    if (!labelsPicked) {
       remove();
       return;
     }
     styleLabel({ shown: false });
-    setLabelPick(null);
+    setLabelPick([]);
   };
   const showHidden = useRef(() => {});
   showHidden.current = () =>
@@ -2213,7 +2244,13 @@ export function App() {
             }}
             spotlight={panels.length === 0 ? null : spotlight}
             labelPick={labelPick}
-            onLabelPick={setLabelPick}
+            onLabelPick={(id, additive) => {
+              if (id === null) {
+                setLabelPick([]);
+                return;
+              }
+              setLabelPick((was) => togglePick(was, id, additive === true));
+            }}
             onViewport={setViewport}
             snapping={snapping}
             measureKind={variants.measure ?? "length"}
@@ -2230,21 +2267,13 @@ export function App() {
             <Palette
               editor={editor}
               caption={chosenCaption}
-              look={chosenLook ?? armedLook}
+              text={chosenText ?? armedWriting}
               editing={editing !== null}
-              labelMarks={
-                chosenLabel
-                  ? {
-                      bold: chosenLabel.bold ?? DEFAULT_LABEL.bold,
-                      italic: chosenLabel.italic ?? DEFAULT_LABEL.italic,
-                      underline: chosenLabel.underline ?? DEFAULT_LABEL.underline,
-                    }
-                  : null
-              }
+              labelMarks={labelMarks}
               onLabelMark={(mark, on) => styleLabel({ [mark]: on })}
               armedText={armedMarks}
               onArmText={(change) => setArmed((was) => ({ ...was, ...change }))}
-              onCaption={styleCaption}
+              onCaption={styleWriting}
               styling={styling}
               onStyle={styleSelection}
             />

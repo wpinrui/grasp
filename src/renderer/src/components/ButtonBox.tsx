@@ -1,6 +1,6 @@
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef } from "react";
 import type { Position, SketchButton, View } from "../sketch/model";
-import { DEFAULT_CAPTION } from "./typeset";
+import { drawnAs } from "../sketch/text";
 import "./ButtonBox.css";
 
 /** Pointer travel that turns a press on a button into a drag. */
@@ -105,9 +105,7 @@ export function ButtonBox({
       style={{
         left: `${(button.x - view.x) * scale}px`,
         top: `${(button.y - view.y) * scale}px`,
-        fontFamily: `"${button.font ?? DEFAULT_CAPTION.font}", serif`,
-        fontSize: `${button.size ?? DEFAULT_CAPTION.size}pt`,
-        color: `var(${button.colour ?? DEFAULT_CAPTION.colour})`,
+        ...drawnAs(button),
         pointerEvents: tool === "arrow" && !ghost ? "auto" : "none",
       }}
       onPointerDown={ghost ? undefined : startDrag}

@@ -1,13 +1,8 @@
 import { type MouseEvent, type RefObject, useEffect, useReducer } from "react";
 import { insertAtCaret } from "../sketch/captions";
-import type {
-  CaptionAlign,
-  LinePattern,
-  LineWidth,
-  SketchCaption,
-  TextLook,
-} from "../sketch/model";
+import type { CaptionAlign, LinePattern, LineWidth, SketchCaption } from "../sketch/model";
 import { LINE_PATTERNS, LINE_WIDTHS } from "../sketch/model";
+import { type LabelMarks, type TextStyling, textBoxes } from "../sketch/text";
 import { PATTERN_SAMPLE, Picker, Popout, Rule, WEIGHT_SAMPLE } from "./PalettePicker";
 import { caretLook, caretMarks, chosenRun, wrapRun } from "./paletteCaret";
 import { FONTS, INKS, NOTATION, SIZES, SYMBOLS } from "./typeset";
@@ -52,17 +47,19 @@ interface PaletteProps {
   /** The caption the palette is set on: the one open, or the one selected. */
   caption: SketchCaption | null;
   /**
-   * How the text of whatever is selected reads now. Null when there is no text
-   * in the selection, which greys the face and the size.
+   * How the writing the row is set on reads now, and what of it that writing
+   * agrees about. Null when nothing selected is written, which greys the face
+   * and the size.
    */
-  look: TextLook | null;
+  text: TextStyling | null;
   editing: boolean;
   /**
-   * How the picked label is set now, or null when no label is picked. A label
-   * has no runs and no caret, so the three style keys read and set the whole
-   * of it rather than following where the next keystroke would land.
+   * How the picked labels are set now, or null when none is picked. A label has
+   * no runs and no caret, so the three style keys read and set the whole of it
+   * rather than following where the next keystroke would land, and a key the
+   * picked labels do not agree on reads off.
    */
-  labelMarks: Record<"bold" | "italic" | "underline", boolean> | null;
+  labelMarks: LabelMarks | null;
   onLabelMark: (mark: "bold" | "italic" | "underline", on: boolean) => void;
   /**
    * How the tool that is up is armed to write, or null where it writes nothing
@@ -93,7 +90,7 @@ interface PaletteProps {
 export function Palette({
   editor,
   caption,
-  look,
+  text,
   editing,
   labelMarks,
   onLabelMark,
@@ -174,10 +171,11 @@ export function Palette({
   /** The ranging: the caption it is set on, or the one about to be written. */
   const ranged = caption ? caption.align : armedText?.align;
   const rangeOff = !caption && !armedText;
-  const font = here.font ?? look?.font ?? FONTS[0];
-  const size = here.size ?? look?.size ?? 14;
-  const inked = here.colour ?? look?.colour ?? styling.colour;
-  const colourOff = !styling.canColour && !look;
+  const boxes = textBoxes(here, text);
+  // One ink agreement, worked out over everything a pick would land on, so the
+  // bar never lights a colour the selection does not share.
+  const inked = here.colour ?? styling.colour;
+  const colourOff = !styling.canColour;
 
   return (
     <div className="palette">
@@ -250,21 +248,23 @@ export function Palette({
       <div className="palette__rule" />
 
       <div className="palette__row">
-        <span className={`palette__name${look ? " palette__name--on" : ""}`}>Text</span>
+        <span className={`palette__name${text ? " palette__name--on" : ""}`}>Text</span>
         <div className="palette__controls">
           <Picker
             label="Font"
-            value={font}
-            disabled={!look}
+            value={boxes.font}
+            disabled={!text}
             wide
-            face={font}
+            // A disagreement is not a face, so the box is left in the bar's own
+            // type rather than being set in a font that does not exist.
+            face={boxes.face ?? undefined}
             onPick={(next) => setFace({ fontFamily: `"${next}"` }, { font: next })}
             options={FONTS.map((one) => ({ value: one, label: one, face: one }))}
           />
           <Picker
             label="Size"
-            value={`${size}`}
-            disabled={!look}
+            value={boxes.size}
+            disabled={!text}
             onPick={(next) => setFace({ fontSize: `${next}pt` }, { size: Number(next) })}
             options={SIZES.map((one) => ({ value: `${one}`, label: `${one}` }))}
           />
