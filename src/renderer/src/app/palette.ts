@@ -72,7 +72,9 @@ interface TopRow {
   draws: string[];
   armed: Armed;
   prefs: Prefs;
-  /** How the picked labels read, or null where labels are not what is picked. */
+  /** Set when labels are what the bar is on, which is a row of its own. */
+  labelsPicked: boolean;
+  /** How those labels read, where they agree. */
   labelText: TextStyling | null;
 }
 
@@ -81,12 +83,20 @@ interface TopRow {
  * three it can take at all. A stroked object takes a weight and a pattern, a
  * mark takes a weight but has no pattern, and a fill or a point takes neither.
  */
-function stylingFor({ picked, selected, draws, armed, prefs, labelText }: TopRow): Styling {
-  if (labelText !== null) {
+function stylingFor({
+  picked,
+  selected,
+  draws,
+  armed,
+  prefs,
+  labelsPicked,
+  labelText,
+}: TopRow): Styling {
+  if (labelsPicked) {
     // A label is written rather than stroked, so the ink is all of the top row
     // it can take.
     return {
-      colour: labelText.colour ?? null,
+      colour: labelText?.colour ?? null,
       weight: null,
       pattern: null,
       canColour: true,
@@ -225,7 +235,8 @@ export function paletteState(context: PaletteContext) {
     draws,
     armed,
     prefs,
-    labelText: labelsPicked ? chosenText : null,
+    labelsPicked,
+    labelText: chosenText,
   });
 
   /** How every picked label is set, as one undo step. */
