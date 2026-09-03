@@ -11,7 +11,7 @@ import { Toolbox } from "./Toolbox";
 
 /** The straightedge has variants; the arrow does not. */
 const STRAIGHTEDGE = "Straightedge";
-const HOLD_MS = 450;
+const HOLD_MS = 350;
 
 function pointerIs(coarse: boolean) {
   vi.stubGlobal(

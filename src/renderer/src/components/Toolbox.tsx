@@ -10,8 +10,11 @@ const TOOLTIP_OFFSET = 3;
  * How long a tool is held before its variants come out, and how far a finger
  * may wander in that time and still be holding rather than starting a drag.
  * A press is what stands in for a hover, there being no hover to have.
+ *
+ * Short of the half second a phone waits before claiming a long press for
+ * itself, so the two are not racing for the same gesture.
  */
-const HOLD_MS = 450;
+const HOLD_MS = 350;
 const HOLD_SLOP = 8;
 
 interface ToolboxProps {
@@ -151,6 +154,8 @@ export function Toolbox({
             onPointerMove={phone ? keepHold : undefined}
             onPointerUp={phone ? dropHold : undefined}
             onPointerCancel={phone ? dropHold : undefined}
+            // The browser's own long press, which would take the gesture.
+            onContextMenu={phone ? (event) => event.preventDefault() : undefined}
             onMouseEnter={phone ? undefined : (event) => show(index, event.currentTarget)}
             onMouseLeave={phone ? undefined : () => setHovered(null)}
           >

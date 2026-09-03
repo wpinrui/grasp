@@ -193,4 +193,19 @@
     max-width: calc(100vw - var(--toolbox-width) - 16px);
     overflow-x: auto;
   }
+
+  /*
+    The rail scrolls here, and a finger held on a scrollable thing is a possible
+    scroll, so the browser takes the gesture and cancels the pointer before a
+    press has been held long enough to mean anything. Saying the rail only ever
+    pans up and down leaves a press that does not move to GRASP.
+
+    The callout and the selection go with it: a long press is the browser's own
+    gesture for both, and either one cancels the pointer the same way.
+  */
+  .tool {
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
 }
