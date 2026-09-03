@@ -12,8 +12,8 @@ let unstub: () => void;
 
 /**
  * A sheet with one line and one point on it, under a canvas holding a colour
- * of its own. The canvas is what carries a dark sheet's turned-over palette in
- * the app, which is why the picture reads the window rather than the sheet.
+ * of its own. The canvas is what carries the colours Preferences sets, so a
+ * picture that reads the window instead comes out in the stock palette.
  */
 function put() {
   document.body.innerHTML = [
@@ -79,10 +79,9 @@ describe("the colours a picture comes out in", () => {
     expect(styleOf({ ink: "colour" })).not.toContain("var(--color-export-ink-");
   });
 
-  // A dark sheet turns its palette over to read on black, and that turnover
-  // lands on the canvas. A picture is drawn on white paper, so it takes the
-  // window's palette and leaves the sheet's where it is.
-  it("takes its colours off the window, not off the sheet it sits in", () => {
-    expect(styleOf({ ink: "colour" })).toContain("--color-path: rgb(1, 2, 3);");
+  // As Coloured means the colours the sketch is drawn in, which sit on the
+  // canvas rather than on the window.
+  it("takes its colours off the sheet, not off the window around it", () => {
+    expect(styleOf({ ink: "colour" })).toContain("--color-path: rgb(9, 9, 9);");
   });
 });
