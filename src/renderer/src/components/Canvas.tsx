@@ -123,6 +123,7 @@ import {
   wedgeOf,
 } from "../sketch/model";
 import { demotedUnder } from "../sketch/overlaps";
+import { togglePick } from "../sketch/picking";
 import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
@@ -3182,9 +3183,16 @@ export function Canvas({
     const open = editing ? captions.find((one) => one.id === editing) : null;
     if (open && element) settleCaption(open.id, element.innerHTML);
     // A caption being written into is the one thing the palette is set on, so
-    // opening one lets go of everything else rather than setting the bar on a
-    // caption and a selection at once.
-    if (next) sketch.select([]);
+    // opening one lets go of the selection and of any picked label rather than
+    // setting the bar on two things at once. Putting one away hands it back to
+    // the selection, so the bar is still on it and its grip is still there; a
+    // press on bare sheet lets go of that in its own turn.
+    if (next) {
+      sketch.select([]);
+      onLabelPick(null);
+    } else if (open) {
+      sketch.select([open.id]);
+    }
     onEditing(next);
   }
 
@@ -4350,18 +4358,9 @@ export function Canvas({
             tool={picking || !takesWriting ? "none" : tool}
             editor={editor}
             onEdit={closeCaption}
-            onSelect={(id, additive) => {
-              const before = sketch.read();
-              if (!additive) {
-                sketch.select([id]);
-                return;
-              }
-              sketch.select(
-                before.selection.includes(id)
-                  ? before.selection.filter((held) => held !== id)
-                  : [...before.selection, id],
-              );
-            }}
+            onSelect={(id, additive) =>
+              sketch.select(togglePick(sketch.read().selection, id, additive))
+            }
             onGrab={grabWriting}
             onDrag={dragWriting}
             onDrop={dropWriting}
@@ -4389,18 +4388,9 @@ export function Canvas({
             tool={picking || !takesWriting ? "none" : tool}
             linking={editing !== null}
             onLink={insertLink}
-            onSelect={(id, additive) => {
-              const before = sketch.read();
-              if (!additive) {
-                sketch.select([id]);
-                return;
-              }
-              sketch.select(
-                before.selection.includes(id)
-                  ? before.selection.filter((held) => held !== id)
-                  : [...before.selection, id],
-              );
-            }}
+            onSelect={(id, additive) =>
+              sketch.select(togglePick(sketch.read().selection, id, additive))
+            }
             onGrab={grabWriting}
             onDrag={dragWriting}
             onDrop={dropWriting}
@@ -4445,18 +4435,9 @@ export function Canvas({
             scale={scale}
             selected={selection.includes(table.id)}
             tool={picking || !takesWriting ? "none" : tool}
-            onSelect={(id, additive) => {
-              const before = sketch.read();
-              if (!additive) {
-                sketch.select([id]);
-                return;
-              }
-              sketch.select(
-                before.selection.includes(id)
-                  ? before.selection.filter((held) => held !== id)
-                  : [...before.selection, id],
-              );
-            }}
+            onSelect={(id, additive) =>
+              sketch.select(togglePick(sketch.read().selection, id, additive))
+            }
             onGrab={grabWriting}
             onDrag={dragWriting}
             onDrop={dropWriting}
@@ -4475,14 +4456,9 @@ export function Canvas({
             selected={selection.includes(button.id)}
             tool={picking || !takesWriting ? "none" : tool}
             onPress={onPressButton}
-            onSelect={(id) => {
-              const before = sketch.read();
-              sketch.select(
-                before.selection.includes(id)
-                  ? before.selection.filter((held) => held !== id)
-                  : [...before.selection, id],
-              );
-            }}
+            // A button is pressed rather than dragged, so a plain click adds it
+            // to the selection instead of replacing it.
+            onSelect={(id) => sketch.select(togglePick(sketch.read().selection, id, true))}
             onGrab={grabWriting}
             onDrag={dragWriting}
             onDrop={dropWriting}

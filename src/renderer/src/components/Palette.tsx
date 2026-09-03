@@ -2,7 +2,7 @@ import { type MouseEvent, type RefObject, useEffect, useReducer } from "react";
 import { insertAtCaret } from "../sketch/captions";
 import type { CaptionAlign, LinePattern, LineWidth, SketchCaption } from "../sketch/model";
 import { LINE_PATTERNS, LINE_WIDTHS } from "../sketch/model";
-import type { TextStyling } from "../sketch/text";
+import { type TextStyling, textBoxes } from "../sketch/text";
 import { PATTERN_SAMPLE, Picker, Popout, Rule, WEIGHT_SAMPLE } from "./PalettePicker";
 import { caretLook, caretMarks, chosenRun, wrapRun } from "./paletteCaret";
 import { FONTS, INKS, NOTATION, SIZES, SYMBOLS } from "./typeset";
@@ -14,9 +14,6 @@ const WEIGHT_NAMES: Record<LineWidth, string> = {
   medium: "Medium",
   thick: "Thick",
 };
-
-/** What the Font box says when the writing it is set on does not agree on one. */
-const VARIOUS = "(various)";
 
 const PATTERN_NAMES: Record<LinePattern, string> = {
   solid: "Solid",
@@ -174,18 +171,11 @@ export function Palette({
   /** The ranging: the caption it is set on, or the one about to be written. */
   const ranged = caption ? caption.align : armedText?.align;
   const rangeOff = !caption && !armedText;
-  /**
-   * What the two boxes say. The caret wins while a caption is open, then what
-   * the writing agrees on. Where it agrees on neither, the face says so in
-   * words and the size says the smallest with a plus after it, so a 12 and a 16
-   * read 12+ rather than the bar picking one of them and stating it as fact.
-   */
-  const face = here.font ?? text?.font ?? null;
-  const point = here.size ?? text?.size ?? null;
-  const font = face ?? (text ? VARIOUS : FONTS[0]);
-  const size = point !== null ? `${point}` : text ? `${text.smallest}+` : "14";
-  const inked = here.colour ?? text?.colour ?? styling.colour;
-  const colourOff = !styling.canColour && !text;
+  const boxes = textBoxes(here, text);
+  // One ink agreement, worked out over everything a pick would land on, so the
+  // bar never lights a colour the selection does not share.
+  const inked = here.colour ?? styling.colour;
+  const colourOff = !styling.canColour;
 
   return (
     <div className="palette">
@@ -262,18 +252,18 @@ export function Palette({
         <div className="palette__controls">
           <Picker
             label="Font"
-            value={font}
+            value={boxes.font}
             disabled={!text}
             wide
             // A disagreement is not a face, so the box is left in the bar's own
             // type rather than being set in a font that does not exist.
-            face={face ?? undefined}
+            face={boxes.face ?? undefined}
             onPick={(next) => setFace({ fontFamily: `"${next}"` }, { font: next })}
             options={FONTS.map((one) => ({ value: one, label: one, face: one }))}
           />
           <Picker
             label="Size"
-            value={size}
+            value={boxes.size}
             disabled={!text}
             onPick={(next) => setFace({ fontSize: `${next}pt` }, { size: Number(next) })}
             options={SIZES.map((one) => ({ value: `${one}`, label: `${one}` }))}
