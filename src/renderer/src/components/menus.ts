@@ -184,6 +184,12 @@ export const PHONE_CUT = {
     // panel that is not on a phone.
     "hide-objects",
     "show-all-hidden",
+    // Each of these opens a dialog that wants a number typed and a marked
+    // reference picked before it will do anything.
+    "translate",
+    "rotate",
+    "dilate",
+    "reflect",
   ]),
   /** Submenus are cut by name, having no action of their own to cut them by. */
   labels: new Set<string>([
