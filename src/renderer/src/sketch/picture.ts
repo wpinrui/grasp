@@ -78,9 +78,14 @@ const BOXES = ".canvas__label, .caption, .reading";
 /** Everything that draws something, which is what the crop is measured off. */
 const DRAWN = `circle, ellipse, line, path, polygon, polyline, rect, text, ${BOXES}`;
 
-/** The tokens ink is held to, so a figure comes out in one colour. */
+/**
+ * The tokens ink is held to, so a figure comes out in one colour.
+ *
+ * A token tokens.css derives from another with var() has to be named here in
+ * its own right. Every token is resolved to a colour before this list is
+ * applied, so overriding the one it was derived from reaches it too late.
+ */
 const INK_TOKENS = [
-  "--color-object",
   "--color-object-edge",
   "--color-point",
   "--color-path",
@@ -160,15 +165,17 @@ function cropOf(sheet: HTMLElement, wanted: Set<string> | null, points: boolean)
 }
 
 /**
- * Every token, resolved off the sheet, so var() still means something. Off the
- * sheet rather than off the window, since the colours Preferences sets are put
- * on the canvas rather than on the root: read from the window, a picture comes
- * out in colours the sheet is not drawn in.
+ * Every token, resolved off the live window, so var() still means something.
+ *
+ * Off the window rather than off the sheet, since a dark sheet turns its whole
+ * palette over to read on black, and a picture is drawn on white paper however
+ * the sheet is set. Reading the sheet would put that turned-over palette on
+ * white and print a page of near-white ink.
  */
-function resolvedTokens(sheet: Element): string {
-  const on = getComputedStyle(sheet);
+function resolvedTokens(): string {
+  const root = getComputedStyle(document.documentElement);
   const names = new Set([...tokensCss.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((found) => found[1]));
-  return [...names].map((name) => `${name}: ${on.getPropertyValue(name).trim()};`).join("\n");
+  return [...names].map((name) => `${name}: ${root.getPropertyValue(name).trim()};`).join("\n");
 }
 
 /** What the dialog's four settings change about the way the picture is drawn. */
@@ -257,7 +264,7 @@ export function pictureSvg(options: PictureOptions, wanted: Set<string> | null):
   }
 
   const css = [
-    `svg { ${resolvedTokens(sheet)} font-family: var(--font-family); }`,
+    `svg { ${resolvedTokens()} font-family: var(--font-family); }`,
     ".export__paper { fill: var(--color-export-paper); }",
     canvasCss,
     captionCss,
