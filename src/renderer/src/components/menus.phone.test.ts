@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { MENUS, type Menu, type MenuEntry, phoneItems, phoneMenus } from "./menus";
+import { MENUS, type Menu, type MenuEntry } from "./menus";
+import { phoneItems, phoneMenus } from "./menus.phone";
 
 /** Every entry in a menu that is an entry rather than a rule between them. */
 function items(entries: MenuEntry[]) {

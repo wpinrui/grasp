@@ -8,9 +8,9 @@ import {
   type MenuAction,
   type MenuEntry,
   type MenuItem,
-  phoneMenus,
   recentItems,
 } from "./menus";
+import { phoneMenus } from "./menus.phone";
 import "./MenuBar.css";
 
 interface MenuBarProps {
