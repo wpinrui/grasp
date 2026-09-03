@@ -49,34 +49,44 @@ body.spike-mobile .dock__rail::-webkit-scrollbar {
   display: none;
 }
 
-/* The touch bar: the three gestures the sheet has no other way to reach on a
-   phone. Bottom right, above the page bar, out of the way of a right hand
-   drawing. */
+/* The touch bar: the gestures the sheet has no other way to reach on a phone.
+   Across the bottom edge rather than down the side, where a thumb is, and where
+   it costs the sheet a strip rather than a column. The zoom readout is top
+   right, which is the other reason this edge is the free one. */
 .spike-touchbar {
   position: fixed;
   right: 8px;
-  /* The page tabs are gone on a phone, so the bar sits on the bottom edge. The
-     zoom readout is top right, which is why this is the corner that is free. */
   bottom: 8px;
   z-index: 50;
-  display: grid;
-  grid-template-columns: repeat(2, 44px);
+  display: flex;
+  flex-direction: row;
   gap: 6px;
-  justify-items: end;
 }
 
 .spike-touchbar__key {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: 11px;
-  line-height: 1.1;
+  font-size: 18px;
+  line-height: 1;
   box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
   touch-action: manipulation;
+}
+
+/* The name under the icon. Small, because it is a reminder rather than the
+   thing being read: the icon is what is aimed at. */
+.spike-touchbar__name {
+  font-size: 9px;
+  letter-spacing: 0.2px;
 }
 
 .spike-touchbar__key--on {
@@ -85,43 +95,47 @@ body.spike-mobile .dock__rail::-webkit-scrollbar {
   color: var(--color-bg);
 }
 
-/* The right-hand rail and its pane are gone. They cost 46px of a 390px screen
-   and the pane opens over most of what is left, so on a phone the sheet never
-   gets the width back. What goes with them is the only way to reach the
-   Labels, Hidden and Snap panels from the sheet. */
-body.spike-mobile .dock__rail,
-body.spike-mobile .dock__pane {
-  display: none;
-}
-
-/* The palette bar under the sheet, and the page tabs under that. A phone is one
-   page: the tabs are hidden rather than the pages being taken away, so a sketch
-   made on a desktop still opens with all of its pages there and reachable from
-   a desktop afterwards. */
-body.spike-mobile .palette,
-body.spike-mobile .pagebar {
-  display: none;
-}
-
-/* The menu bar. Number, Window and Help go on a phone: the first is desk work,
-   the second only opens panels that are not on screen here, and the third is an
-   about box. Six titles are left.
+/* The menu bar. Measure, Number, Window and Help go on a phone: the last three
+   are desk work, panels that are not on screen here, and an about box. Five
+   titles are left.
 
    Hiding the titles is not the same as taking the actions away. Everything
    these three held is still reachable from a desktop, and a sketch made here
    still carries whatever they made. */
+body.spike-mobile .menubar__anchor:nth-child(6),
 body.spike-mobile .menubar__anchor:nth-child(7),
 body.spike-mobile .menubar__anchor:nth-child(8),
 body.spike-mobile .menubar__anchor:nth-child(9) {
   display: none;
 }
 
+/* Script is the twelfth child of the bar, after the nine titles, the spacer and
+   AI. Writing a script by hand is not phone work; asking for one is the whole
+   point of being here. */
+body.spike-mobile .menubar > *:nth-child(12) {
+  display: none;
+}
+
 /* Whatever is left of the titles, AI and Script keep their place. They were
    being pushed off the right edge by the titles overrunning, which is what put
-   the one feature worth having on a phone out of reach. The titles give up the
-   room instead, and scroll for it. */
+   the one feature worth having on a phone out of reach.
+
+   The titles scroll sideways instead and AI sticks to the right edge of that
+   scroll, so it is on screen at every scroll position. It carries the bar's own
+   background, since the titles pass underneath it. */
 body.spike-mobile .menubar {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+body.spike-mobile .menubar::-webkit-scrollbar {
+  display: none;
+}
+
+/* A title that shrank to fit would defeat the scrolling, so none of them do. */
+body.spike-mobile .menubar__anchor {
+  flex: none;
 }
 
 body.spike-mobile .menubar__spacer {
@@ -130,5 +144,8 @@ body.spike-mobile .menubar__spacer {
 }
 
 body.spike-mobile .menubar__tool {
+  position: sticky;
+  right: 0;
   flex: none;
+  background: var(--color-bg);
 }
