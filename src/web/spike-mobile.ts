@@ -42,14 +42,14 @@ export const SNAP_OFF = { objects: true, length: false, angle: false, moving: fa
 export const SNAP_ON = { objects: true, length: true, angle: true, moving: false };
 
 /**
- * The same off state again, in the shape the stored settings keep it in rather
- * than the shape the sheet reads. Seeded before the first frame, so a phone
- * opens on it whatever the desktop was left set to.
+ * The on state again, in the shape the stored settings keep it in rather than
+ * the shape the sheet reads. Seeded before the first frame, so a phone opens
+ * snapping whatever the desktop was left set to.
  */
-export const SNAP_OFF_SETTINGS = {
+export const SNAP_ON_SETTINGS = {
   snapObjects: true,
-  snapLength: false,
-  snapAngle: false,
+  snapLength: true,
+  snapAngle: true,
   snapMoving: false,
 };
 
@@ -90,7 +90,13 @@ function icon(path: string): SVGElement {
  * One key on the bar. `holds` is the difference between a key that stays down
  * until it is pressed again, which lights up, and one that fires and is done.
  */
-function button(label: string, path: string, onPress: (on: boolean) => void, holds: boolean) {
+function button(
+  label: string,
+  path: string,
+  onPress: (on: boolean) => void,
+  holds: boolean,
+  starts = false,
+) {
   const element = document.createElement("button");
   element.type = "button";
   element.className = "spike-touchbar__key";
@@ -100,7 +106,7 @@ function button(label: string, path: string, onPress: (on: boolean) => void, hol
   name.className = "spike-touchbar__name";
   name.textContent = label;
   element.append(icon(path), name);
-  let on = false;
+  let on = starts;
   element.addEventListener("click", () => {
     on = holds ? !on : false;
     if (holds) {
@@ -109,7 +115,10 @@ function button(label: string, path: string, onPress: (on: boolean) => void, hol
     }
     onPress(on);
   });
-  if (holds) element.setAttribute("aria-pressed", "false");
+  if (holds) {
+    element.classList.toggle("spike-touchbar__key--on", on);
+    element.setAttribute("aria-pressed", String(on));
+  }
   return element;
 }
 
@@ -129,6 +138,7 @@ function build(): HTMLElement {
       (on) => {
         window.dispatchEvent(new CustomEvent("spike:snap", { detail: on ? SNAP_ON : SNAP_OFF }));
       },
+      true,
       true,
     ),
     button("Esc", ICONS.escape, () => tap("Escape", "Escape"), false),
@@ -248,6 +258,78 @@ function installTwoFingerPan() {
 }
 
 /**
+ * A long press on a tool opens its variants.
+ *
+ * The toolbox opens them on hover, which a finger does not have. Rather than
+ * teach it a second way in, the press is turned into the hover it is already
+ * listening for: React works its enter and leave events out from `mouseover`
+ * and `mouseout`, so those are what go in. Tapping anywhere else puts the
+ * flyout away again, which is the leave.
+ */
+const HOLD_MS = 450;
+/** How far a finger can wander and still be holding still rather than dragging. */
+const HOLD_SLOP = 8;
+
+function hover(element: Element, over: boolean) {
+  element.dispatchEvent(
+    new MouseEvent(over ? "mouseover" : "mouseout", { bubbles: true, relatedTarget: null }),
+  );
+}
+
+function installLongPressFlyouts() {
+  let held: { tool: Element; x: number; y: number; timer: number } | null = null;
+  let open: Element | null = null;
+
+  function drop() {
+    if (held) window.clearTimeout(held.timer);
+    held = null;
+  }
+
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (event.pointerType !== "touch") return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      // A press anywhere that is not the flyout itself puts an open one away.
+      if (open && !target.closest(".variants")) {
+        hover(open, false);
+        open = null;
+      }
+
+      const tool = target.closest(".toolbox .tool");
+      if (!tool) return;
+      held = {
+        tool,
+        x: event.clientX,
+        y: event.clientY,
+        timer: window.setTimeout(() => {
+          hover(tool, true);
+          open = tool;
+          held = null;
+        }, HOLD_MS),
+      };
+    },
+    true,
+  );
+
+  document.addEventListener(
+    "pointermove",
+    (event) => {
+      if (!held) return;
+      const gone = Math.hypot(event.clientX - held.x, event.clientY - held.y);
+      if (gone > HOLD_SLOP) drop();
+    },
+    true,
+  );
+
+  for (const when of ["pointerup", "pointercancel"] as const) {
+    document.addEventListener(when, drop, true);
+  }
+}
+
+/**
  * A coarse pointer is the test rather than a width, because a narrow desktop
  * window is still a mouse and does not want any of this. `?spike=on` forces it
  * so the layout can be looked at on a desktop, and `?spike=off` takes it away
@@ -264,4 +346,5 @@ export function installMobileSpike() {
   document.body.classList.add("spike-mobile");
   document.body.append(build());
   installTwoFingerPan();
+  installLongPressFlyouts();
 }
