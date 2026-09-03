@@ -9,7 +9,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ASSET_DIR, unpackLanding } from "../../scripts/unpack-landing";
+import { ASSET_DIR, islandText, unpackLanding } from "../../scripts/unpack-landing";
 
 const BUNDLE = "grasp-landing.html";
 
@@ -26,20 +26,43 @@ const GZIP = [0x1f, 0x8b];
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
 
 /** Read once: the file cannot change under a run, and it is 7.5MB. */
+let source: string | null = null;
+function bundle(): string {
+  if (source === null) source = readFileSync(BUNDLE, "utf8");
+  return source;
+}
+
 let unpacked: ReturnType<typeof unpackLanding> | null = null;
 function page() {
-  if (!unpacked) unpacked = unpackLanding(readFileSync(BUNDLE, "utf8"));
+  if (!unpacked) unpacked = unpackLanding(bundle());
   return unpacked;
 }
 
 /** Where an asset of that name is asked for, which is what the page says. */
 function pathOf(name: string): string {
-  return `./${ASSET_DIR}/${name}`;
+  return `/${ASSET_DIR}/${name}`;
 }
 
 /** How many times a string occurs, since a reference may be made twice. */
 function occurrences(inside: string, part: string): number {
   return inside.split(part).length - 1;
+}
+
+/** The map the page's own script reads, as the published page sets it. */
+function resources(): Record<string, string> {
+  const opens = page().html.indexOf("window.__resources = ");
+  expect(opens).toBeGreaterThan(-1);
+  const from = opens + "window.__resources = ".length;
+  return JSON.parse(page().html.slice(from, page().html.indexOf(";", from)));
+}
+
+/** The same bundle with one island rewritten, to check what that shape does. */
+function bundleWith(name: string, json: string): string {
+  const was = islandText(bundle(), name);
+  return bundle().replace(
+    `<script type="__bundler/${name}">\n${was}`,
+    `<script type="__bundler/${name}">\n${json}`,
+  );
 }
 
 describe("the landing page as it is published", () => {
@@ -65,7 +88,17 @@ describe("the landing page as it is published", () => {
       (running, asset) => running + occurrences(page().html, pathOf(asset.name)),
       0,
     );
-    expect(occurrences(page().html, `./${ASSET_DIR}/`)).toBe(named);
+    expect(occurrences(page().html, `/${ASSET_DIR}/`)).toBe(named);
+  });
+
+  /**
+   * The host serves this page at every address it has nothing else for, so a
+   * document-relative name would be resolved against whichever of those the
+   * visitor arrived at: `/a/b` would send them looking under `/a/`.
+   */
+  it("asks for its assets from the site root, not from wherever it is served", () => {
+    expect(occurrences(page().html, `./${ASSET_DIR}/`)).toBe(0);
+    for (const asset of page().assets) expect(pathOf(asset.name).startsWith("/")).toBe(true);
   });
 
   /**
@@ -100,30 +133,82 @@ describe("the landing page as it is published", () => {
       .map((asset) => asset.name);
     expect(still).toEqual([]);
   });
+});
 
-  it("hands the page's own script the external files it looks up by address", () => {
-    const opens = page().html.indexOf("window.__resources = ");
-    expect(opens).toBeGreaterThan(-1);
-    const from = opens + "window.__resources = ".length;
-    const map = JSON.parse(page().html.slice(from, page().html.indexOf(";", from))) as Record<
-      string,
-      string
-    >;
-    expect(Object.keys(map).length).toBeGreaterThan(0);
-    const written = page().assets.map((asset) => pathOf(asset.name));
-    for (const path of Object.values(map)) expect(written).toContain(path);
+describe("the files the landing page looks up by address", () => {
+  /**
+   * The map is keyed by the address the file came from, which is the only
+   * thing the page's own script has to go on: keyed by anything else it finds
+   * nothing and goes back out to the network for a copy.
+   */
+  it("keys the map by the addresses the page names", () => {
+    const named = (JSON.parse(islandText(bundle(), "ext_resources")) as { id: string }[]).map(
+      (external) => external.id,
+    );
+    expect(named.length).toBeGreaterThan(0);
+    expect(Object.keys(resources())).toEqual(named);
   });
 
+  it("points every address at a file it wrote", () => {
+    const written = page().assets.map((asset) => pathOf(asset.name));
+    for (const path of Object.values(resources())) expect(written).toContain(path);
+  });
+
+  /**
+   * The page's own script reads the map as it runs, and it runs from the head,
+   * so the map has to be set above it rather than merely present.
+   */
+  it("sets the map before the script that reads it", () => {
+    expect(page().html.indexOf("window.__resources")).toBeLessThan(
+      page().html.indexOf(`<script src="/${ASSET_DIR}/`),
+    );
+  });
+
+  /**
+   * An address is arbitrary text, and one closing tag in it would end the
+   * script the map is written into, truncating the page from there down. The
+   * island holding the address has the same hazard and escapes it the same
+   * way, which is how the address gets in here to be tested at all.
+   */
+  it("carries an address that would otherwise close the script holding it", () => {
+    const uuid = /"uuid": ?"([0-9a-f-]+)"/.exec(islandText(bundle(), "ext_resources"))?.[1];
+    const nasty = JSON.stringify([{ id: "https://x/</script><b>", uuid }])
+      .split("</")
+      .join("<\\/");
+    const html = unpackLanding(bundleWith("ext_resources", nasty)).html;
+    const opens = html.indexOf("window.__resources = ");
+    const line = html.slice(opens, html.indexOf("\n", opens));
+    expect(line).toContain("<\\/script>");
+    expect(line).not.toContain("/x/</script>");
+  });
+});
+
+describe("the shapes the landing page cannot be published in", () => {
   /**
    * A framed page is mounted as a blob from inside the browser, which has no
    * standing meaning as a file on disk. Shipping one unpacked would leave the
    * frame blank, so the build is meant to stop instead.
    */
   it("stops rather than publish a framed page it cannot write out", () => {
-    const framed = readFileSync(BUNDLE, "utf8").replace(
-      '<script type="__bundler/page_order">\n[]',
-      '<script type="__bundler/page_order">\n["9a2fdc3c-02c6-4219-b69a-aa00e7e43872"]',
-    );
+    const framed = bundleWith("page_order", '["9a2fdc3c-02c6-4219-b69a-aa00e7e43872"]');
     expect(() => unpackLanding(framed)).toThrow(/framed pages/);
+  });
+
+  it("stops rather than name a file whose kind it has no suffix for", () => {
+    const packed = JSON.parse(islandText(bundle(), "manifest")) as Record<string, { mime: string }>;
+    const first = Object.keys(packed)[0] as string;
+    (packed[first] as { mime: string }).mime = "image/webp";
+    expect(() => unpackLanding(bundleWith("manifest", JSON.stringify(packed)))).toThrow(/webp/);
+  });
+
+  it("stops rather than publish an address it carries no file for", () => {
+    const nasty = JSON.stringify([
+      { id: "https://example.test/x.js", uuid: "not-in-the-manifest" },
+    ]);
+    expect(() => unpackLanding(bundleWith("ext_resources", nasty))).toThrow(/example\.test/);
+  });
+
+  it("stops rather than read an island that is not there", () => {
+    expect(() => unpackLanding("<html></html>")).toThrow(/page_order/);
   });
 });

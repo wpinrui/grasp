@@ -47,8 +47,8 @@ function landingPage(): Plugin {
         writeFileSync(resolve(WEB, ASSET_DIR, asset.name), asset.bytes);
       }
       // One favicon at the site root, which is where both pages point at it:
-      // the landing page is self-contained and cannot carry a hashed asset,
-      // and the app under /launch reaches the same file by an absolute path.
+      // each names it at the absolute path `/favicon.png`, the landing page in
+      // its own markup and the app from under /launch.
       copyFileSync(resolve("resources/favicon.png"), resolve(WEB, "favicon.png"));
     },
   };
