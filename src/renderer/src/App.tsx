@@ -1,6 +1,7 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { buttonActions } from "./app/buttons";
 import { customActions } from "./app/customs";
+import { Dialogs } from "./app/Dialogs";
 import { labelActions } from "./app/labels";
 import { paletteState } from "./app/palette";
 import { useDialogs } from "./app/useDialogs";
@@ -8,33 +9,21 @@ import { useKeys } from "./app/useKeys";
 import { prefsFrom, useSettings } from "./app/useSettings";
 import { useTransforms } from "./app/useTransforms";
 import { valueActions } from "./app/values";
-import { AboutDialog } from "./components/AboutDialog";
-import { ButtonDialog, type ButtonForm } from "./components/ButtonDialog";
-import { CalculatorDialog } from "./components/CalculatorDialog";
+import type { ButtonForm } from "./components/ButtonDialog";
 import { Canvas } from "./components/Canvas";
-import { DefineTransformDialog, EditTransformsDialog } from "./components/CustomTransformDialog";
 import { Dock } from "./components/Dock";
-import { DocumentOptionsDialog } from "./components/DocumentOptionsDialog";
-import { ExportDialog, type ExportTo } from "./components/ExportDialog";
+import type { ExportTo } from "./components/ExportDialog";
 import { type HiddenKinds, HiddenPanel } from "./components/HiddenPanel";
-import { IterateDialog } from "./components/IterateDialog";
-import { LabelClashDialog } from "./components/LabelClashDialog";
 import { LabelPanel } from "./components/LabelPanel";
 import { MenuBar } from "./components/MenuBar";
 import type { MenuAction } from "./components/menus";
 import { PageBar } from "./components/PageBar";
-import { PageSetupDialog } from "./components/PageSetupDialog";
 import { Palette } from "./components/Palette";
-import { ParameterDialog } from "./components/ParameterDialog";
-import { PreferencesDialog } from "./components/PreferencesDialog";
-import { PrintPreviewDialog } from "./components/PrintPreviewDialog";
-import { NEW_PAGE, ScriptDialog } from "./components/ScriptDialog";
+import { NEW_PAGE } from "./components/ScriptDialog";
 import { SnapPanel } from "./components/SnapPanel";
-import { AddTableDataDialog, RemoveTableDataDialog } from "./components/TableDataDialog";
 import { TitleBar } from "./components/TitleBar";
 import { Toolbox } from "./components/Toolbox";
 import { TouchBar } from "./components/TouchBar";
-import { TransformDialog } from "./components/TransformDialog";
 import { usePhone, useVisibleViewport } from "./phone";
 import type { Armed } from "./sketch/armed";
 import { type Building, canBuild } from "./sketch/builds";
@@ -681,8 +670,6 @@ export function App() {
     },
     step: stepSelection,
   });
-  // Read out of the bundle so what is open narrows inside the callbacks below.
-  const { clash, exportTo } = dialogs;
 
   return (
     <div className="app">
@@ -950,216 +937,22 @@ export function App() {
         tabs={settings.prefs.pageTabs !== false}
         objectCount={sketch.state.objects.length}
       />
-      {dialogs.calculator && (
-        <CalculatorDialog
-          start={numbers.calculationHeld(dialogs.calculator.editing)}
-          forFunction={dialogs.calculator.forFunction}
-          lead={
-            dialogs.calculator.editing
-              ? (names.get(dialogs.calculator.editing) ?? "f")
-              : numbers.nextFunctionName()
-          }
-          values={numbers.offeredValues()}
-          functions={numbers.offeredFunctions()}
-          named={numbers.namedInSketch}
-          sheet={readable}
-          names={names}
-          insert={dialogs.insert}
-          onInserted={() => dialogs.setInsert(null)}
-          onNewParameter={() => dialogs.setParameterDialog({ fromCalculator: true })}
-          quiet={dialogs.parameterDialog !== null}
-          onApply={numbers.landCalculation}
-          onCancel={() => dialogs.setCalculator(null)}
-        />
-      )}
-
-      {dialogs.parameterDialog && (
-        <ParameterDialog
-          start={numbers.parameterHeld(dialogs.parameterDialog.editing)}
-          angleUnit={settings.prefs.units.angle === "radians" ? "radians" : "degrees"}
-          distanceUnit={settings.prefs.units.distance}
-          onApply={numbers.landParameter}
-          onCancel={() => dialogs.setParameterDialog(null)}
-        />
-      )}
-
-      {dialogs.docOptions && (
-        <DocumentOptionsDialog
-          pages={sketch.pages}
-          activeId={sketch.activeId}
-          tabs={settings.prefs.pageTabs !== false}
-          onShow={sketch.selectPage}
-          onApply={(wanted, tabs) => {
-            dialogs.setDocOptions(false);
-            sketch.reshapePages(wanted);
-            if (tabs !== (settings.prefs.pageTabs !== false)) {
-              // The tabs are saved with the sketch, so the title bar has to say
-              // there is something to save.
-              settings.setPrefs({ ...settings.prefs, pageTabs: tabs });
-              sketch.touch();
-            }
-          }}
-          onCancel={() => dialogs.setDocOptions(false)}
-        />
-      )}
-
-      {dialogs.buttonDialog && (
-        <ButtonDialog
-          form={dialogs.buttonDialog}
-          count={buttons.buttonWants(dialogs.buttonDialog).length}
-          pages={sketch.pages}
-          onApply={buttons.landButton}
-          onCancel={() => dialogs.setButtonDialog(null)}
-        />
-      )}
-
-      {dialogs.customDialog === "define" && (
-        <DefineTransformDialog
-          onApply={custom.defineCustom}
-          onCancel={() => dialogs.setCustomDialog(null)}
-        />
-      )}
-
-      {dialogs.customDialog === "edit" && (
-        <EditTransformsDialog
-          transforms={custom.customs.map((one) => ({ id: one.id, name: one.name }))}
-          onRename={custom.renameCustom}
-          onDelete={custom.dropCustom}
-          onClose={() => dialogs.setCustomDialog(null)}
-        />
-      )}
-
-      {dialogs.tableDialog === "add" && (
-        <AddTableDataDialog
-          onApply={numbers.startAdding}
-          onCancel={() => dialogs.setTableDialog(null)}
-        />
-      )}
-
-      {dialogs.tableDialog === "remove" && (
-        <RemoveTableDataDialog
-          rows={numbers.chosenTable()?.rows.length ?? 0}
-          onApply={(all) => {
-            const table = numbers.chosenTable();
-            dialogs.setTableDialog(null);
-            if (table) numbers.dropRows(table.id, all);
-          }}
-          onCancel={() => dialogs.setTableDialog(null)}
-        />
-      )}
-
-      {dialogs.scriptWay && (
-        <ScriptDialog
-          way={dialogs.scriptWay}
-          request={dialogs.request}
-          onRequest={dialogs.setRequest}
-          script={dialogs.script}
-          onScript={dialogs.setScript}
-          target={dialogs.scriptTarget}
-          onTarget={dialogs.setScriptTarget}
-          pages={sketch.pages}
-          buildPrompt={promptForRequest}
-          onCopied={() => dialogs.setRequest("")}
-          onRun={() => void runTheScript()}
-          errors={dialogs.scriptErrors}
-          running={dialogs.scriptRunning}
-          onClose={() => dialogs.setScriptWay(null)}
-        />
-      )}
-
-      {clash && (
-        <LabelClashDialog
-          name={clash.name}
-          holder={clash.holder}
-          onFree={() => {
-            const holder = objects.find(
-              (object) => namesFor(objects).get(object.id) === clash.name,
-            );
-            naming.pinName(clash.id, clash.name, { freed: holder?.id });
-            dialogs.setClash(null);
-          }}
-          onBoth={() => {
-            const holder = objects.find(
-              (object) => namesFor(objects).get(object.id) === clash.name,
-            );
-            naming.pinName(clash.id, clash.name, { kept: holder?.id });
-            dialogs.setClash(null);
-          }}
-          onCancel={() => dialogs.setClash(null)}
-        />
-      )}
-      {dialogs.about && <AboutDialog onClose={() => dialogs.setAbout(false)} />}
-      {settings.drafted && (
-        <PreferencesDialog
-          prefs={settings.drafted}
-          onChange={settings.setDrafted}
-          toSketch={settings.scope.toSketch}
-          toNew={settings.scope.toNew}
-          onScope={(part) => settings.setScope((was) => ({ ...was, ...part }))}
-          onApply={settings.applyPrefs}
-          onCancel={() => settings.setDrafted(null)}
-        />
-      )}
-      {settings.setupOpen && (
-        <PageSetupDialog
-          setup={settings.pageSetup}
-          onChange={settings.keepPage}
-          onApply={() => settings.setSetupOpen(false)}
-          onCancel={() => settings.setSetupOpen(false)}
-          onPreview={() => {
-            settings.setSetupOpen(false);
-            settings.setPreviewing(true);
-          }}
-        />
-      )}
-      {settings.previewing && (
-        <PrintPreviewDialog
-          setup={settings.pageSetup}
-          picture={settings.pagePicture()}
-          onPrint={() => void settings.printPage()}
-          onSetup={() => {
-            settings.setPreviewing(false);
-            settings.setSetupOpen(true);
-          }}
-          onClose={() => settings.setPreviewing(false)}
-        />
-      )}
-      {exportTo && (
-        <ExportDialog
-          to={exportTo}
-          options={settings.picture}
-          onChange={settings.keepPicture}
-          onApply={() => void exportPicture(exportTo)}
-          onCancel={() => dialogs.setExportTo(null)}
-        />
-      )}
-      {moves.dialog === "iterate" && (
-        <IterateDialog
-          targets={moves.targets}
-          active={moves.nextSeed}
-          depth={moves.depth}
-          onDepth={moves.setDepth}
-          canApply={moves.orbit.length > 0}
-          onApply={moves.applyIterate}
-          onCancel={() => moves.setDialog(null)}
-        />
-      )}
-      {moves.transform && (
-        <TransformDialog
-          kind={moves.transform}
-          values={moves.values}
-          onChange={moves.setValues}
-          marked={{
-            angle: moves.follows.angle !== null,
-            ratio: moves.follows.ratio !== null,
-            distances: moves.follows.distances.length,
-          }}
-          canApply={moves.maker !== null}
-          centred={moves.transform === "reflect" ? moves.mirror !== null : moves.centre !== null}
-          onApply={moves.applyDialog}
-          onCancel={() => moves.setDialog(null)}
-        />
-      )}
+      <Dialogs
+        dialogs={dialogs}
+        numbers={numbers}
+        naming={naming}
+        buttons={buttons}
+        custom={custom}
+        settings={settings}
+        moves={moves}
+        sketch={sketch}
+        objects={objects}
+        names={names}
+        readable={readable}
+        buildPrompt={promptForRequest}
+        onRunScript={() => void runTheScript()}
+        onExport={(to) => void exportPicture(to)}
+      />
       {openMenu && (
         // biome-ignore lint/a11y/noStaticElementInteractions: dismiss layer, the menu items stay reachable
         // biome-ignore lint/a11y/useKeyWithClickEvents: Escape is handled by the menu button itself
