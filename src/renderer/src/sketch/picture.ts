@@ -168,13 +168,14 @@ function cropOf(sheet: HTMLElement, wanted: Set<string> | null, points: boolean)
  * Every token, resolved off the sheet, so var() still means something.
  *
  * Off the sheet rather than off the window, since the colours Preferences sets
- * are put on the canvas. As Coloured means the colours the sketch is drawn in,
- * and the sheet is where those are.
+ * are put on the canvas, which the sheet sits inside and inherits from. As
+ * Coloured means the colours the sketch is drawn in, and the sheet is the one
+ * element every one of them has reached.
  */
 function resolvedTokens(sheet: Element): string {
-  const root = getComputedStyle(sheet);
+  const onSheet = getComputedStyle(sheet);
   const names = new Set([...tokensCss.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((found) => found[1]));
-  return [...names].map((name) => `${name}: ${root.getPropertyValue(name).trim()};`).join("\n");
+  return [...names].map((name) => `${name}: ${onSheet.getPropertyValue(name).trim()};`).join("\n");
 }
 
 /** What the dialog's four settings change about the way the picture is drawn. */
