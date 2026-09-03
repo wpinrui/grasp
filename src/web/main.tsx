@@ -8,9 +8,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "../renderer/src/App";
 import "../renderer/src/styles/base.css";
-import { installWebApi } from "./api";
 // SPIKE, not for merge: see spike-mobile.ts.
-import { installMobileSpike, onAPhone, SNAP_ON_SETTINGS } from "./spike-mobile";
+import { PICK_REACH } from "../renderer/src/sketch/model/geometry";
+import { installWebApi } from "./api";
+import { installMobileSpike, onAPhone, REACH_FACTOR, SNAP_ON_SETTINGS } from "./spike-mobile";
 import "./spike-mobile.css";
 import "./web.css";
 
@@ -75,7 +76,10 @@ if (asked.has("locked")) {
 // SPIKE, not for merge: the sheet reads its snapping on its first frame, so the
 // state the phone starts in, which is snapping on, has to be in place before
 // the app is rendered.
-if (onAPhone()) window.api.settings.write(SNAP_ON_SETTINGS);
+if (onAPhone()) {
+  window.api.settings.write(SNAP_ON_SETTINGS);
+  PICK_REACH.factor = REACH_FACTOR;
+}
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element #root not found");

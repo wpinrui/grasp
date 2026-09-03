@@ -46,6 +46,14 @@ export const SNAP_ON = { objects: true, length: true, angle: true, moving: false
  * the shape the sheet reads. Seeded before the first frame, so a phone opens
  * snapping whatever the desktop was left set to.
  */
+/**
+ * How much wider a finger's aim is than a pointer's. Five sheet pixels of slack
+ * is what a mouse needs; a fingertip covers several millimetres of glass and
+ * cannot see what is under it, so everything it lands on has to be found from
+ * further away.
+ */
+export const REACH_FACTOR = 2.5;
+
 export const SNAP_ON_SETTINGS = {
   snapObjects: true,
   snapLength: true,

@@ -25,9 +25,17 @@ export interface Rect {
   height: number;
 }
 
+/**
+ * SPIKE, not for merge. What the slack is multiplied by, which is 1 everywhere
+ * but a phone. Five sheet pixels is a mouse's worth of aim and nothing like a
+ * finger's, so a touch build widens it rather than asking for precision the
+ * input cannot give.
+ */
+export const PICK_REACH = { factor: 1 };
+
 /** How far, in sheet pixels, a click still counts as on an object. */
 export function slackAt(scale: number): number {
-  return PICK_SLACK / scale;
+  return (PICK_SLACK * PICK_REACH.factor) / scale;
 }
 
 /** Where a line runs, and how far along it it actually exists. */
