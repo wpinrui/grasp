@@ -111,6 +111,7 @@ ${apiText()}
 
 - Name the points a proof talks about, with \`label\`, and leave the rest unnamed.
 - Build what is constructed rather than working out where it lands: use \`intersect\`, \`midpoint\`, \`perpendicular\` and the rest, so the figure holds together when anything is dragged.
+- A point or line that is only there to build something else, the foot of a perpendicular or the third point an arc was drawn through, wants \`hide\` once it has done its work. The figure still holds together and nothing stray is left drawn.
 - A right angle wants an \`angleMark\`; equal sides want \`tick\` with the same number of strokes.
 - Say what the figure shows in a \`caption\` clear of the drawing.
 - Keep it to what was asked for.

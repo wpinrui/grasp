@@ -41,8 +41,10 @@ const CALLS = [
   "caption",
   "measure",
   "label",
-  "show",
+  "showLabel",
+  "hideLabel",
   "hide",
+  "show",
   "style",
   "size",
   "all",
@@ -115,5 +117,54 @@ describe("running a script", () => {
     expect(second.ok).toBe(true);
     if (!second.ok) return;
     expect(second.objects.filter(isPoint)).toHaveLength(2);
+  });
+});
+
+/**
+ * The two halves the words used to be muddled between: what is drawn at all,
+ * and whether the name beside it is drawn.
+ */
+describe("taking something out of view", () => {
+  function ran(script: string) {
+    const result = evaluate(script, { objects: [], sheet: SHEET });
+    expect(result.ok).toBe(true);
+    return result.ok ? result.objects : [];
+  }
+
+  it("hides the object itself, not its name", () => {
+    const [made] = ran('const a = point(0, 0); label(a, "A"); hide(a);');
+    expect(made.hidden).toBe(true);
+    expect(made.label?.shown).toBe(true);
+  });
+
+  it("brings a hidden object back", () => {
+    const [made] = ran("const a = point(0, 0); hide(a); show(a);");
+    expect(made.hidden).toBe(false);
+  });
+
+  it("leaves what was built on a hidden object where it is", () => {
+    const objects = ran(
+      "const a = point(0, 0); const b = point(100, 0); const m = midpoint(a, b); hide(m); segment(a, m);",
+    );
+    expect(objects.filter(isPoint)).toHaveLength(3);
+    expect(objects.filter(isLine)).toHaveLength(1);
+  });
+
+  it("takes a name off without taking the object off", () => {
+    const [made] = ran('const a = point(0, 0); label(a, "A"); hideLabel(a);');
+    expect(made.label?.shown).toBe(false);
+    expect(made.hidden).toBeUndefined();
+  });
+
+  it("puts a name back", () => {
+    const [made] = ran('const a = point(0, 0); label(a, "A"); hideLabel(a); showLabel(a);');
+    expect(made.label?.shown).toBe(true);
+  });
+
+  it("says so when there is nothing by that name to hide", () => {
+    const result = evaluate('hide("nothing");', { objects: [], sheet: SHEET });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors).toEqual(['There is nothing here called "nothing".']);
   });
 });
