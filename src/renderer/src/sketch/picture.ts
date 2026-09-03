@@ -165,15 +165,14 @@ function cropOf(sheet: HTMLElement, wanted: Set<string> | null, points: boolean)
 }
 
 /**
- * Every token, resolved off the live window, so var() still means something.
+ * Every token, resolved off the sheet, so var() still means something.
  *
- * Off the window rather than off the sheet, since a dark sheet turns its whole
- * palette over to read on black, and a picture is drawn on white paper however
- * the sheet is set. Reading the sheet would put that turned-over palette on
- * white and print a page of near-white ink.
+ * Off the sheet rather than off the window, since the colours Preferences sets
+ * are put on the canvas. As Coloured means the colours the sketch is drawn in,
+ * and the sheet is where those are.
  */
-function resolvedTokens(): string {
-  const root = getComputedStyle(document.documentElement);
+function resolvedTokens(sheet: Element): string {
+  const root = getComputedStyle(sheet);
   const names = new Set([...tokensCss.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((found) => found[1]));
   return [...names].map((name) => `${name}: ${root.getPropertyValue(name).trim()};`).join("\n");
 }
@@ -264,7 +263,7 @@ export function pictureSvg(options: PictureOptions, wanted: Set<string> | null):
   }
 
   const css = [
-    `svg { ${resolvedTokens()} font-family: var(--font-family); }`,
+    `svg { ${resolvedTokens(sheet)} font-family: var(--font-family); }`,
     ".export__paper { fill: var(--color-export-paper); }",
     canvasCss,
     captionCss,
