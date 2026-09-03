@@ -49,15 +49,20 @@ export function Toolbox({
 }: ToolboxProps) {
   const [hovered, setHovered] = useState<number | null>(null);
   /**
-   * How far down the rail the open tool's button sits, measured from it rather
-   * than counted off a pitch. The keys are not the same size on every screen,
-   * so a pitch fixed for one of them drifts a little further with every tool.
+   * Where the open tool's button is on the screen, which is where whatever it
+   * shows is put.
+   *
+   * Taken from the button rather than counted off a pitch, because the keys are
+   * not the same size on every screen; and in screen coordinates rather than the
+   * rail's, because the rail scrolls on a touch screen and clips whatever leaves
+   * it, so anything placed inside it would be cut off at its edge.
    */
-  const [openTop, setOpenTop] = useState(0);
+  const [openAt, setOpenAt] = useState({ top: 0, left: 0 });
 
   /** Open whatever a tool shows, beside the button it belongs to. */
   function show(index: number, button: HTMLButtonElement) {
-    setOpenTop(button.offsetTop);
+    const at = button.getBoundingClientRect();
+    setOpenAt({ top: at.top, left: at.right });
     setHovered(index);
   }
   const tip = hovered === null ? null : TOOLS[hovered];
@@ -170,7 +175,7 @@ export function Toolbox({
         // biome-ignore lint/a11y/noStaticElementInteractions: it only keeps itself open, the variants inside are buttons
         <div
           className="variants"
-          style={{ top: `${openTop}px` }}
+          style={{ top: `${openAt.top}px`, left: `${openAt.left}px` }}
           onMouseEnter={phone ? undefined : () => setHovered(hovered)}
           onMouseLeave={phone ? undefined : () => setHovered(null)}
         >
@@ -211,7 +216,10 @@ export function Toolbox({
       )}
 
       {tip && !opened && hovered !== null && (
-        <div className="tooltip" style={{ top: `${openTop + TOOLTIP_OFFSET}px` }}>
+        <div
+          className="tooltip"
+          style={{ top: `${openAt.top + TOOLTIP_OFFSET}px`, left: `${openAt.left}px` }}
+        >
           {/* A tool with nothing to do says why rather than what it is. */}
           <span className="tooltip__name">{off[tip.id] ?? tip.name}</span>
           {!off[tip.id] && <span className="tooltip__key">{tip.key}</span>}
