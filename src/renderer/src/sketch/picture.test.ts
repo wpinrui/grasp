@@ -6,7 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SHEET, stubSheetBox } from "../testing/sheet";
-import { DEFAULT_PICTURE, type PictureInk, pictureSvg } from "./picture";
+import { DEFAULT_PICTURE, type PictureOptions, pictureSvg } from "./picture";
 
 let unstub: () => void;
 
@@ -28,8 +28,8 @@ function put() {
 }
 
 /** The stylesheet the picture carries, which is what settles its colours. */
-function styleOf(ink: PictureInk): string {
-  const drawn = pictureSvg({ ...DEFAULT_PICTURE, ink }, null);
+function styleOf(said: Partial<PictureOptions>): string {
+  const drawn = pictureSvg({ ...DEFAULT_PICTURE, ...said }, null);
   if (!drawn) throw new Error("There is no picture to read.");
   const opened = drawn.svg.indexOf("<style>");
   const closed = drawn.svg.indexOf("</style>");
@@ -38,11 +38,16 @@ function styleOf(ink: PictureInk): string {
 }
 
 /**
- * Where a token is last set, since the whole stylesheet sits on one selector
- * and the last word on a token is the one the picture is drawn in.
+ * Whether the ink is the last word on a token.
+ *
+ * Every rule that sets one sits on the same `svg` selector, so the later of
+ * them wins and text order is the cascade. That only holds while nothing sets
+ * the token under a narrower selector, which would win from further up the
+ * text, so the count is checked rather than assumed.
  */
-function lastSet(css: string, token: string): number {
-  return css.lastIndexOf(`${token}:`);
+function inkWins(css: string, token: string, ink: string): boolean {
+  const set = css.split(`${token}:`).length - 1;
+  return set === 2 && css.lastIndexOf(`${token}:`) === css.lastIndexOf(`${token}: ${ink}`);
 }
 
 beforeEach(() => {
@@ -58,29 +63,26 @@ afterEach(() => {
 
 describe("the colours a picture comes out in", () => {
   it("holds a path to the ink, the way it holds everything else drawn", () => {
-    const css = styleOf("black");
+    const css = styleOf({ ink: "black" });
     expect(css).toContain("--color-path: var(--color-export-ink-black);");
-    expect(lastSet(css, "--color-path")).toBe(
-      css.lastIndexOf("--color-path: var(--color-export-ink-black);"),
-    );
+    expect(inkWins(css, "--color-path", "var(--color-export-ink-black)")).toBe(true);
   });
 
-  it("holds a point to the ink too, since a shown point is drawn", () => {
-    const css = styleOf("black");
+  it("holds a point to the ink too, on a picture that draws its points", () => {
+    const css = styleOf({ ink: "black", points: true });
     expect(css).toContain("--color-point: var(--color-export-ink-black);");
-    expect(lastSet(css, "--color-point")).toBe(
-      css.lastIndexOf("--color-point: var(--color-export-ink-black);"),
-    );
+    expect(css).not.toContain(".canvas__point { display: none; }");
+    expect(inkWins(css, "--color-point", "var(--color-export-ink-black)")).toBe(true);
   });
 
   it("leaves every colour alone when the ink is the sketch's own", () => {
-    expect(styleOf("colour")).not.toContain("var(--color-export-ink-");
+    expect(styleOf({ ink: "colour" })).not.toContain("var(--color-export-ink-");
   });
 
   // A dark sheet turns its palette over to read on black, and that turnover
   // lands on the canvas. A picture is drawn on white paper, so it takes the
   // window's palette and leaves the sheet's where it is.
   it("takes its colours off the window, not off the sheet it sits in", () => {
-    expect(styleOf("colour")).toContain("--color-path: rgb(1, 2, 3);");
+    expect(styleOf({ ink: "colour" })).toContain("--color-path: rgb(1, 2, 3);");
   });
 });
