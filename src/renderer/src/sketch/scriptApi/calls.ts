@@ -223,7 +223,7 @@ function writing({ put }: PageOps) {
   };
 }
 
-/** The calls that name something, or change how it is drawn. */
+/** The calls that name something, take it out of view, or change how it is drawn. */
 function naming({ find, point, change }: PageOps) {
   return {
     /** Pin a name on something and show it. */
@@ -232,14 +232,31 @@ function naming({ find, point, change }: PageOps) {
       change(id, { label: { ...held.label, name, shown: true } });
       return id;
     },
-    show: (id: string) => {
+    showLabel: (id: string) => {
       const held = find(id);
       change(id, { label: { ...held.label, shown: true } });
       return id;
     },
-    hide: (id: string) => {
+    hideLabel: (id: string) => {
       const held = find(id);
       change(id, { label: { ...held.label, shown: false } });
+      return id;
+    },
+    /**
+     * Take something out of view. It keeps its place in the figure and
+     * everything built on it stays where it is, which is what a construction
+     * helper wants: the foot of a perpendicular holds the figure together
+     * without being drawn.
+     */
+    hide: (id: string) => {
+      find(id);
+      change(id, { hidden: true });
+      return id;
+    },
+    /** Put something hidden back in view. */
+    show: (id: string) => {
+      find(id);
+      change(id, { hidden: false });
       return id;
     },
     style: (id: string, look: { colour?: string; weight?: LineWidth; pattern?: LinePattern }) => {
