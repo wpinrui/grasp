@@ -164,6 +164,21 @@ export const PHONE_CUT = {
     // Naming, adding and reordering pages, and a switch for the page tabs, on a
     // build that is one page with no tabs.
     "document-options",
+    // A second browser tab to juggle.
+    "new-sketch",
+    // A picture download, where the rail's share button already hands the whole
+    // sketch to the device.
+    "export-file",
+    // Dialog work: building a transform rather than using one.
+    "iterate",
+    "define-custom",
+    "edit-custom",
+    // Relational editing, all of which asks for a selection precise enough that
+    // a finger cannot reliably make it.
+    "select-parents",
+    "select-children",
+    "split-merge",
+    "edit-definition",
   ]),
   /** Submenus are cut by name, having no action of their own to cut them by. */
   labels: new Set<string>([
