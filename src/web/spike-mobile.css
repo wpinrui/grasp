@@ -245,3 +245,45 @@ body.spike-mobile .dialog__bar {
 body.spike-mobile .canvas__zoom {
   display: none;
 }
+
+/* The AI dialog, and the prompts the web build draws for itself. Neither goes
+   through DialogFrame: they are centred by a scrim that covers the window, so
+   the rules above do not reach them and the keyboard lands straight on top.
+
+   Same treatment, done at the scrim: it is pulled onto the visible viewport and
+   its contents pushed to the top of that, which is the half a keyboard never
+   covers. */
+body.spike-mobile .script__scrim,
+body.spike-mobile .web-prompt {
+  top: var(--spike-seen-top, 0px);
+  bottom: auto;
+  height: var(--spike-seen-height, 100dvh);
+  align-items: flex-start;
+  padding: 8px;
+}
+
+body.spike-mobile .script,
+body.spike-mobile .web-prompt__box {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  max-height: calc(var(--spike-seen-height, 100dvh) / 2);
+  display: flex;
+  flex-direction: column;
+}
+
+/* The body is what gives way, so the title bar and the step buttons stay put
+   however little room is left. */
+body.spike-mobile .script__body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The panes inside the body are drawn at fixed heights that assume a desktop's
+   worth of room. In half a phone they have to give. */
+body.spike-mobile .script__code,
+body.spike-mobile .script__prompt,
+body.spike-mobile .script__type {
+  height: auto;
+  max-height: 30vh;
+}
