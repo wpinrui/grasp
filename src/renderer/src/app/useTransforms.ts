@@ -386,3 +386,6 @@ export function useTransforms(context: TransformContext) {
     applyDialog,
   };
 }
+
+/** The transform dialogs and their preview. */
+export type Moves = ReturnType<typeof useTransforms>;

@@ -9,8 +9,8 @@
 import type { CSSProperties } from "react";
 import { Canvas } from "../components/Canvas";
 import { Dock } from "../components/Dock";
-import { HiddenPanel } from "../components/HiddenPanel";
-import { LabelPanel } from "../components/LabelPanel";
+import { HiddenPanel, type HiddenRow } from "../components/HiddenPanel";
+import { LabelPanel, type LabelRow } from "../components/LabelPanel";
 import { Palette } from "../components/Palette";
 import { SnapPanel } from "../components/SnapPanel";
 import { Toolbox } from "../components/Toolbox";
@@ -19,33 +19,32 @@ import { togglePick } from "../sketch/picking";
 import { canvasTokens } from "../sketch/prefs";
 import type { useDocument } from "../sketch/useDocument";
 import type { Sketch } from "../sketch/useSketch";
-import type { buttonActions } from "./buttons";
-import type { labelActions } from "./labels";
-import type { paletteState } from "./palette";
+import type { Buttons } from "./buttons";
+import type { Naming } from "./labels";
+import type { Palette as PaletteBar } from "./palette";
 import type { Dialogs } from "./useDialogs";
-import type { useSettings } from "./useSettings";
-import type { useTooling } from "./useTooling";
-import type { useTransforms } from "./useTransforms";
-import type { valueActions } from "./values";
+import type { Settings } from "./useSettings";
+import type { Tools } from "./useTooling";
+import type { Moves } from "./useTransforms";
+import type { Numbers } from "./values";
 
 interface WorkspaceProps {
   sketch: Sketch;
   doc: ReturnType<typeof useDocument>;
-  tools: ReturnType<typeof useTooling>;
-  settings: ReturnType<typeof useSettings>;
-  moves: ReturnType<typeof useTransforms>;
+  tools: Tools;
+  settings: Settings;
+  moves: Moves;
   dialogs: Dialogs;
-  naming: ReturnType<typeof labelActions>;
-  numbers: ReturnType<typeof valueActions>;
-  buttons: ReturnType<typeof buttonActions>;
-  palette: ReturnType<typeof paletteState>;
+  naming: Naming;
+  numbers: Numbers;
+  buttons: Buttons;
+  palette: PaletteBar;
   objects: SketchObject[];
   /** The rows the labels panel lists, counted for its tab. */
-  named: ReturnType<ReturnType<typeof labelActions>["labelRows"]>;
+  named: LabelRow[];
   /** The rows the hidden panel lists. */
-  away: ReturnType<ReturnType<typeof labelActions>["hiddenRows"]>;
+  away: HiddenRow[];
   phone: boolean;
-  openPanel: (id: string) => void;
 }
 
 export function Workspace({
@@ -63,7 +62,6 @@ export function Workspace({
   named,
   away,
   phone,
-  openPanel,
 }: WorkspaceProps) {
   return (
     <div className="app__workspace">
@@ -147,7 +145,7 @@ export function Workspace({
       </div>
       <Dock
         open={settings.panels}
-        onToggle={openPanel}
+        onToggle={settings.openPanel}
         width={settings.dock.panelWidth}
         onWidth={(panelWidth) => settings.keepDock({ panelWidth })}
         panes={{

@@ -81,10 +81,6 @@ export const BREAK_GAP = 5;
 export const LEADER_PAST = 4;
 
 /**
- * Whether a reading has anything to be set: a length is drawn out as a
- * dimension, an angle is read one way round or the other, an area is neither.
- */
-/**
  * Every reading has a panel: how far it is written out is on all of them, and a
  * length and an angle carry more besides.
  */

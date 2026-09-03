@@ -4,9 +4,9 @@
  * The handler is bound once, for the life of the window, so it cannot read the
  * window's state through a closure that would go stale. Instead the commands
  * are handed in afresh on every render and kept in one ref, and the handler
- * calls whatever is in there when a key comes down. That is why every field
- * below is a function: the window says what a key does, not what it did when
- * the listener was bound.
+ * calls whatever is in there when a key comes down. That is why every command
+ * below is a function, and `dialogOpen` says whether any of them applies: the
+ * window says what a key does now, not what it did when the listener was bound.
  */
 
 import { useEffect, useRef } from "react";

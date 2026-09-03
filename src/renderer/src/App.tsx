@@ -77,7 +77,7 @@ export function App() {
   /** Which dialog is open, and what it is holding while it is. */
   const dialogs = useDialogs();
   const sketch = useSketch();
-  const { undo, redo, canUndo, canRedo, remove, restyle, selectAll } = sketch;
+  const { undo, redo, canUndo, canRedo, remove, selectAll } = sketch;
   /** What the window remembers between runs: the dock, the steps, the paper. */
   const settings = useSettings({ sketch, phone, setSpotlight: tools.setSpotlight });
   // Whether a point that lands says its name straight away, told to the sketch
@@ -220,12 +220,17 @@ export function App() {
   /** Asking a model for a script, and running what comes back. */
   const { promptForRequest, runTheScript } = scriptActions({
     sketch,
-    dialogs,
+    scriptTarget: dialogs.scriptTarget,
+    request: dialogs.request,
+    script: dialogs.script,
+    setScriptRunning: dialogs.setScriptRunning,
+    setScriptErrors: dialogs.setScriptErrors,
+    setScriptWay: dialogs.setScriptWay,
     viewport: tools.viewport,
     pointSize: tools.pointSize,
   });
   /** Cut, copy, paste, and walking the family tree. */
-  const { copySelection, cutSelection, pasteObjects, selectKin } = clipboardActions({
+  const clipboard = clipboardActions({
     sketch,
     objects,
     selection,
@@ -320,18 +325,14 @@ export function App() {
     closeSketch: doc.close,
     quit: () => void doc.quit(),
     selectAll,
-    cut: cutSelection,
-    copy: copySelection,
-    paste: pasteObjects,
+    cut: clipboard.cutSelection,
+    copy: clipboard.copySelection,
+    paste: clipboard.pasteObjects,
     toggleLabels: naming.toggleLabels,
     togglePalette: () => settings.keepDock({ showPalette: !settings.showPalette }),
-    showHidden: () =>
-      naming.hideObjects(
-        objects.filter((object) => object.hidden === true).map((object) => object.id),
-        false,
-      ),
+    showHidden: naming.showAllHidden,
     hide: () => naming.hideObjects(selection, true),
-    selectKin,
+    selectKin: clipboard.selectKin,
     labelPanel: () => settings.openPanel("labels"),
     calculate: () => dialogs.setCalculator({}),
     midpoint: () => moves.construct("midpoint"),
@@ -344,10 +345,7 @@ export function App() {
       if (found) custom.applyCustom(found.id);
     },
     documentOptions: () => dialogs.setDocOptions(true),
-    editDefinition: () => {
-      const found = numbers.editable();
-      if (found) numbers.editValue(found);
-    },
+    editDefinition: numbers.editSelected,
     undo,
     redo,
     // Del on a picked label takes the label off and leaves what it names. With
@@ -395,16 +393,7 @@ export function App() {
         setClipHeld={setClipHeld}
         shared={shared}
         setPointSize={tools.setPointSize}
-        undo={undo}
-        redo={redo}
-        remove={remove}
-        restyle={restyle}
-        selectAll={selectAll}
-        cut={cutSelection}
-        copy={copySelection}
-        paste={pasteObjects}
-        selectKin={selectKin}
-        openPanel={settings.openPanel}
+        clipboard={clipboard}
       />
       <Workspace
         sketch={sketch}
@@ -421,7 +410,6 @@ export function App() {
         named={named}
         away={away}
         phone={phone}
-        openPanel={settings.openPanel}
       />
       {phone && (
         <TouchBar

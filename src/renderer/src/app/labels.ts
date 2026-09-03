@@ -42,6 +42,18 @@ export interface LabelContext {
   setClash: (clash: Clash | null) => void;
 }
 
+/** What to call an object in a sentence. */
+export function kindOf(object: SketchObject): string {
+  if (isCaption(object)) return "a caption";
+  if (isPoint(object)) return "another point";
+  if (isCircle(object)) return "a circle";
+  if (isArc(object)) return "an arc";
+  if (isInterior(object)) return "a fill";
+  if (isMeasurement(object)) return "a measurement";
+  if (isLine(object)) return `a ${object.form}`;
+  return "a locus";
+}
+
 export function labelActions({ sketch, objects, selection, geometry, setClash }: LabelContext) {
   /**
    * Give one object a name, and optionally hand it over from whatever held it,
@@ -140,18 +152,6 @@ export function labelActions({ sketch, objects, selection, geometry, setClash }:
     });
   }
 
-  /** What to call an object in a sentence. */
-  function kindOf(object: SketchObject): string {
-    if (isCaption(object)) return "a caption";
-    if (isPoint(object)) return "another point";
-    if (isCircle(object)) return "a circle";
-    if (isArc(object)) return "an arc";
-    if (isInterior(object)) return "a fill";
-    if (isMeasurement(object)) return "a measurement";
-    if (isLine(object)) return `a ${object.form}`;
-    return "a locus";
-  }
-
   /** A label was typed into. An empty name puts the object back on the run. */
   function rename(id: string, name: string) {
     if (!name) {
@@ -191,8 +191,17 @@ export function labelActions({ sketch, objects, selection, geometry, setClash }:
     });
   }
 
+  /** Bring back everything that is out of view, which is one menu entry and one key. */
+  function showAllHidden() {
+    hideObjects(
+      objects.filter((object) => object.hidden === true).map((object) => object.id),
+      false,
+    );
+  }
+
   return {
     pinName,
+    showAllHidden,
     showLabels,
     hideObjects,
     hiddenRows,
@@ -202,3 +211,6 @@ export function labelActions({ sketch, objects, selection, geometry, setClash }:
     toggleLabels,
   };
 }
+
+/** Names, labels and what is out of view, as the window holds them. */
+export type Naming = ReturnType<typeof labelActions>;

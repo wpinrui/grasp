@@ -24,13 +24,15 @@ import type { PointSize, SketchObject } from "../sketch/model";
 import { transformable } from "../sketch/transforms";
 import type { useDocument } from "../sketch/useDocument";
 import type { Sketch } from "../sketch/useSketch";
-import type { buttonActions } from "./buttons";
-import type { customActions } from "./customs";
-import type { labelActions } from "./labels";
+import type { Buttons } from "./buttons";
+import type { Clipboard } from "./clipboard";
+import type { Custom } from "./customs";
+import type { Naming } from "./labels";
+import { printPage } from "./printing";
 import type { Dialogs } from "./useDialogs";
-import type { useSettings } from "./useSettings";
-import type { useTransforms } from "./useTransforms";
-import type { valueActions } from "./values";
+import type { Settings } from "./useSettings";
+import type { Moves } from "./useTransforms";
+import type { Numbers } from "./values";
 
 /** The entries that build something, and so can be previewed and constructed. */
 const BUILDS = new Set<MenuAction>([
@@ -69,12 +71,12 @@ interface MenusProps {
   sketch: Sketch;
   doc: ReturnType<typeof useDocument>;
   dialogs: Dialogs;
-  numbers: ReturnType<typeof valueActions>;
-  naming: ReturnType<typeof labelActions>;
-  buttons: ReturnType<typeof buttonActions>;
-  custom: ReturnType<typeof customActions>;
-  settings: ReturnType<typeof useSettings>;
-  moves: ReturnType<typeof useTransforms>;
+  numbers: Numbers;
+  naming: Naming;
+  buttons: Buttons;
+  custom: Custom;
+  settings: Settings;
+  moves: Moves;
   building: Building;
   objects: SketchObject[];
   selection: string[];
@@ -91,16 +93,8 @@ interface MenusProps {
   /** The size the selection shares, which is what the menu ticks. */
   shared: PointSize | null;
   setPointSize: (size: PointSize) => void;
-  undo: () => void;
-  redo: () => void;
-  remove: () => void;
-  restyle: (size: PointSize) => void;
-  selectAll: () => void;
-  cut: () => void;
-  copy: () => void;
-  paste: () => void;
-  selectKin: (way: "parents" | "children") => void;
-  openPanel: (id: string) => void;
+  /** Cut, copy, paste and walking the family tree. */
+  clipboard: Clipboard;
 }
 
 export function Menus({
@@ -125,16 +119,7 @@ export function Menus({
   setClipHeld,
   shared,
   setPointSize,
-  undo,
-  redo,
-  remove,
-  restyle,
-  selectAll,
-  cut,
-  copy,
-  paste,
-  selectKin,
-  openPanel,
+  clipboard,
 }: MenusProps) {
   /** Greyed when an entry has nothing to act on. */
   function isEnabled(action: MenuAction): boolean {
@@ -226,8 +211,12 @@ export function Menus({
         else if (action === "page-setup") settings.setSetupOpen(true);
         else if (action === "document-options") dialogs.setDocOptions(true);
         else if (action === "print-preview") settings.setPreviewing(true);
-        else if (action === "print") void settings.printPage();
-        else if (action === "clear-recent") {
+        else if (action === "print") {
+          void printPage(settings.pageSetup, () => {
+            settings.setSetupOpen(false);
+            settings.setPreviewing(false);
+          });
+        } else if (action === "clear-recent") {
           void window.api.file.clearRecent();
           setRecent([]);
         } else if (action.startsWith("open-recent:")) {
@@ -238,20 +227,20 @@ export function Menus({
         else if (action === "save-as") void doc.saveAs();
         else if (action === "close") doc.close();
         else if (action === "quit") void doc.quit();
-        else if (action === "undo") undo();
-        else if (action === "redo") redo();
-        else if (action === "clear") remove();
-        else if (action === "cut") cut();
-        else if (action === "copy") copy();
-        else if (action === "paste") paste();
-        else if (action === "select-all") selectAll();
-        else if (action === "select-parents") selectKin("parents");
-        else if (action === "select-children") selectKin("children");
+        else if (action === "undo") sketch.undo();
+        else if (action === "redo") sketch.redo();
+        else if (action === "clear") sketch.remove();
+        else if (action === "cut") clipboard.cutSelection();
+        else if (action === "copy") clipboard.copySelection();
+        else if (action === "paste") clipboard.pasteObjects();
+        else if (action === "select-all") sketch.selectAll();
+        else if (action === "select-parents") clipboard.selectKin("parents");
+        else if (action === "select-children") clipboard.selectKin("children");
         else if (action === "show-labels") naming.toggleLabels();
-        else if (action === "label-panel") openPanel("labels");
-        else if (action === "hidden-panel") openPanel("hidden");
+        else if (action === "label-panel") settings.openPanel("labels");
+        else if (action === "hidden-panel") settings.openPanel("hidden");
         else if (action === "palette") settings.keepDock({ showPalette: !settings.showPalette });
-        else if (action === "snap-panel") openPanel("snap");
+        else if (action === "snap-panel") settings.openPanel("snap");
         else if (action === "export-file") dialogs.setExportTo("file");
         else if (action === "export-clipboard") dialogs.setExportTo("clipboard");
         else if (action === "hide-objects") naming.hideObjects(selection, true);
@@ -291,7 +280,7 @@ export function Menus({
           // One move: the selection is resized and the birth size is reset.
           const size = action.slice("point-size:".length) as PointSize;
           setPointSize(size);
-          restyle(size);
+          sketch.restyle(size);
         }
       }}
     />

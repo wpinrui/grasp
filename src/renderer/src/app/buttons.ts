@@ -95,3 +95,6 @@ export function buttonActions(context: ButtonContext) {
 
   return { buttonWants, landButton, pressButton };
 }
+
+/** The buttons on the sheet, as the window holds them. */
+export type Buttons = ReturnType<typeof buttonActions>;

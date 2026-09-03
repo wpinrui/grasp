@@ -13,7 +13,26 @@ import type { ButtonForm } from "../components/ButtonDialog";
 import type { ExportTo } from "../components/ExportDialog";
 import { NEW_PAGE, type ScriptWay } from "../components/ScriptDialog";
 import type { Clash } from "./labels";
-import type { CalculatorState, Collecting, ParameterState } from "./values";
+
+/** What the Calculator is doing: a new number, or one it is changing. */
+export interface CalculatorState {
+  forFunction?: boolean;
+  editing?: string;
+}
+
+/** What New Parameter is doing, and whether the Calculator opened it. */
+export interface ParameterState {
+  editing?: string;
+  fromCalculator?: boolean;
+}
+
+/** A run of automatic collection into one table. */
+export interface Collecting {
+  table: string;
+  left: number;
+  perSecond: number;
+  at: number;
+}
 
 export function useDialogs() {
   /**

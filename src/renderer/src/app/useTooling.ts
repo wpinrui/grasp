@@ -109,3 +109,6 @@ export function useTooling() {
     setCaptionWanted,
   };
 }
+
+/** What the window has in hand. */
+export type Tools = ReturnType<typeof useTooling>;

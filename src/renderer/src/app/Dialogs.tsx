@@ -25,22 +25,23 @@ import { TransformDialog } from "../components/TransformDialog";
 import type { Sheet } from "../sketch/expression";
 import { namesFor, type SketchObject } from "../sketch/model";
 import type { Sketch } from "../sketch/useSketch";
-import type { buttonActions } from "./buttons";
-import type { customActions } from "./customs";
-import type { labelActions } from "./labels";
+import type { Buttons } from "./buttons";
+import type { Custom } from "./customs";
+import type { Naming } from "./labels";
+import { pagePicture, printPage } from "./printing";
 import type { Dialogs as DialogState } from "./useDialogs";
-import type { useSettings } from "./useSettings";
-import type { useTransforms } from "./useTransforms";
-import type { valueActions } from "./values";
+import type { Settings } from "./useSettings";
+import type { Moves } from "./useTransforms";
+import type { Numbers } from "./values";
 
 interface DialogsProps {
   dialogs: DialogState;
-  numbers: ReturnType<typeof valueActions>;
-  naming: ReturnType<typeof labelActions>;
-  buttons: ReturnType<typeof buttonActions>;
-  custom: ReturnType<typeof customActions>;
-  settings: ReturnType<typeof useSettings>;
-  moves: ReturnType<typeof useTransforms>;
+  numbers: Numbers;
+  naming: Naming;
+  buttons: Buttons;
+  custom: Custom;
+  settings: Settings;
+  moves: Moves;
   sketch: Sketch;
   objects: SketchObject[];
   /** What everything on the page is called. */
@@ -238,8 +239,13 @@ export function Dialogs({
       {settings.previewing && (
         <PrintPreviewDialog
           setup={settings.pageSetup}
-          picture={settings.pagePicture()}
-          onPrint={() => void settings.printPage()}
+          picture={pagePicture(settings.pageSetup)}
+          onPrint={() =>
+            void printPage(settings.pageSetup, () => {
+              settings.setSetupOpen(false);
+              settings.setPreviewing(false);
+            })
+          }
           onSetup={() => {
             settings.setPreviewing(false);
             settings.setSetupOpen(true);

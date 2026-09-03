@@ -12,8 +12,8 @@
 import { useRef, useState } from "react";
 import type { Snapping } from "../components/SnapPanel";
 import { writeIn } from "../sketch/measure";
-import { type PageSetup, PX_PER_CM, printableArea } from "../sketch/paper";
-import { type Drawn, type PictureOptions, pictureSvg } from "../sketch/picture";
+import type { PageSetup } from "../sketch/paper";
+import type { PictureOptions } from "../sketch/picture";
 import type { Prefs } from "../sketch/prefs";
 import type { Sketch } from "../sketch/useSketch";
 
@@ -205,42 +205,6 @@ export function useSettings({ sketch, phone, setSpotlight }: SettingsContext) {
     });
   }
 
-  /**
-   * The whole page as it will print: the sheet's own picture, drawn the way
-   * Page Setup says, on nothing so the paper shows through. A selection is not
-   * what is printed; the page is.
-   */
-  function pagePicture(): Drawn | null {
-    return pictureSvg(
-      {
-        background: "transparent",
-        ink: pageSetup.ink,
-        points: pageSetup.points,
-        fill: pageSetup.fill,
-      },
-      null,
-    );
-  }
-
-  /** Print: the picture goes to the printer on the paper Page Setup says. */
-  async function printPage() {
-    const drawn = pagePicture();
-    if (!drawn) return;
-    setSetupOpen(false);
-    setPreviewing(false);
-    const area = printableArea(pageSetup);
-    await window.api.print.page({
-      svg: drawn.svg,
-      paper: pageSetup.paper,
-      landscape: pageSetup.landscape,
-      margin: Math.round(pageSetup.marginCm * PX_PER_CM),
-      toPage: pageSetup.fit === "page",
-      width: drawn.width,
-      height: drawn.height,
-      area,
-    });
-  }
-
   function keepSnapping(part: Partial<Snapping>) {
     keepDock({
       ...(part.objects === undefined ? {} : { snapObjects: part.objects }),
@@ -282,11 +246,12 @@ export function useSettings({ sketch, phone, setSpotlight }: SettingsContext) {
     applyPrefs,
     pageSetup,
     keepPage,
-    pagePicture,
-    printPage,
     setupOpen,
     setSetupOpen,
     previewing,
     setPreviewing,
   };
 }
+
+/** What the window remembers between runs. */
+export type Settings = ReturnType<typeof useSettings>;

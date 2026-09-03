@@ -10,7 +10,7 @@
 import { type RefObject, useEffect } from "react";
 import type { Quantity } from "../sketch/expression";
 import { isTable, type SketchObject, type SketchTable } from "../sketch/model";
-import type { Collecting } from "./values";
+import type { Collecting } from "./useDialogs";
 
 export interface CollectingContext {
   objects: SketchObject[];

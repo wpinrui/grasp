@@ -46,6 +46,85 @@ import {
 } from "../sketch/text";
 import type { Sketch } from "../sketch/useSketch";
 
+/** What a pick shares, or null where it does not share one, over any list. */
+function agreed<T>(over: SketchObject[], read: (object: SketchObject) => T | undefined): T | null {
+  if (over.length === 0) return null;
+  const first = read(over[0]);
+  if (first === undefined) return null;
+  return over.every((object) => read(object) === first) ? first : null;
+}
+
+/** What GRASP draws each kind in until something says otherwise. */
+function defaultColour(kind: string, prefs: Prefs): string {
+  if (kind === "point") return prefs.colours.point;
+  if (kind === "interior") return prefs.colours.fill;
+  if (kind === "mark") return prefs.colours.mark;
+  if (kind === "caption" || kind === "measurement") return DEFAULT_CAPTION.colour;
+  return prefs.colours.path;
+}
+
+/** What the top row is set on, and what of it the pick can take at all. */
+interface TopRow {
+  /** Everything the palette would set, the caption being typed into included. */
+  picked: SketchObject[];
+  selected: SketchObject[];
+  /** What the tool that is up draws, which is what the bar arms. */
+  draws: string[];
+  armed: Armed;
+  prefs: Prefs;
+  /** How the picked labels read, or null where labels are not what is picked. */
+  labelText: TextStyling | null;
+}
+
+/**
+ * What the palette's top row is set on: what the pick shares, and what of the
+ * three it can take at all. A stroked object takes a weight and a pattern, a
+ * mark takes a weight but has no pattern, and a fill or a point takes neither.
+ */
+function stylingFor({ picked, selected, draws, armed, prefs, labelText }: TopRow): Styling {
+  if (labelText !== null) {
+    // A label is written rather than stroked, so the ink is all of the top row
+    // it can take.
+    return {
+      colour: labelText.colour ?? null,
+      weight: null,
+      pattern: null,
+      canColour: true,
+      canWeight: false,
+      canPattern: false,
+    };
+  }
+  const stroked = selected.filter(
+    (object) => isLine(object) || isCircle(object) || isArc(object) || isLocus(object),
+  );
+  /** What of the top row the selection itself has anything to say about. */
+  const weighs = stroked.length > 0 || selected.some(isMark);
+  const patterns = stroked.length > 0;
+  // Each control on its own, not the bar as a whole: the selection where it can
+  // take that one, and what the tool draws next where it cannot. A point
+  // selected under the straightedge says nothing about weight, but the segment
+  // about to be drawn does, so the row stays live and arms the tool instead of
+  // greying out.
+  //
+  // The ink is judged over everything it would land on, writing included, so a
+  // red segment picked with a black caption lights neither.
+  return {
+    colour:
+      picked.length > 0
+        ? inkAgreed(picked)
+        : (armed.colour ?? (draws.length > 0 ? defaultColour(draws[0], prefs) : null)),
+    weight: weighs
+      ? agreed(selected, (object) => object.weight)
+      : (armed.weight ?? (takesWeight(draws) ? DEFAULT_WEIGHT : null)),
+    pattern: patterns
+      ? agreed(selected, (object) => object.pattern)
+      : (armed.pattern ?? (takesPattern(draws) ? DEFAULT_PATTERN : null)),
+    canColour: picked.length > 0 || draws.length > 0,
+    canWeight: weighs || takesWeight(draws),
+    canPattern: patterns || takesPattern(draws),
+  };
+}
+
 export interface PaletteContext {
   sketch: Sketch;
   objects: SketchObject[];
@@ -135,81 +214,19 @@ export function paletteState(context: PaletteContext) {
     ? marksOfLabels(chosenLabels.map((object) => object.label ?? {}))
     : null;
 
-  /** What a pick shares, or null where it does not share one, over any list. */
-  const agreed = <T>(
-    over: SketchObject[],
-    read: (object: SketchObject) => T | undefined,
-  ): T | null => {
-    if (over.length === 0) return null;
-    const first = read(over[0]);
-    if (first === undefined) return null;
-    return over.every((object) => read(object) === first) ? first : null;
-  };
-
-  const stroked = selected.filter(
-    (object) => isLine(object) || isCircle(object) || isArc(object) || isLocus(object),
-  );
   /**
    * What the tool that is up draws, which is what the palette arms. The Arrow
    * draws nothing, so under it the bar is on the selection alone.
    */
   const draws = toolDraws(activeTool, variants.polygon ?? "interior");
-  // Told to the sketch rather than read there, since every way an object lands
-  // goes through it and each one should come out the way the bar says.
-  sketch.armStyle(draws.length > 0 ? { armed, kinds: draws } : null);
-
-  /** What GRASP draws each kind in until something says otherwise. */
-  function defaultColour(kind: string): string {
-    if (kind === "point") return prefs.colours.point;
-    if (kind === "interior") return prefs.colours.fill;
-    if (kind === "mark") return prefs.colours.mark;
-    if (kind === "caption" || kind === "measurement") return DEFAULT_CAPTION.colour;
-    return prefs.colours.path;
-  }
-
-  /** What of the top row the selection itself has anything to say about. */
-  const chosenWeighs = stroked.length > 0 || selected.some(isMark);
-  const chosenPatterns = stroked.length > 0;
-
-  /**
-   * What the palette's top row is set on: what the pick shares, and what of the
-   * three it can take at all. A stroked object takes a weight and a pattern, a
-   * mark takes a weight but has no pattern, and a fill or a point takes neither.
-   */
-  const styling: Styling = labelsPicked
-    ? {
-        // A label is written rather than stroked, so the ink is all of the top
-        // row it can take.
-        colour: chosenText?.colour ?? null,
-        weight: null,
-        pattern: null,
-        canColour: true,
-        canWeight: false,
-        canPattern: false,
-      }
-    : {
-        // Each control on its own, not the bar as a whole: the selection where
-        // it can take that one, and what the tool draws next where it cannot.
-        // A point selected under the straightedge says nothing about weight,
-        // but the segment about to be drawn does, so the row stays live and
-        // arms the tool instead of greying out.
-        //
-        // The ink is judged over everything it would land on, writing included,
-        // so a red segment picked with a black caption lights neither.
-        colour:
-          picked.length > 0
-            ? inkAgreed(picked)
-            : (armed.colour ?? (draws.length > 0 ? defaultColour(draws[0]) : null)),
-        weight: chosenWeighs
-          ? agreed(selected, (object) => object.weight)
-          : (armed.weight ?? (takesWeight(draws) ? DEFAULT_WEIGHT : null)),
-        pattern: chosenPatterns
-          ? agreed(selected, (object) => object.pattern)
-          : (armed.pattern ?? (takesPattern(draws) ? DEFAULT_PATTERN : null)),
-        canColour: picked.length > 0 || draws.length > 0,
-        canWeight: chosenWeighs || takesWeight(draws),
-        canPattern: chosenPatterns || takesPattern(draws),
-      };
+  const styling = stylingFor({
+    picked,
+    selected,
+    draws,
+    armed,
+    prefs,
+    labelText: labelsPicked ? chosenText : null,
+  });
 
   /** How every picked label is set, as one undo step. */
   function styleLabel(change: Partial<LabelState>) {
@@ -351,6 +368,10 @@ export function paletteState(context: PaletteContext) {
     });
   }
 
+  // Told to the sketch rather than read there, since every way an object lands
+  // goes through it and each one should come out the way the bar says.
+  sketch.armStyle(draws.length > 0 ? { armed, kinds: draws } : null);
+
   return {
     chosenCaption,
     labelsPicked,
@@ -365,3 +386,6 @@ export function paletteState(context: PaletteContext) {
     styleWriting,
   };
 }
+
+/** The palette, as the window holds it. */
+export type Palette = ReturnType<typeof paletteState>;

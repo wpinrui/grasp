@@ -66,3 +66,6 @@ export function customActions({ sketch, objects, selection, setCustomDialog }: C
 
   return { customs, defineCustom, applyCustom, dropCustom, renameCustom };
 }
+
+/** The transforms shown by example, as the window holds them. */
+export type Custom = ReturnType<typeof customActions>;

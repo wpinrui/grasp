@@ -71,3 +71,6 @@ export function clipboardActions({
 
   return { copySelection, cutSelection, pasteObjects, selectKin };
 }
+
+/** Cut, copy, paste and walking the family tree. */
+export type Clipboard = ReturnType<typeof clipboardActions>;

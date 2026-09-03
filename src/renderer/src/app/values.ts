@@ -32,26 +32,7 @@ import {
   withDependents,
 } from "../sketch/model";
 import type { Sketch } from "../sketch/useSketch";
-
-/** What the Calculator is doing: a new number, or one it is changing. */
-export interface CalculatorState {
-  forFunction?: boolean;
-  editing?: string;
-}
-
-/** What New Parameter is doing, and whether the Calculator opened it. */
-export interface ParameterState {
-  editing?: string;
-  fromCalculator?: boolean;
-}
-
-/** A run of automatic collection into one table. */
-export interface Collecting {
-  table: string;
-  left: number;
-  perSecond: number;
-  at: number;
-}
+import type { CalculatorState, Collecting, ParameterState } from "./useDialogs";
 
 export interface ValueContext {
   sketch: Sketch;
@@ -309,8 +290,15 @@ export function valueActions(context: ValueContext) {
     else if (isFunction(found) && found.body) setCalculator({ forFunction: true, editing: id });
   }
 
+  /** Reopen whatever dialog made the one thing selected, where one can be. */
+  function editSelected() {
+    const found = editable();
+    if (found) editValue(found);
+  }
+
   return {
     valueSpot,
+    editSelected,
     offeredValues,
     namedInSketch,
     nextFunctionName,
@@ -332,3 +320,6 @@ export function valueActions(context: ValueContext) {
     editValue,
   };
 }
+
+/** The numbers the sketch holds, as the window holds them. */
+export type Numbers = ReturnType<typeof valueActions>;
