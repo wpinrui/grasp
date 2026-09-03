@@ -9,6 +9,9 @@ import { createRoot } from "react-dom/client";
 import { App } from "../renderer/src/App";
 import "../renderer/src/styles/base.css";
 import { installWebApi } from "./api";
+// SPIKE, not for merge: see spike-mobile.ts.
+import { installMobileSpike } from "./spike-mobile";
+import "./spike-mobile.css";
 import "./web.css";
 
 installWebApi();
@@ -77,3 +80,6 @@ createRoot(root).render(
     <App />
   </StrictMode>,
 );
+
+// SPIKE, not for merge.
+installMobileSpike();

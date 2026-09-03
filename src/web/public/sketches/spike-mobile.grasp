@@ -1,0 +1,33 @@
+{
+  "format": "grasp-sketch",
+  "version": 10,
+  "pages": [
+    {
+      "name": "Page 1",
+      "objects": []
+    }
+  ],
+  "prefs": {
+    "units": {
+      "angle": "degrees",
+      "anglePlaces": 1,
+      "distance": "cm",
+      "distancePlaces": 2,
+      "otherPlaces": 2
+    },
+    "colours": {
+      "point": "--color-ink-red",
+      "path": "--color-ink-red",
+      "fill": "--color-ink-blue",
+      "mark": "--color-ink-magenta",
+      "label": "--color-ink-black",
+      "sheet": "--color-sheet-white"
+    },
+    "text": {
+      "font": "Times New Roman",
+      "size": 14
+    },
+    "pageTabs": true,
+    "zoom": true
+  }
+}

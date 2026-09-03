@@ -1,0 +1,83 @@
+/* SPIKE, not for merge. Everything here hangs off `body.spike-mobile` and off
+   this file, so the whole experiment comes out by deleting it and the three
+   lines that reach it. It answers one question: what does drawing with a
+   finger feel like. It is not a proposal for how GRASP should look on a phone.
+
+   Nothing under `src/renderer` is touched, so the desktop app cannot see any
+   of this. */
+
+body.spike-mobile,
+body.spike-mobile #root {
+  height: 100dvh;
+  overflow: hidden;
+  /* A phone browser hands the page a viewport that changes height as its own
+     chrome slides away. `dvh` follows it; `vh` would leave the page taller
+     than the window and put the page bar under the address bar. */
+}
+
+body.spike-mobile .app {
+  /* App.css floors the whole app at 720px tall, which on a phone pushes the
+     page bar off the bottom before anything else gets a chance to go wrong. */
+  min-height: 0;
+  height: 100dvh;
+}
+
+/* Narrower rails and smaller icons. 44px is the floor: below that a finger
+   cannot reliably hit one button rather than its neighbour. */
+body.spike-mobile {
+  --toolbox-width: 46px;
+  --tool-size: 40px;
+  --tool-gap: 3px;
+}
+
+body.spike-mobile .app__workspace {
+  padding: 0 0 4px 0;
+}
+
+/* Neither rail was ever meant to run out of room, so on a short screen the
+   tools past the fold are simply unreachable. Scrolling them is the smallest
+   thing that makes every tool available at all. */
+body.spike-mobile .toolbox,
+body.spike-mobile .dock__rail {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+body.spike-mobile .toolbox::-webkit-scrollbar,
+body.spike-mobile .dock__rail::-webkit-scrollbar {
+  display: none;
+}
+
+/* The touch bar: the three gestures the sheet has no other way to reach on a
+   phone. Bottom right, above the page bar, out of the way of a right hand
+   drawing. */
+.spike-touchbar {
+  position: fixed;
+  right: 8px;
+  bottom: calc(var(--pagebar-height) + 8px);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spike-touchbar__key {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.1;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+  touch-action: manipulation;
+}
+
+.spike-touchbar__key--on {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
