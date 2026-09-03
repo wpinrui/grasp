@@ -65,4 +65,28 @@ button {
     height: 100dvh;
     overflow: hidden;
   }
+
+  /*
+    Every overlay centred by a scrim over the window: the About box, the print
+    preview, the AI dialog and the prompts the web build draws for itself.
+
+    A phone keyboard covers the window rather than resizing it, so anything
+    centred in it ends up behind the keyboard the moment a field is tapped. The
+    visual viewport is the part that moves, so the scrim is pulled onto it and
+    its panel pushed to the top of that, where the keyboard never reaches.
+  */
+  .scrim {
+    top: var(--seen-top);
+    bottom: auto;
+    height: var(--seen-height);
+    align-items: flex-start;
+    padding: 8px;
+  }
+
+  .scrim__panel {
+    width: 100%;
+    min-width: 0;
+    max-height: calc(var(--seen-height) - 16px);
+    overflow-y: auto;
+  }
 }

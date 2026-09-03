@@ -94,6 +94,9 @@ export function DialogFrame({
   }
 
   function onDrag(event: PointerEvent<HTMLDivElement>) {
+    // Nowhere to drag it to: the stylesheet places it against the top of what
+    // is visible, and the inline position it would set is not read.
+    if (phone) return;
     if (!drag.current) return;
     setAt({ x: event.clientX - drag.current.x, y: event.clientY - drag.current.y });
   }

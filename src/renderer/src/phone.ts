@@ -11,15 +11,13 @@ import { useEffect, useState } from "react";
 const COARSE = "(pointer: coarse)";
 
 /**
- * Held rather than asked for each time. This is read on every hit test, and a
- * media query list answers from what it already knows once it exists.
+ * Asked of the browser each time. There is no environment outside one, so a
+ * missing `matchMedia` means a test or the script worker, where the answer that
+ * changes nothing is the pointer.
  */
-let coarse: MediaQueryList | null = null;
-
 export function onAPhone(): boolean {
   if (typeof window === "undefined" || !window.matchMedia) return false;
-  coarse ??= window.matchMedia(COARSE);
-  return coarse.matches;
+  return window.matchMedia(COARSE).matches;
 }
 
 /** The same, as a hook, so a device that changes its mind is followed. */

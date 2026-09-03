@@ -4,13 +4,17 @@
  * where an icon lives is nobody else's business.
  */
 export {
+  CancelIcon,
   CloseIcon,
   FlyoutMarker,
   MaximizeIcon,
   MenuCheckIcon,
   MinimizeIcon,
+  RedoIcon,
   ShareIcon,
+  SnapKeyIcon,
   SubmenuArrowIcon,
+  UndoIcon,
 } from "./chrome";
 export {
   AngleIcon,

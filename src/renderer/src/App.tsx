@@ -112,6 +112,7 @@ import {
   type SketchMeasurement,
   type SketchObject,
   type SketchTable,
+  setPickReach,
   settle,
   sharedPointSize,
   type TextLook,
@@ -235,6 +236,9 @@ function settingsFrom(prefs: Prefs): Partial<Held> {
 export function App() {
   const phone = usePhone();
   useVisibleViewport();
+  // How much room a click is given is settled once, here, where what kind of
+  // screen this is is already known. The model does not ask the browser.
+  useEffect(() => setPickReach(phone), [phone]);
   const [activeTool, setActiveTool] = useState("arrow");
   /** How big the sheet is on screen, which is how far a new locus reaches. */
   const [viewport, setViewport] = useState({ width: 0, height: 0 });

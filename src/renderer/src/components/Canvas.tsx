@@ -34,6 +34,7 @@ import {
   type ArcGeometry,
   alongPath,
   type CaptionAlign,
+  centreOf,
   clipToRect,
   contentBounds,
   createAngleMark,
@@ -89,6 +90,8 @@ import {
   type PointSize,
   type Position,
   PX_PER_CM,
+  pannedView,
+  panTravel,
   pathIn,
   pointOnPath,
   pointsOf,
@@ -543,21 +546,30 @@ export function Canvas({
 
   /** The point between the fingers, which is what a two-finger pan follows. */
   function betweenFingers(): Position {
-    const places = [...fingers.current.values()];
-    const total = places.reduce((sum, at) => ({ x: sum.x + at.x, y: sum.y + at.y }), {
-      x: 0,
-      y: 0,
-    });
-    return { x: total.x / places.length, y: total.y / places.length };
+    return centreOf([...fingers.current.values()]);
+  }
+
+  /**
+   * Let go of everything a press had begun, landing none of it. This is not
+   * the same as letting go at the end of a gesture: nothing is recorded, the
+   * half-drawn construction goes, and the sheet is left as it was before the
+   * finger came down.
+   */
+  function dropGesture() {
+    grab.current = null;
+    setMarquee(null);
+    setBoxing(null);
+    setTravel(null);
+    sketch.cancelGesture();
+    setPending(null);
+    setTracing(null);
   }
 
   /** Take the sheet as far as a pan has carried it, from wherever it began. */
   function panTo(from: NonNullable<Grab["pan"]>, x: number, y: number) {
-    const moved = { x: (x - from.clientX) / scale, y: (y - from.clientY) / scale };
-    if (Math.abs(moved.x) * scale + Math.abs(moved.y) * scale >= DRAG_THRESHOLD) {
-      panMoved.current = true;
-    }
-    onView({ ...viewNow.current, x: from.view.x - moved.x, y: from.view.y - moved.y });
+    const at = { x, y };
+    if (panTravel(from, at) >= DRAG_THRESHOLD) panMoved.current = true;
+    onView({ ...viewNow.current, ...pannedView(from, at, scale) });
   }
 
   /** What a plotting tool would land on, lit up while the pointer is over it. */
@@ -1285,7 +1297,7 @@ export function Canvas({
         // Whatever the first finger had begun is dropped rather than landed:
         // the press that added the second finger changed what was being asked
         // for, and half a construction is not what was wanted.
-        handlePointerCancel();
+        dropGesture();
         const at = betweenFingers();
         grab.current = {
           origin: positionOf(event) ?? { x: 0, y: 0 },
@@ -2591,7 +2603,20 @@ export function Canvas({
   }
 
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerType === "touch") fingers.current.delete(event.pointerId);
+    if (event.pointerType === "touch") {
+      fingers.current.delete(event.pointerId);
+      const panning = grab.current?.pan;
+      // Still enough fingers to be panning, so the pan carries on from where
+      // the ones left on the glass are now rather than ending under them.
+      if (panning && fingers.current.size >= PAN_FINGERS) {
+        const at = betweenFingers();
+        grab.current = {
+          ...grab.current,
+          pan: { view: viewNow.current, clientX: at.x, clientY: at.y },
+        } as Grab;
+        return;
+      }
+    }
     const state = grab.current;
     grab.current = null;
     setMarquee(null);

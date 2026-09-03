@@ -19,9 +19,9 @@ interface Choice<T> {
 function ask<T>(message: string, choices: Choice<T>[]): Promise<T> {
   return new Promise<T>((answer) => {
     const shade = document.createElement("div");
-    shade.className = "web-prompt";
+    shade.className = "web-prompt scrim";
     const box = document.createElement("div");
-    box.className = "web-prompt__box";
+    box.className = "web-prompt__box scrim__panel";
     const said = document.createElement("p");
     said.className = "web-prompt__text";
     said.textContent = message;

@@ -228,7 +228,7 @@
     Yellow: the one control on the bar that is not a menu, and the one worth
     finding first on a phone.
   */
-  .menubar__tool {
+  .menubar__tool--ai {
     position: absolute;
     right: 8px;
     top: 50%;
@@ -245,7 +245,7 @@
     top: 38px;
     min-width: 232px;
     max-width: calc(100vw - 24px);
-    max-height: calc(var(--seen-height, 100dvh) - var(--menubar-height) - 16px);
+    max-height: calc(var(--seen-height) - var(--menubar-height) - 16px);
     padding: 6px;
     overflow-y: auto;
   }

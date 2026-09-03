@@ -194,17 +194,19 @@ export function usePages() {
 
   /**
    * How much history the page that is up has either side of it. The stacks
-   * themselves are refs, so that nothing redraws as they are pushed to during a
-   * gesture; this is the part a control needs to know about, and it is state so
-   * that Undo and Redo can go grey the moment they have nothing to do.
+   * themselves are refs, and stay refs: what a control needs is not the states
+   * in them but whether there are any, so that is what is kept as state and
+   * Undo and Redo grey out the moment they have nothing to do.
+   *
+   * The same numbers again is the same object, so a push that does not change
+   * whether there is anything to undo does not redraw anything either.
    */
   const [depth, setDepth] = useState({ back: 0, forward: 0 });
   const noteDepth = useCallback(() => {
     const id = active.current;
-    setDepth({
-      back: past.current.get(id)?.length ?? 0,
-      forward: future.current.get(id)?.length ?? 0,
-    });
+    const back = past.current.get(id)?.length ?? 0;
+    const forward = future.current.get(id)?.length ?? 0;
+    setDepth((was) => (was.back === back && was.forward === forward ? was : { back, forward }));
   }, []);
 
   /** Park a state to undo back to, and drop whatever was there to redo. */
@@ -318,8 +320,10 @@ export function usePages() {
         if (staying.has(page.id)) continue;
         past.current.delete(page.id);
         future.current.delete(page.id);
-        noteDepth();
       }
+      // Once, after the lot: what it reads is the page that is up, which the
+      // loop does not touch.
+      noteDepth();
       replacePages(next);
       // The page being shown may have been one of the ones removed.
       if (!staying.has(active.current)) goTo(next[0].id);

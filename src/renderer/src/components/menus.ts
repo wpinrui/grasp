@@ -157,8 +157,12 @@ const CUT_ACTIONS = new Set<string>([
   "print",
   // An image on the clipboard is not something a phone can go on to use.
   "export-clipboard",
-  // The palette bar is not drawn on a phone, so its switch has nothing to do.
+  // The palette bar is not drawn on a phone, and neither is the pane these
+  // three open, so all four are switches with nothing to act on.
   "palette",
+  "label-panel",
+  "hidden-panel",
+  "snap-panel",
   // Naming, adding and reordering pages, and a switch for the page tabs, on a
   // build that is one page with no tabs.
   "document-options",
@@ -190,6 +194,14 @@ const CUT_ACTIONS = new Set<string>([
   "reflect",
 ]);
 
+/**
+ * Whole menus a phone leaves out. Measure and Number are desk work, and Help is
+ * an about box. The Window menu is not named here: its four entries are cut
+ * individually above, which empties it, and `phoneMenus` drops a title with
+ * nothing left under it.
+ */
+const CUT_TITLES = new Set<string>(["Measure", "Number", "Help"]);
+
 /** Submenus are cut by name, having no action of their own to cut them by. */
 const CUT_LABELS = new Set<string>([
   "Action Buttons",
@@ -214,9 +226,8 @@ function tidied(items: MenuEntry[]): MenuEntry[] {
   return kept;
 }
 
-/** A menu as a phone shows it, which off a phone is the menu unchanged. */
-export function shownItems(items: MenuEntry[], phone: boolean): MenuEntry[] {
-  if (!phone) return items;
+/** A menu as a phone shows it. Off a phone, nothing calls this. */
+export function phoneItems(items: MenuEntry[]): MenuEntry[] {
   return tidied(
     items.filter(
       (entry) =>
@@ -461,8 +472,14 @@ export function recentItems(recent: string[]): MenuEntry[] {
   ];
 }
 
-/** The titles a phone shows, in the order the bar draws them. */
-export function shownMenus(phone: boolean): Menu[] {
-  if (!phone) return MENUS;
-  return MENUS.filter((menu) => shownItems(menu.items, true).length > 0);
+/**
+ * The titles a phone shows, in the order the bar draws them. A title left with
+ * nothing under it is not a title, so it goes rather than opening an empty
+ * panel. The list is a parameter so that rule can be exercised on its own.
+ */
+export function phoneMenus(menus: Menu[] = MENUS): Menu[] {
+  return menus
+    .filter((menu) => !CUT_TITLES.has(menu.label))
+    .map((menu) => ({ ...menu, items: phoneItems(menu.items) }))
+    .filter((menu) => menu.items.length > 0);
 }

@@ -269,23 +269,13 @@
 }
 
 /*
-  A touch screen. Centred by a scrim covering the window, this would sit under
-  the keyboard the moment the script box was tapped, so the scrim is pulled onto
-  the visible viewport and its contents pushed to the top of it.
+  A touch screen. What is left here is the panes inside the body, which are
+  drawn at a desktop's fixed heights and have to give on a phone.
 */
 @media (pointer: coarse) {
-  .script__scrim {
-    top: var(--seen-top, 0px);
-    bottom: auto;
-    height: var(--seen-height, 100dvh);
-    align-items: flex-start;
-    padding: 8px;
-  }
-
+  /* The scrim and the panel are placed by the shared rule in base.css. */
   .script {
-    width: 100%;
     max-width: none;
-    max-height: calc(var(--seen-height, 100dvh) - 16px);
     display: flex;
     flex-direction: column;
   }
@@ -305,10 +295,10 @@
   .script__code {
     height: auto;
     min-height: 132px;
-    max-height: calc(var(--seen-height, 100dvh) * 0.34);
+    max-height: calc(var(--seen-height) * 0.34);
   }
 
   .script__prompt {
-    max-height: calc(var(--seen-height, 100dvh) * 0.34);
+    max-height: calc(var(--seen-height) * 0.34);
   }
 }

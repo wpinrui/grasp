@@ -1,3 +1,5 @@
+import { MAGNET_PATH, MAGNET_PRONGS } from "./frame";
+
 /** The window buttons and the marks a menu draws beside what it offers. */
 
 export function MinimizeIcon() {
@@ -86,4 +88,43 @@ export function ShareIcon() {
       <path d="M10 2.8 V12 M6.6 6.2 L10 2.8 L13.4 6.2 M4.6 11 V16.2 A1 1 0 0 0 5.6 17.2 H14.4 A1 1 0 0 0 15.4 16.2 V11" />
     </svg>
   );
+}
+
+/**
+ * The keys on the touch bar. Stroked on the same 20 by 20 box as the tools, so
+ * the bar does not read as something bolted on from somewhere else.
+ */
+function KeyIcon({ d }: { d: string }) {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+export function UndoIcon() {
+  return <KeyIcon d="M7.5 5.5 L4 9 L7.5 12.5 M4 9 h7.5 a4 4 0 1 1 0 8 h-2.5" />;
+}
+
+export function RedoIcon() {
+  return <KeyIcon d="M12.5 5.5 L16 9 L12.5 12.5 M16 9 h-7.5 a4 4 0 1 0 0 8 h2.5" />;
+}
+
+/** The same magnet the Snap panel is marked with, which this key stands in for. */
+export function SnapKeyIcon() {
+  return <KeyIcon d={[MAGNET_PATH, ...MAGNET_PRONGS].join(" ")} />;
+}
+
+export function CancelIcon() {
+  return <KeyIcon d="M5.5 5.5 L14.5 14.5 M14.5 5.5 L5.5 14.5" />;
 }

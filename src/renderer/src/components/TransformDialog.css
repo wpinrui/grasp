@@ -274,11 +274,11 @@
 */
 @media (pointer: coarse) {
   .dialog {
-    top: calc(var(--seen-top, 0px) + 8px);
+    top: calc(var(--seen-top) + 8px);
     left: 8px;
     right: 8px;
     width: auto;
-    max-height: calc(var(--seen-height, 100dvh) - 16px);
+    max-height: calc(var(--seen-height) - 16px);
     display: flex;
     flex-direction: column;
   }

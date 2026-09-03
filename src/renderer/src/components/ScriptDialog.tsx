@@ -191,8 +191,8 @@ export function ScriptDialog({
     // A press outside the card does not shut it. There is typed work in here,
     // and a modal that goes away on a stray click takes that work off the
     // screen. The close button and Escape are the ways out.
-    <div className="script__scrim">
-      <div className="script" ref={card}>
+    <div className="script__scrim scrim">
+      <div className="script scrim__panel" ref={card}>
         <div className="script__bar">
           <span className="script__title">{way === "ask" ? "Ask an AI" : "Run a script"}</span>
           <span className="script__steps">{way === "ask" ? `Step ${step} of 2` : ""}</span>

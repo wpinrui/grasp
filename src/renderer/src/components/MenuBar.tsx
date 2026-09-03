@@ -4,12 +4,13 @@ import { MenuCheckIcon, SubmenuArrowIcon } from "./icons";
 import {
   customItems,
   isImplemented,
+  MENUS,
   type MenuAction,
   type MenuEntry,
   type MenuItem,
+  phoneItems,
+  phoneMenus,
   recentItems,
-  shownItems,
-  shownMenus,
 } from "./menus";
 import "./MenuBar.css";
 
@@ -52,9 +53,10 @@ export function MenuBar({
   onScript,
 }: MenuBarProps) {
   const phone = usePhone();
+  const shown = (items: MenuEntry[]) => (phone ? phoneItems(items) : items);
   return (
     <div className="menubar">
-      {shownMenus(phone).map((menu) => (
+      {(phone ? phoneMenus() : MENUS).map((menu) => (
         <div className="menubar__anchor" key={menu.label}>
           <button
             type="button"
@@ -67,11 +69,10 @@ export function MenuBar({
           </button>
           {openMenu === menu.label && (
             <Flyout
-              items={shownItems(
+              items={shown(
                 menu.label === "Transform"
                   ? [...menu.items, ...customItems(transforms)]
                   : menu.items,
-                phone,
               )}
               recent={recent}
               isTicked={isTicked}
@@ -89,7 +90,7 @@ export function MenuBar({
       <div className="menubar__spacer" />
       <button
         type="button"
-        className="menubar__tool"
+        className="menubar__tool menubar__tool--ai"
         title="Ask an AI for a figure"
         onClick={onAsk}
       >

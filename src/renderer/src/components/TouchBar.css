@@ -1,5 +1,5 @@
 /*
-  The bar along the bottom of a phone. A row of keys, each an icon over its
+  The bar along the bottom of a phone. A row of keys, each an icon beside its
   name, sharing the width evenly so every one is the same size to aim at.
 */
 
@@ -55,8 +55,14 @@
   background: var(--color-accent);
 }
 
-/* Nothing to do. Greyed rather than hidden, so the row keeps its shape and a
-   key stays where it was learnt to be. */
+/*
+  Nothing to do. Greyed rather than hidden, so the row keeps its shape and a key
+  stays where it was learnt to be.
+
+  Muted rather than the disabled grey the rest of the chrome uses: that grey is
+  meant for text with a control drawn around it, and here the colour is the only
+  thing saying the key is spent, so it has to be legible on its own.
+*/
 .touchbar__key:disabled {
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
 }

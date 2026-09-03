@@ -4,8 +4,6 @@ import { FlyoutMarker, ShareIcon } from "./icons";
 import { TOOLS } from "./tools";
 import "./Toolbox.css";
 
-const TOOL_PITCH = 50;
-const RAIL_PADDING = 6;
 const TOOLTIP_OFFSET = 3;
 
 /**
@@ -47,6 +45,18 @@ export function Toolbox({
   onShare,
 }: ToolboxProps) {
   const [hovered, setHovered] = useState<number | null>(null);
+  /**
+   * How far down the rail the open tool's button sits, measured from it rather
+   * than counted off a pitch. The keys are not the same size on every screen,
+   * so a pitch fixed for one of them drifts a little further with every tool.
+   */
+  const [openTop, setOpenTop] = useState(0);
+
+  /** Open whatever a tool shows, beside the button it belongs to. */
+  function show(index: number, button: HTMLButtonElement) {
+    setOpenTop(button.offsetTop);
+    setHovered(index);
+  }
   const tip = hovered === null ? null : TOOLS[hovered];
   // A tool with variants opens them on hover, in place of its tooltip.
   const opened = tip?.variants?.length && !off[tip.id] ? tip : null;
@@ -63,6 +73,7 @@ export function Toolbox({
   }
 
   function startHold(index: number, event: PointerEvent<HTMLButtonElement>) {
+    const button = event.currentTarget;
     dropHold();
     opening.current = false;
     holding.current = {
@@ -71,7 +82,7 @@ export function Toolbox({
       timer: window.setTimeout(() => {
         holding.current = null;
         opening.current = true;
-        setHovered(index);
+        show(index, button);
       }, HOLD_MS),
     };
   }
@@ -81,6 +92,14 @@ export function Toolbox({
     const gone = Math.hypot(event.clientX - holding.current.x, event.clientY - holding.current.y);
     if (gone > HOLD_SLOP) dropHold();
   }
+
+  // A press still being timed when the rail goes would fire into nothing.
+  useEffect(
+    () => () => {
+      if (holding.current) window.clearTimeout(holding.current.timer);
+    },
+    [],
+  );
 
   /**
    * With no pointer to move away, what puts the flyout back is a press
@@ -132,7 +151,7 @@ export function Toolbox({
             onPointerMove={phone ? keepHold : undefined}
             onPointerUp={phone ? dropHold : undefined}
             onPointerCancel={phone ? dropHold : undefined}
-            onMouseEnter={phone ? undefined : () => setHovered(index)}
+            onMouseEnter={phone ? undefined : (event) => show(index, event.currentTarget)}
             onMouseLeave={phone ? undefined : () => setHovered(null)}
           >
             {tool.id === activeTool && <span className="tool__rail" />}
@@ -146,7 +165,7 @@ export function Toolbox({
         // biome-ignore lint/a11y/noStaticElementInteractions: it only keeps itself open, the variants inside are buttons
         <div
           className="variants"
-          style={{ top: `${RAIL_PADDING + hovered * TOOL_PITCH}px` }}
+          style={{ top: `${openTop}px` }}
           onMouseEnter={phone ? undefined : () => setHovered(hovered)}
           onMouseLeave={phone ? undefined : () => setHovered(null)}
         >
@@ -187,10 +206,7 @@ export function Toolbox({
       )}
 
       {tip && !opened && hovered !== null && (
-        <div
-          className="tooltip"
-          style={{ top: `${RAIL_PADDING + hovered * TOOL_PITCH + TOOLTIP_OFFSET}px` }}
-        >
+        <div className="tooltip" style={{ top: `${openTop + TOOLTIP_OFFSET}px` }}>
           {/* A tool with nothing to do says why rather than what it is. */}
           <span className="tooltip__name">{off[tip.id] ?? tip.name}</span>
           {!off[tip.id] && <span className="tooltip__key">{tip.key}</span>}

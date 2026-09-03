@@ -1,8 +1,11 @@
-import { onAPhone } from "../../phone";
 import type { Quantity } from "../expression";
 import type { LineForm, SketchPoint } from "./figures";
 
-/** Slack around an object that a click still counts as a hit. */
+/**
+ * Slack around an object that a click still counts as a hit, for a pointer and
+ * for a finger. A fingertip covers several millimetres of glass and hides what
+ * is under it, so it is given a good deal more room.
+ */
 const PICK_SLACK = 5;
 const FINGER_SLACK = 13;
 
@@ -28,15 +31,20 @@ export interface Rect {
 }
 
 /**
- * How far, in sheet pixels, a click still counts as on an object.
- *
- * A fingertip covers several millimetres of glass and hides what is under it,
- * so a touch screen is given a good deal more room than a pointer. It is asked
- * of the device rather than passed in, because it is a property of what is
- * doing the aiming and is the same for every hit test on a given screen.
+ * How much room a click is given, which is a property of what is doing the
+ * aiming rather than of any one hit test. The app settles it once at startup;
+ * the model does not ask the browser anything.
  */
+let reach = PICK_SLACK;
+
+/** Say which kind of screen is being aimed at. Called once, by the app. */
+export function setPickReach(coarse: boolean): void {
+  reach = coarse ? FINGER_SLACK : PICK_SLACK;
+}
+
+/** How far, in sheet pixels, a click still counts as on an object. */
 export function slackAt(scale: number): number {
-  return (onAPhone() ? FINGER_SLACK : PICK_SLACK) / scale;
+  return reach / scale;
 }
 
 /** Where a line runs, and how far along it it actually exists. */
