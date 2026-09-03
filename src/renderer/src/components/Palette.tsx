@@ -1,13 +1,8 @@
 import { type MouseEvent, type RefObject, useEffect, useReducer } from "react";
 import { insertAtCaret } from "../sketch/captions";
-import type {
-  CaptionAlign,
-  LinePattern,
-  LineWidth,
-  SketchCaption,
-  TextLook,
-} from "../sketch/model";
+import type { CaptionAlign, LinePattern, LineWidth, SketchCaption } from "../sketch/model";
 import { LINE_PATTERNS, LINE_WIDTHS } from "../sketch/model";
+import type { TextStyling } from "../sketch/text";
 import { PATTERN_SAMPLE, Picker, Popout, Rule, WEIGHT_SAMPLE } from "./PalettePicker";
 import { caretLook, caretMarks, chosenRun, wrapRun } from "./paletteCaret";
 import { FONTS, INKS, NOTATION, SIZES, SYMBOLS } from "./typeset";
@@ -19,6 +14,9 @@ const WEIGHT_NAMES: Record<LineWidth, string> = {
   medium: "Medium",
   thick: "Thick",
 };
+
+/** What the Font box says when the writing it is set on does not agree on one. */
+const VARIOUS = "(various)";
 
 const PATTERN_NAMES: Record<LinePattern, string> = {
   solid: "Solid",
@@ -52,15 +50,17 @@ interface PaletteProps {
   /** The caption the palette is set on: the one open, or the one selected. */
   caption: SketchCaption | null;
   /**
-   * How the text of whatever is selected reads now. Null when there is no text
-   * in the selection, which greys the face and the size.
+   * How the writing the row is set on reads now, and what of it that writing
+   * agrees about. Null when nothing selected is written, which greys the face
+   * and the size.
    */
-  look: TextLook | null;
+  text: TextStyling | null;
   editing: boolean;
   /**
-   * How the picked label is set now, or null when no label is picked. A label
-   * has no runs and no caret, so the three style keys read and set the whole
-   * of it rather than following where the next keystroke would land.
+   * How the picked labels are set now, or null when none is picked. A label has
+   * no runs and no caret, so the three style keys read and set the whole of it
+   * rather than following where the next keystroke would land, and a key the
+   * picked labels do not agree on reads off.
    */
   labelMarks: Record<"bold" | "italic" | "underline", boolean> | null;
   onLabelMark: (mark: "bold" | "italic" | "underline", on: boolean) => void;
@@ -93,7 +93,7 @@ interface PaletteProps {
 export function Palette({
   editor,
   caption,
-  look,
+  text,
   editing,
   labelMarks,
   onLabelMark,
@@ -174,10 +174,18 @@ export function Palette({
   /** The ranging: the caption it is set on, or the one about to be written. */
   const ranged = caption ? caption.align : armedText?.align;
   const rangeOff = !caption && !armedText;
-  const font = here.font ?? look?.font ?? FONTS[0];
-  const size = here.size ?? look?.size ?? 14;
-  const inked = here.colour ?? look?.colour ?? styling.colour;
-  const colourOff = !styling.canColour && !look;
+  /**
+   * What the two boxes say. The caret wins while a caption is open, then what
+   * the writing agrees on. Where it agrees on neither, the face says so in
+   * words and the size says the smallest with a plus after it, so a 12 and a 16
+   * read 12+ rather than the bar picking one of them and stating it as fact.
+   */
+  const face = here.font ?? text?.font ?? null;
+  const point = here.size ?? text?.size ?? null;
+  const font = face ?? (text ? VARIOUS : FONTS[0]);
+  const size = point !== null ? `${point}` : text ? `${text.smallest}+` : "14";
+  const inked = here.colour ?? text?.colour ?? styling.colour;
+  const colourOff = !styling.canColour && !text;
 
   return (
     <div className="palette">
@@ -250,21 +258,23 @@ export function Palette({
       <div className="palette__rule" />
 
       <div className="palette__row">
-        <span className={`palette__name${look ? " palette__name--on" : ""}`}>Text</span>
+        <span className={`palette__name${text ? " palette__name--on" : ""}`}>Text</span>
         <div className="palette__controls">
           <Picker
             label="Font"
             value={font}
-            disabled={!look}
+            disabled={!text}
             wide
-            face={font}
+            // A disagreement is not a face, so the box is left in the bar's own
+            // type rather than being set in a font that does not exist.
+            face={face ?? undefined}
             onPick={(next) => setFace({ fontFamily: `"${next}"` }, { font: next })}
             options={FONTS.map((one) => ({ value: one, label: one, face: one }))}
           />
           <Picker
             label="Size"
-            value={`${size}`}
-            disabled={!look}
+            value={size}
+            disabled={!text}
             onPick={(next) => setFace({ fontSize: `${next}pt` }, { size: Number(next) })}
             options={SIZES.map((one) => ({ value: `${one}`, label: `${one}` }))}
           />

@@ -402,9 +402,12 @@ interface CanvasProps {
   spotlight: string | null;
   /** The Text tool clicked an object: show its label, or hide it again. */
   onToggleLabel: (id: string) => void;
-  /** The label the Arrow has picked, which the palette is then set on. */
-  labelPick: string | null;
-  onLabelPick: (id: string | null) => void;
+  /**
+   * The labels the Arrow has picked, which the palette is then set on. Several
+   * can be picked at once, with Shift or Ctrl, and set together.
+   */
+  labelPick: string[];
+  onLabelPick: (id: string | null, additive?: boolean) => void;
   /** Double-clicking a parameter or a calculation, which reopens what made it. */
   onEditValue: (id: string) => void;
   /** Pressing an action button, which does whatever it was made to do. */
@@ -3042,7 +3045,7 @@ export function Canvas({
     // A label is picked on its own: what it names is not picked with it, so the
     // palette is set on the label rather than on the object under it.
     if (tool === "arrow") {
-      onLabelPick(id);
+      onLabelPick(id, event.shiftKey || event.ctrlKey);
       sketch.select([]);
     }
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -3178,6 +3181,10 @@ export function Canvas({
     const element = editor.current;
     const open = editing ? captions.find((one) => one.id === editing) : null;
     if (open && element) settleCaption(open.id, element.innerHTML);
+    // A caption being written into is the one thing the palette is set on, so
+    // opening one lets go of everything else rather than setting the bar on a
+    // caption and a selection at once.
+    if (next) sketch.select([]);
     onEditing(next);
   }
 
@@ -4284,7 +4291,9 @@ export function Canvas({
             <span
               key={label.id}
               data-id={label.id}
-              className={`canvas__label${labelPick === label.id ? " canvas__label--picked" : ""}`}
+              className={`canvas__label${
+                labelPick.includes(label.id) ? " canvas__label--picked" : ""
+              }`}
               style={{
                 ...where,
                 ...label.look,
