@@ -2617,12 +2617,12 @@ export function Canvas({
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType === "touch") {
       fingers.current.delete(event.pointerId);
-      const panning = grab.current;
+      const held = grab.current;
       // Still enough fingers to be panning, so the pan carries on from where
       // the ones left on the glass are now rather than ending under them.
-      if (panning?.pan && fingers.current.size >= PAN_FINGERS) {
+      if (held?.pan && fingers.current.size >= PAN_FINGERS) {
         const at = betweenFingers();
-        panning.pan = { view: viewNow.current, clientX: at.x, clientY: at.y };
+        held.pan = { view: viewNow.current, clientX: at.x, clientY: at.y };
         return;
       }
     }

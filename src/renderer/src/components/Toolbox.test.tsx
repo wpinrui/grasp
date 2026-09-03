@@ -110,13 +110,10 @@ describe("holding a tool on a touch screen", () => {
 
   it("drops a press still being timed when the rail goes", () => {
     // Otherwise the timer fires into a component that is no longer there.
-    const { unmount } = (() => {
-      rail();
-      return { unmount: cleanup };
-    })();
+    rail();
     fireEvent.pointerDown(button(STRAIGHTEDGE), { clientX: 20, clientY: 100 });
     expect(vi.getTimerCount()).toBe(1);
-    unmount();
+    cleanup();
     expect(vi.getTimerCount()).toBe(0);
   });
 

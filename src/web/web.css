@@ -10,7 +10,6 @@
 .web-prompt__box {
   min-width: 320px;
   max-width: 480px;
-  width: 100%;
   padding: 20px;
   border: 1px solid var(--color-border-flyout);
   border-radius: 8px;
@@ -83,15 +82,4 @@
 .locked .canvas__zoom,
 .locked .canvas__scroll {
   display: none;
-}
-
-/*
-  A touch screen. The box is drawn for a desktop's width, and 320px of it does
-  not fit inside the scrim's padding on the narrowest phones.
-*/
-@media (pointer: coarse) {
-  .web-prompt__box {
-    min-width: 0;
-    max-width: none;
-  }
 }

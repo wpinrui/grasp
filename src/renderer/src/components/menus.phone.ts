@@ -9,12 +9,7 @@
 
 import { MENUS, type Menu, type MenuEntry } from "./menus";
 
-/**
- * The entries that need hardware or a desk that is not there, and the two the
- * bar along the bottom already carries.
- * Nothing here is removed from GRASP. A sketch made on a phone still carries
- * whatever these made, and opening it at a desk gets all of them back.
- */
+/** The entries a phone leaves out, by the action each of them carries. */
 const CUT_ACTIONS = new Set<string>([
   // Undo and Redo are keys on the bottom bar.
   "undo",

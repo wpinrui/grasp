@@ -269,10 +269,8 @@
   drawn at a desktop's fixed heights and have to give on a phone.
 */
 @media (pointer: coarse) {
-  /* The scrim and the panel are placed by the shared rule in base.css. */
+  /* The scrim and the panel are placed and sized by the rule in base.css. */
   .script {
-    width: 100%;
-    max-width: none;
     display: flex;
     flex-direction: column;
   }

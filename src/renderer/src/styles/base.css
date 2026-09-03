@@ -59,6 +59,21 @@ button {
   browser hands the page a viewport that changes height as its own chrome slides
   away, which dvh follows and vh does not.
 */
+/*
+  An overlay that covers the window, and the panel it holds in the middle: the
+  About box, the print preview, the AI dialog and the prompts the web build
+  draws for itself. Each carries its own z-index and its own looks; this is the
+  part all four share.
+*/
+.scrim {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-scrim);
+}
+
 @media (pointer: coarse) {
   body,
   #root {
@@ -81,24 +96,15 @@ button {
     padding: 8px;
   }
 
-  .scrim__panel {
+  /*
+    Two classes rather than one, so this beats each panel's own desktop width
+    without any of it depending on the order the stylesheets are emitted in.
+  */
+  .scrim .scrim__panel {
+    width: 100%;
     min-width: 0;
+    max-width: none;
     max-height: calc(var(--seen-height) - 16px);
     overflow-y: auto;
   }
-}
-
-/*
-  An overlay that covers the window, and the panel it holds in the middle: the
-  About box, the print preview, the AI dialog and the prompts the web build
-  draws for itself. Each carries its own z-index and its own looks; this is the
-  part all four share.
-*/
-.scrim {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-scrim);
 }
