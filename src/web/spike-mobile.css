@@ -81,3 +81,21 @@ body.spike-mobile .dock__rail::-webkit-scrollbar {
   background: var(--color-accent);
   color: var(--color-bg);
 }
+
+/* The right-hand rail and its pane are gone. They cost 46px of a 390px screen
+   and the pane opens over most of what is left, so on a phone the sheet never
+   gets the width back. What goes with them is the only way to reach the
+   Labels, Hidden and Snap panels from the sheet. */
+body.spike-mobile .dock__rail,
+body.spike-mobile .dock__pane {
+  display: none;
+}
+
+/* The palette bar under the sheet, and the page tabs under that. A phone is one
+   page: the tabs are hidden rather than the pages being taken away, so a sketch
+   made on a desktop still opens with all of its pages there and reachable from
+   a desktop afterwards. */
+body.spike-mobile .palette,
+body.spike-mobile .pagebar {
+  display: none;
+}
