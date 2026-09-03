@@ -18,10 +18,8 @@ import { useEffect, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SketchObject, SketchState } from "../sketch/model";
 import { useSketch } from "../sketch/useSketch";
+import { SHEET, stubSheetBox } from "../testing/sheet";
 import { Canvas } from "./Canvas";
-
-/** The size the sheet reports, since jsdom lays nothing out. */
-const SHEET = { width: 800, height: 600 };
 
 /** A figure holding one of every kind the layers draw. */
 const FIGURE: SketchObject[] = [
@@ -192,6 +190,8 @@ function put(
   );
 }
 
+let unstub: () => void;
+
 beforeEach(() => {
   // jsdom has no ResizeObserver and lays nothing out, so the sheet is told its
   // size once. Without it the viewport is nothing and every line is clipped
@@ -210,16 +210,7 @@ beforeEach(() => {
       disconnect() {}
     },
   );
-  Element.prototype.getBoundingClientRect = () =>
-    ({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: SHEET.width,
-      bottom: SHEET.height,
-      ...SHEET,
-    }) as DOMRect;
+  unstub = stubSheetBox();
   // jsdom implements no pointer capture, which every gesture on the sheet takes.
   Element.prototype.setPointerCapture = () => {};
   Element.prototype.releasePointerCapture = () => {};
@@ -227,6 +218,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  unstub();
   cleanup();
   vi.unstubAllGlobals();
 });
