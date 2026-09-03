@@ -143,3 +143,15 @@
   left: auto;
   right: 54px;
 }
+
+/*
+  A touch screen. The rail and its pane are gone: they cost a sixth of the width
+  of a phone and the pane opens over most of what is left, so the sheet never
+  gets it back. The panels they open are reached from the Window menu at a desk.
+*/
+@media (pointer: coarse) {
+  .dock__rail,
+  .dock__pane {
+    display: none;
+  }
+}

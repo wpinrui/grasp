@@ -53,3 +53,58 @@ button {
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/*
+  An overlay that covers the window, and the panel it holds in the middle: the
+  About box, the print preview, the AI dialog and the prompts the web build
+  draws for itself. Each carries its own z-index and its own looks; this is the
+  part all four share.
+*/
+.scrim {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-scrim);
+}
+
+/*
+  A touch screen. The page is the window and nothing scrolls behind it. A phone
+  browser hands the page a viewport that changes height as its own chrome slides
+  away, which dvh follows and vh does not.
+*/
+@media (pointer: coarse) {
+  body,
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /*
+    A phone keyboard covers the window rather than resizing it, so an overlay
+    centred in the window ends up behind the keyboard the moment a field in it
+    is tapped. The visual viewport is the part that moves, so the scrim is
+    pulled onto it and its panel pushed to the top of that, where the keyboard
+    never reaches.
+  */
+  .scrim {
+    top: var(--seen-top);
+    bottom: auto;
+    height: var(--seen-height);
+    align-items: flex-start;
+    padding: 8px;
+  }
+
+  /*
+    Two classes rather than one, so this beats each panel's own desktop width
+    without any of it depending on the order the stylesheets are emitted in.
+  */
+  .scrim .scrim__panel {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    max-height: calc(var(--seen-height) - 16px);
+    overflow-y: auto;
+  }
+}

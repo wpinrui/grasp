@@ -1,6 +1,6 @@
 /** The Dock's panels, one icon each. */
 
-import { ToolSvg } from "./frame";
+import { MAGNET_PATH, MAGNET_PRONGS, ToolSvg } from "./frame";
 
 /** Labels: a luggage tag, since a label is what a thing is called. */
 export function TagIcon() {
@@ -38,12 +38,10 @@ export function SnapIcon() {
   return (
     <ToolSvg>
       <g fill="none" strokeWidth="3.2" strokeLinecap="butt">
-        <path
-          d="M5.4 5 L5.4 10.6 A 4.6 4.6 0 0 0 14.6 10.6 L14.6 5"
-          stroke="var(--color-panel-snap)"
-        />
-        <path d="M5.4 3.4 L5.4 6.2" stroke="var(--color-panel-steel)" />
-        <path d="M14.6 3.4 L14.6 6.2" stroke="var(--color-panel-steel)" />
+        <path d={MAGNET_PATH} stroke="var(--color-panel-snap)" />
+        {MAGNET_PRONGS.map((prong) => (
+          <path key={prong} d={prong} stroke="var(--color-panel-steel)" />
+        ))}
       </g>
     </ToolSvg>
   );

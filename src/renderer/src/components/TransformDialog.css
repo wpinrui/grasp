@@ -260,3 +260,37 @@
   background: var(--color-surface-raised);
   cursor: default;
 }
+
+/*
+  A touch screen. There is nowhere to drag a dialog to and a keyboard waiting to
+  cover the bottom of the screen, so each one is pinned across the top of what
+  is actually visible and takes its height from the visual viewport rather than
+  the window. A keyboard covers the window without resizing it; the visual
+  viewport is the part that moves, so a dialog measured against it shrinks as
+  the keyboard opens instead of sliding underneath.
+
+  DialogFrame leaves its inline placement off where this applies, so these are
+  ordinary rules rather than overrides.
+*/
+@media (pointer: coarse) {
+  .dialog {
+    top: calc(var(--seen-top) + 8px);
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: calc(var(--seen-height) - 16px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The body gives way, so the title and the buttons are never what goes. */
+  .dialog__body {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Nothing to drag it to any more. */
+  .dialog__bar {
+    touch-action: manipulation;
+  }
+}

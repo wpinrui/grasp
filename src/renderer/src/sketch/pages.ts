@@ -192,37 +192,66 @@ export function usePages() {
     [replacePages],
   );
 
-  /** Park a state to undo back to, and drop whatever was there to redo. */
-  const record = useCallback((before: SketchState) => {
+  /**
+   * How deep the history of the page that is up runs, either side of it. The
+   * stacks themselves are refs and stay refs; this is the part a control has to
+   * know about, and it is state so that Undo and Redo grey out the moment they
+   * have nothing left to do.
+   *
+   * The same two numbers again is the same object, so a `noteDepth` that finds
+   * nothing changed redraws nothing.
+   */
+  const [depth, setDepth] = useState({ back: 0, forward: 0 });
+  const noteDepth = useCallback(() => {
     const id = active.current;
-    past.current.set(id, [...(past.current.get(id) ?? []), before]);
-    future.current.set(id, []);
+    const back = past.current.get(id)?.length ?? 0;
+    const forward = future.current.get(id)?.length ?? 0;
+    setDepth((was) => (was.back === back && was.forward === forward ? was : { back, forward }));
   }, []);
+
+  /** Park a state to undo back to, and drop whatever was there to redo. */
+  const record = useCallback(
+    (before: SketchState) => {
+      const id = active.current;
+      past.current.set(id, [...(past.current.get(id) ?? []), before]);
+      future.current.set(id, []);
+      noteDepth();
+    },
+    [noteDepth],
+  );
 
   /**
    * Step the page that is up one back, or one forward. `now` is what it is on,
    * which goes onto the other stack; the state to put back comes out, or null
    * when that stack is empty.
    */
-  const stepBack = useCallback((now: SketchState): SketchState | null => {
-    const id = active.current;
-    const history = [...(past.current.get(id) ?? [])];
-    const previous = history.pop();
-    if (!previous) return null;
-    past.current.set(id, history);
-    future.current.set(id, [...(future.current.get(id) ?? []), now]);
-    return previous;
-  }, []);
+  const stepBack = useCallback(
+    (now: SketchState): SketchState | null => {
+      const id = active.current;
+      const history = [...(past.current.get(id) ?? [])];
+      const previous = history.pop();
+      if (!previous) return null;
+      past.current.set(id, history);
+      future.current.set(id, [...(future.current.get(id) ?? []), now]);
+      noteDepth();
+      return previous;
+    },
+    [noteDepth],
+  );
 
-  const stepForward = useCallback((now: SketchState): SketchState | null => {
-    const id = active.current;
-    const undone = [...(future.current.get(id) ?? [])];
-    const next = undone.pop();
-    if (!next) return null;
-    future.current.set(id, undone);
-    past.current.set(id, [...(past.current.get(id) ?? []), now]);
-    return next;
-  }, []);
+  const stepForward = useCallback(
+    (now: SketchState): SketchState | null => {
+      const id = active.current;
+      const undone = [...(future.current.get(id) ?? [])];
+      const next = undone.pop();
+      if (!next) return null;
+      future.current.set(id, undone);
+      past.current.set(id, [...(past.current.get(id) ?? []), now]);
+      noteDepth();
+      return next;
+    },
+    [noteDepth],
+  );
 
   /** Put every parked state of the page that is up through the same change. */
   const reworkHistory = useCallback((rework: (state: SketchState) => SketchState) => {
@@ -241,10 +270,14 @@ export function usePages() {
   );
 
   /** Show a page. Everything that changes which one is up goes through here. */
-  const goTo = useCallback((id: string) => {
-    active.current = id;
-    setActiveId(id);
-  }, []);
+  const goTo = useCallback(
+    (id: string) => {
+      active.current = id;
+      noteDepth();
+      setActiveId(id);
+    },
+    [noteDepth],
+  );
 
   const selectPage = useCallback(
     (id: string) => {
@@ -288,11 +321,14 @@ export function usePages() {
         past.current.delete(page.id);
         future.current.delete(page.id);
       }
+      // Once, after the lot. The loop only empties pages that are going, and a
+      // page that is both up and going is put right by the `goTo` below.
+      noteDepth();
       replacePages(next);
       // The page being shown may have been one of the ones removed.
       if (!staying.has(active.current)) goTo(next[0].id);
     },
-    [goTo, replacePages],
+    [goTo, replacePages, noteDepth],
   );
 
   /** A page made off another one: named after it, landing after it, and shown. */
@@ -332,13 +368,14 @@ export function usePages() {
       if (index === -1) return;
       past.current.delete(id);
       future.current.delete(id);
+      noteDepth();
       const next = pages.filter((page) => page.id !== id);
       replacePages(next);
       if (active.current !== id) return;
       // The page to its left takes over, or the first one if it had none.
       goTo(next[Math.max(0, index - 1)].id);
     },
-    [goTo, replacePages],
+    [goTo, replacePages, noteDepth],
   );
 
   /** What one page holds, without going to it. */
@@ -383,13 +420,14 @@ export function usePages() {
       );
       past.current.clear();
       future.current.clear();
+      noteDepth();
       replacePages(next);
       goTo(next[0].id);
       saved.current = next;
       setSavedPages(next);
       setTouched(false);
     },
-    [goTo, replacePages],
+    [goTo, replacePages, noteDepth],
   );
 
   const shown = pages.find((page) => page.id === activeId) ?? pages[0];
@@ -403,6 +441,9 @@ export function usePages() {
     record,
     stepBack,
     stepForward,
+    /** Whether there is anything to undo, and anything to redo. */
+    canUndo: depth.back > 0,
+    canRedo: depth.forward > 0,
     reworkHistory,
     /** What the page bar draws. */
     row: pages.map(({ id, name }) => ({ id, name })),

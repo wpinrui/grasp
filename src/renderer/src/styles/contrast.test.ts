@@ -39,6 +39,45 @@ describe("contrast gate", () => {
     }
   }
 
+  /**
+   * The pairings the loop above cannot reach, because they are not a listed
+   * foreground on a listed surface. Each is somewhere a colour is the only
+   * thing carrying the meaning, so it has to be legible on its own.
+   */
+  const PAIRINGS: { name: string; on: string; over: string; floor: number }[] = [
+    // A key on the touch bar that is held down is filled with the accent.
+    { name: "a lit key", on: "bg", over: "accent", floor: AA_TEXT },
+    // The AI button on a phone, which is the one control drawn in paint.
+    { name: "the AI button", on: "ink-black", over: "paint-yellow", floor: AA_TEXT },
+  ];
+
+  /**
+   * A key on the touch bar that can do nothing is greyed, and the grey is the
+   * whole of what says so. Which grey is read out of the stylesheet rather than
+   * named here, so that changing it there is what this answers for.
+   */
+  it("a spent key clears WCAG 3:1 in whatever grey the bar uses", () => {
+    const bar = readFileSync("src/renderer/src/components/TouchBar.css", "utf8");
+    const rule = /\.touchbar__key:disabled \{[^}]*color: var\(--color-([\w-]+)\)/.exec(bar);
+    if (!rule) throw new Error("the touch bar does not say what a spent key looks like");
+    expect(contrastRatio(tokens[rule[1]], tokens.surface)).toBeGreaterThanOrEqual(AA_UI);
+  });
+
+  for (const { name, on, over, floor } of PAIRINGS) {
+    const pairing = `${on} on ${over}`;
+    it(`${name} clears WCAG ${floor}:1`, () => {
+      const ratio = contrastRatio(tokens[on], tokens[over]);
+      const exception = excepted.get(pairing);
+      if (exception) {
+        console.info(
+          `contrast exception: ${pairing} = ${ratio.toFixed(2)}:1 — ${exception.reason}`,
+        );
+        return;
+      }
+      expect(ratio).toBeGreaterThanOrEqual(floor);
+    });
+  }
+
   it("keeps a luminance step between adjacent surface layers", () => {
     const [bg, surface, raised] = SURFACES.map((s) => relativeLuminance(tokens[s]));
     expect(bg).toBeLessThan(surface);

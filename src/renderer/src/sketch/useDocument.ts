@@ -97,6 +97,16 @@ export function useDocument(sketch: Sketch, prefs: Preferences) {
     return true;
   }, [markSaved, setDocument, text]);
 
+  /**
+   * Hand the sketch to the device rather than to a file. Where there is nothing
+   * to hand it to, saving is what happens instead, so the button does something
+   * either way.
+   */
+  const share = useCallback(async (): Promise<boolean> => {
+    if (await window.api.file.share(text(), current.current.name)) return true;
+    return saveAs();
+  }, [saveAs, text]);
+
   const save = useCallback(async (): Promise<boolean> => {
     const { path } = current.current;
     if (!path) return saveAs();
@@ -212,9 +222,10 @@ export function useDocument(sketch: Sketch, prefs: Preferences) {
       open,
       save,
       saveAs,
+      share,
       close,
       quit,
     }),
-    [openDocument.name, dirty, toFrame, framed, newSketch, open, save, saveAs, close, quit],
+    [openDocument.name, dirty, toFrame, framed, newSketch, open, save, saveAs, share, close, quit],
   );
 }

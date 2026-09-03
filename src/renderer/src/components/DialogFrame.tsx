@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePhone } from "../phone";
 import { CloseIcon } from "./icons";
 import "./TransformDialog.css";
 
@@ -58,6 +59,7 @@ export function DialogFrame({
   quiet,
   children,
 }: DialogFrameProps) {
+  const phone = usePhone();
   const [at, setAt] = useState(() =>
     opensAt
       ? {
@@ -92,6 +94,9 @@ export function DialogFrame({
   }
 
   function onDrag(event: PointerEvent<HTMLDivElement>) {
+    // Nowhere to drag it to: the stylesheet places it against the top of what
+    // is visible, and the inline position it would set is not read.
+    if (phone) return;
     if (!drag.current) return;
     setAt({ x: event.clientX - drag.current.x, y: event.clientY - drag.current.y });
   }
@@ -99,7 +104,11 @@ export function DialogFrame({
   return (
     <div
       className={`dialog${wide ? " dialog--wide" : ""}`}
-      style={{ left: `${at.x}px`, top: `${at.y}px` }}
+      // A touch screen has nowhere to drag a dialog to and a keyboard waiting to
+      // cover the bottom of it, so the stylesheet places it against the top of
+      // what is visible instead. Left off rather than overridden, so that rule
+      // needs no importance to win.
+      style={phone ? undefined : { left: `${at.x}px`, top: `${at.y}px` }}
     >
       <div
         className="dialog__bar"
