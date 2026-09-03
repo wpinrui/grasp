@@ -34,18 +34,16 @@ body.spike-mobile .app__workspace {
   padding: 0 0 4px 0;
 }
 
-/* Neither rail was ever meant to run out of room, so on a short screen the
-   tools past the fold are simply unreachable. Scrolling them is the smallest
-   thing that makes every tool available at all. */
-body.spike-mobile .toolbox,
-body.spike-mobile .dock__rail {
+/* The rail was never meant to run out of room, so on a short screen the tools
+   past the fold are simply unreachable. Scrolling it is the smallest thing that
+   makes every tool available at all. */
+body.spike-mobile .toolbox {
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
 }
 
-body.spike-mobile .toolbox::-webkit-scrollbar,
-body.spike-mobile .dock__rail::-webkit-scrollbar {
+body.spike-mobile .toolbox::-webkit-scrollbar {
   display: none;
 }
 
@@ -95,6 +93,24 @@ body.spike-mobile .dock__rail::-webkit-scrollbar {
   color: var(--color-bg);
 }
 
+/* The right-hand rail and its pane are gone. They cost 46px of a 390px screen
+   and the pane opens over most of what is left, so on a phone the sheet never
+   gets the width back. What goes with them is the only way to reach the
+   Labels, Hidden and Snap panels from the sheet. */
+body.spike-mobile .dock__rail,
+body.spike-mobile .dock__pane {
+  display: none;
+}
+
+/* The palette bar under the sheet, and the page tabs under that. A phone is one
+   page: the tabs are hidden rather than the pages being taken away, so a sketch
+   made on a desktop still opens with all of its pages there and reachable from
+   a desktop afterwards. */
+body.spike-mobile .palette,
+body.spike-mobile .pagebar {
+  display: none;
+}
+
 /* The menu bar. Measure, Number, Window and Help go on a phone: the last three
    are desk work, panels that are not on screen here, and an about box. Five
    titles are left.
@@ -136,11 +152,6 @@ body.spike-mobile .menubar::-webkit-scrollbar {
 /* A title that shrank to fit would defeat the scrolling, so none of them do. */
 body.spike-mobile .menubar__anchor {
   flex: none;
-}
-
-body.spike-mobile .menubar__spacer {
-  flex: none;
-  width: 4px;
 }
 
 body.spike-mobile .menubar__tool {
