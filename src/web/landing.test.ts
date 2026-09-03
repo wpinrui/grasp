@@ -12,7 +12,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const BUNDLE = "grasp-landing.html";
 const OPENS_TEMPLATE = '<script type="__bundler/template">';
@@ -189,6 +189,22 @@ describe("landing page embeds", () => {
     return make(class {}, { createRef: () => ({ current: null }) });
   }
 
+  /**
+   * `initEmbeds` puts a resize listener on the window, so each fitter a test
+   * makes is unmounted after it. The jsdom window is shared across the file
+   * and would otherwise finish with a stale one per test still attached.
+   */
+  const mounted: Embeds[] = [];
+  afterEach(() => {
+    while (mounted.length) mounted.pop()?.componentWillUnmount();
+  });
+
+  function fitterFor(Component: Embedder): Embeds {
+    const made = new Component({});
+    mounted.push(made);
+    return made;
+  }
+
   /** The srcs the page ships, read off the payload rather than typed out again. */
   function shipped(): string[] {
     return [...page().querySelectorAll("iframe.r-frame")].map(
@@ -214,8 +230,13 @@ describe("landing page embeds", () => {
    * The states matter and are easy to get wrong. A `loading="lazy"` frame is
    * NOT one without a contentWindow: it gets its browsing context the moment
    * it is inserted and sits at `about:blank` until the fetch happens, which
-   * is the state both frames are in when `componentDidMount` runs. A missing
-   * contentWindow only arises when reading it throws.
+   * is the state both frames are in when `componentDidMount` runs.
+   *
+   * The unreadable case has three shapes in the wild: a detached frame whose
+   * contentWindow is null, a cross-origin one that throws on the `href` read,
+   * and one that throws on the getter itself. `frameHref` wraps the whole
+   * chain, so all three land in the same catch and return "", which is why a
+   * single throwing getter models the lot.
    */
   function embeds(where: (src: string) => string | null, width = 1140) {
     document.body.innerHTML = shipped()
@@ -247,7 +268,7 @@ describe("landing page embeds", () => {
     const Component = embedder();
     at(width, Component);
     const state = lazy();
-    new Component({}).initEmbeds();
+    fitterFor(Component).initEmbeds();
     return { ...state, srcs: state.frames.map((frame) => frame.getAttribute("src") ?? "") };
   }
 
@@ -277,7 +298,7 @@ describe("landing page embeds", () => {
     const Component = embedder();
     at("phone", Component);
     const state = blind();
-    new Component({}).initEmbeds();
+    fitterFor(Component).initEmbeds();
     return state;
   }
 
@@ -297,7 +318,7 @@ describe("landing page embeds", () => {
     const Component = embedder();
     at("phone", Component);
     const { frames } = lazy();
-    const fitter = new Component({});
+    const fitter = fitterFor(Component);
     fitter.initEmbeds();
     at("desktop", Component);
     fitter.fitEmbeds(frames);
@@ -313,7 +334,7 @@ describe("landing page embeds", () => {
     const Component = embedder();
     at("desktop", Component);
     const { frames, replaced } = loaded();
-    const fitter = new Component({});
+    const fitter = fitterFor(Component);
     fitter.initEmbeds();
     const before = frames.map((frame) => frame.getAttribute("src"));
 
@@ -338,7 +359,7 @@ describe("landing page embeds", () => {
     const Component = embedder();
     at("desktop", Component);
     const { frames, replaced } = loaded();
-    const fitter = new Component({});
+    const fitter = fitterFor(Component);
     fitter.initEmbeds();
     fitter.fitEmbeds(frames);
     expect(replaced).toEqual([]);
@@ -348,7 +369,7 @@ describe("landing page embeds", () => {
     const Component = embedder();
     at("desktop", Component);
     const { frames, replaced } = loaded();
-    const fitter = new Component({});
+    const fitter = fitterFor(Component);
     fitter.initEmbeds();
     for (const frame of frames) {
       Object.defineProperty(frame, "clientWidth", { configurable: true, value: 320 });
