@@ -256,7 +256,7 @@ export function ScriptDialog({
               </div>
             )}
             <p className="script__say">
-              {way === "ask" ? "The script the AI wrote" : "Paste the script."}
+              {way === "ask" ? "Paste the script here:" : "Paste the script."}
             </p>
             <div className="script__code">
               <pre
