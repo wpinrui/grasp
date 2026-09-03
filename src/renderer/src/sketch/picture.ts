@@ -82,6 +82,8 @@ const DRAWN = `circle, ellipse, line, path, polygon, polyline, rect, text, ${BOX
 const INK_TOKENS = [
   "--color-object",
   "--color-object-edge",
+  "--color-point",
+  "--color-path",
   "--color-locus",
   "--color-locus-arrow",
   "--color-mark",
@@ -157,11 +159,16 @@ function cropOf(sheet: HTMLElement, wanted: Set<string> | null, points: boolean)
   };
 }
 
-/** Every token, resolved off the live window, so var() still means something. */
-function resolvedTokens(): string {
-  const root = getComputedStyle(document.documentElement);
+/**
+ * Every token, resolved off the sheet, so var() still means something. Off the
+ * sheet rather than off the window, since the colours Preferences sets are put
+ * on the canvas rather than on the root: read from the window, a picture comes
+ * out in colours the sheet is not drawn in.
+ */
+function resolvedTokens(sheet: Element): string {
+  const on = getComputedStyle(sheet);
   const names = new Set([...tokensCss.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((found) => found[1]));
-  return [...names].map((name) => `${name}: ${root.getPropertyValue(name).trim()};`).join("\n");
+  return [...names].map((name) => `${name}: ${on.getPropertyValue(name).trim()};`).join("\n");
 }
 
 /** What the dialog's four settings change about the way the picture is drawn. */
@@ -250,7 +257,7 @@ export function pictureSvg(options: PictureOptions, wanted: Set<string> | null):
   }
 
   const css = [
-    `svg { ${resolvedTokens()} font-family: var(--font-family); }`,
+    `svg { ${resolvedTokens(sheet)} font-family: var(--font-family); }`,
     ".export__paper { fill: var(--color-export-paper); }",
     canvasCss,
     captionCss,
