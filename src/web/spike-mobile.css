@@ -287,12 +287,22 @@ body.spike-mobile .script__body {
   overflow-y: auto;
 }
 
-/* The panes inside the body are drawn at fixed heights that assume a desktop's
-   worth of room. In half a phone they have to give. */
-body.spike-mobile .script__code,
-body.spike-mobile .script__prompt,
-body.spike-mobile .script__type {
+/* The two panes inside the body are drawn at fixed heights that assume a
+   desktop's worth of room, so on a phone they are allowed to give. Only these
+   two: the textarea and the painted text behind it are absolutely positioned
+   across this box, so they take their size from it and must not be touched
+   themselves.
+
+   A floor as well as a ceiling. Without one the script box collapses to a
+   single line the moment there is pressure on the height, which is worse than
+   it being too tall. */
+body.spike-mobile .script__code {
   height: auto;
+  min-height: 132px;
+  max-height: calc(var(--spike-seen-height, 100dvh) * 0.34);
+}
+
+body.spike-mobile .script__prompt {
   max-height: calc(var(--spike-seen-height, 100dvh) * 0.34);
 }
 
