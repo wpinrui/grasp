@@ -161,6 +161,9 @@ export const PHONE_CUT = {
     "export-clipboard",
     // The palette bar is not drawn on a phone, so its switch has nothing to do.
     "palette",
+    // Naming, adding and reordering pages, and a switch for the page tabs, on a
+    // build that is one page with no tabs.
+    "document-options",
   ]),
   /** Submenus are cut by name, having no action of their own to cut them by. */
   labels: new Set<string>(["Action Buttons"]),
