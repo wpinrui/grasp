@@ -100,6 +100,10 @@ describe("landing page bundle", () => {
    * tag in it. One literal `</` written back by a hand edit ends that element
    * early, truncates the JSON, and publishes a blank page with every other
    * gate still green.
+   *
+   * A literal `</script>` is caught a step earlier, since reading the island
+   * stops at the first one and the truncated JSON throws on the way in. Every
+   * other `</` reaches this.
    */
   it("carries nothing that would close the script holding it", () => {
     expect(payload().encoded).not.toContain("</");

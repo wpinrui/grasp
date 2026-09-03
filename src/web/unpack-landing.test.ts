@@ -56,6 +56,14 @@ function resources(): Record<string, string> {
   return JSON.parse(page().html.slice(from, page().html.indexOf(";", from)));
 }
 
+/** The same bundle with one island taken out, tag and all. */
+function without(source: string, name: string): string {
+  const tag = `<script type="__bundler/${name}">`;
+  const opens = source.indexOf(tag);
+  const closes = source.indexOf("</script>", opens) + "</script>".length;
+  return source.slice(0, opens) + source.slice(closes);
+}
+
 /** The same bundle with one island rewritten, to check what that shape does. */
 function bundleWith(name: string, json: string): string {
   const was = islandText(bundle(), name);
@@ -97,8 +105,10 @@ describe("the landing page as it is published", () => {
    * visitor arrived at: `/a/b` would send them looking under `/a/`.
    */
   it("asks for its assets from the site root, not from wherever it is served", () => {
+    const all = occurrences(page().html, `${ASSET_DIR}/`);
+    expect(all).toBeGreaterThan(0);
+    expect(occurrences(page().html, `/${ASSET_DIR}/`)).toBe(all);
     expect(occurrences(page().html, `./${ASSET_DIR}/`)).toBe(0);
-    for (const asset of page().assets) expect(pathOf(asset.name).startsWith("/")).toBe(true);
   });
 
   /**
@@ -208,7 +218,24 @@ describe("the shapes the landing page cannot be published in", () => {
     expect(() => unpackLanding(bundleWith("ext_resources", nasty))).toThrow(/example\.test/);
   });
 
-  it("stops rather than read an island that is not there", () => {
-    expect(() => unpackLanding("<html></html>")).toThrow(/page_order/);
+  it("stops rather than publish a page with nowhere to hang its resources", () => {
+    const headless = bundleWith("template", JSON.stringify("<html><body>hi</body></html>"));
+    expect(() => unpackLanding(headless)).toThrow(/head/);
+  });
+
+  it("stops rather than read an island it cannot do without", () => {
+    expect(() => unpackLanding("<html></html>")).toThrow(/manifest/);
+  });
+
+  /**
+   * The two islands the format lets a page leave out, which the page's own
+   * runtime reads as empty. Stopping on those would refuse a page that serves
+   * perfectly well.
+   */
+  it("publishes a page that leaves out what it is allowed to leave out", () => {
+    const spare = without(without(bundle(), "page_order"), "ext_resources");
+    expect(spare).not.toContain('<script type="__bundler/page_order">');
+    expect(spare).not.toContain('<script type="__bundler/ext_resources">');
+    expect(unpackLanding(spare).assets.length).toBe(page().assets.length);
   });
 });

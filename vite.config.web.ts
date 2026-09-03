@@ -5,8 +5,11 @@
  * it is running in beyond the one flag that surface carries.
  *
  * Netlify publishes `dist/web`, where the site root is the landing page and the
- * app itself sits under `/launch`. Asset paths are relative, so the same build
- * works at a domain root or under a path.
+ * app itself sits under `/launch`. The app's asset paths are relative, so the
+ * same build works at a domain root or under a path. The landing page's are
+ * anchored at the root instead, since the host serves that page at every
+ * address it has nothing else for and a relative name would be resolved
+ * against whichever of those a visitor arrived at.
  */
 
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";

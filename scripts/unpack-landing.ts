@@ -62,10 +62,14 @@ const SUFFIX: Record<string, string> = {
   "text/javascript": ".js",
 };
 
+/** What opens the island of that name. */
+function tagOf(name: string): string {
+  return `<script type="__bundler/${name}">`;
+}
+
 /** The text of the JSON island of that name, which is one string on its own line. */
 export function islandText(bundle: string, name: string): string {
-  const tag = `<script type="__bundler/${name}">`;
-  const opens = bundle.indexOf(tag);
+  const opens = bundle.indexOf(tagOf(name));
   if (opens < 0) throw new Error(`The landing page carries no ${name}.`);
   const from = bundle.indexOf("\n", opens) + 1;
   return bundle.slice(from, bundle.indexOf("</script>", from)).trim();
@@ -74,6 +78,15 @@ export function islandText(bundle: string, name: string): string {
 /** The JSON island of that name, read. */
 function island<T>(bundle: string, name: string): T {
   return JSON.parse(islandText(bundle, name)) as T;
+}
+
+/**
+ * The same, for an island the format lets a page leave out altogether. Absence
+ * has a meaning there rather than being a defect, so it is read as the empty
+ * thing the page's own runtime reads it as.
+ */
+function islandOr<T>(bundle: string, name: string, missing: T): T {
+  return bundle.includes(tagOf(name)) ? island<T>(bundle, name) : missing;
 }
 
 /** One asset's bytes, gunzipped where it was packed that way. */
@@ -136,11 +149,11 @@ function withResources(html: string, script: string): string {
  * broken, so it stops the build instead.
  */
 export function unpackLanding(bundle: string): Unpacked {
-  if (island<string[]>(bundle, "page_order").length > 0) {
+  if (islandOr<string[]>(bundle, "page_order", []).length > 0) {
     throw new Error("The landing page now carries framed pages, which do not unpack to files.");
   }
   const packed = island<Record<string, Entry>>(bundle, "manifest");
-  const externals = island<External[]>(bundle, "ext_resources");
+  const externals = islandOr<External[]>(bundle, "ext_resources", []);
 
   const assets: Asset[] = [];
   const at: Record<string, string> = {};
