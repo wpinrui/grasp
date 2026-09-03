@@ -9,6 +9,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "../renderer/src/App";
 import "../renderer/src/styles/base.css";
 // SPIKE, not for merge: see spike-mobile.ts.
+import { PHONE_CUT } from "../renderer/src/components/menus";
 import { PICK_REACH } from "../renderer/src/sketch/model/geometry";
 import { installWebApi } from "./api";
 import { installMobileSpike, onAPhone, REACH_FACTOR, SNAP_ON_SETTINGS } from "./spike-mobile";
@@ -79,6 +80,7 @@ if (asked.has("locked")) {
 if (onAPhone()) {
   window.api.settings.write(SNAP_ON_SETTINGS);
   PICK_REACH.factor = REACH_FACTOR;
+  PHONE_CUT.on = true;
 }
 
 const root = document.getElementById("root");

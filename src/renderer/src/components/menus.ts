@@ -138,6 +138,62 @@ export function isImplemented(item: MenuItem): boolean {
   return item.submenu?.some((entry) => entry !== "separator" && isImplemented(entry)) ?? false;
 }
 
+/**
+ * SPIKE, not for merge. What a phone leaves out of the menus: the entries that
+ * need hardware or a desk that is not there, and the two the bar along the
+ * bottom already carries. Everything cut here is still on the desktop, and a
+ * sketch made on a phone still carries whatever those entries made.
+ */
+export const PHONE_CUT = {
+  on: false,
+  actions: new Set<string>([
+    // Undo and Redo are keys on the bottom bar.
+    "undo",
+    "redo",
+    // A tab is not a window to close or an application to quit.
+    "close",
+    "quit",
+    // Printing, and the page setup that only serves printing.
+    "page-setup",
+    "print-preview",
+    "print",
+    // An image on the clipboard is not something a phone can go on to use.
+    "export-clipboard",
+    // The palette bar is not drawn on a phone, so its switch has nothing to do.
+    "palette",
+  ]),
+  /** Submenus are cut by name, having no action of their own to cut them by. */
+  labels: new Set<string>(["Action Buttons"]),
+};
+
+/** Whether a separator has anything left on both sides of it to separate. */
+function tidied(items: MenuEntry[]): MenuEntry[] {
+  const kept: MenuEntry[] = [];
+  for (const entry of items) {
+    if (entry === "separator" && (kept.length === 0 || kept[kept.length - 1] === "separator")) {
+      continue;
+    }
+    kept.push(entry);
+  }
+  if (kept[kept.length - 1] === "separator") kept.pop();
+  return kept;
+}
+
+/** A menu as a phone shows it, which off a phone is the menu unchanged. */
+export function shownItems(items: MenuEntry[]): MenuEntry[] {
+  if (!PHONE_CUT.on) return items;
+  return tidied(
+    items.filter(
+      (entry) =>
+        entry === "separator" ||
+        !(
+          (entry.action && PHONE_CUT.actions.has(entry.action)) ||
+          PHONE_CUT.labels.has(entry.label)
+        ),
+    ),
+  );
+}
+
 export const MENUS: Menu[] = [
   {
     label: "File",

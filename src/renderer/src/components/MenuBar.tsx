@@ -8,6 +8,7 @@ import {
   type MenuEntry,
   type MenuItem,
   recentItems,
+  shownItems,
 } from "./menus";
 import "./MenuBar.css";
 
@@ -64,11 +65,11 @@ export function MenuBar({
           </button>
           {openMenu === menu.label && (
             <Flyout
-              items={
+              items={shownItems(
                 menu.label === "Transform"
                   ? [...menu.items, ...customItems(transforms)]
-                  : menu.items
-              }
+                  : menu.items,
+              )}
               recent={recent}
               isTicked={isTicked}
               isEnabled={isEnabled}

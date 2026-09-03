@@ -73,6 +73,8 @@ const ICONS = {
   // stands in for now that the panel is not on screen.
   snap: "M5.4 5 L5.4 10.6 A 4.6 4.6 0 0 0 14.6 10.6 L14.6 5 M5.4 3.4 L5.4 6.4 M14.6 3.4 L14.6 6.4",
   escape: "M5.5 5.5 L14.5 14.5 M14.5 5.5 L5.5 14.5",
+  share:
+    "M10 2.8 V12 M6.6 6.2 L10 2.8 L13.4 6.2 M4.6 11 V16.2 A1 1 0 0 0 5.6 17.2 H14.4 A1 1 0 0 0 15.4 16.2 V11",
 };
 
 function icon(path: string): SVGElement {
@@ -338,6 +340,64 @@ function installLongPressFlyouts() {
 }
 
 /**
+ * A share button on the tool rail, handing the sketch to whatever the device
+ * shares with.
+ *
+ * The document only exists inside the app, so the file is got the way the app
+ * already makes one: Save is asked for, and the call it makes to write the
+ * sketch out is answered here instead of on disk. That keeps the sketch's own
+ * serialising in one place rather than a second copy of it living here.
+ */
+const SHARE_ICON_SIZE = 22;
+
+function installShare() {
+  let wanted = false;
+
+  async function hand(text: string, name: string): Promise<boolean> {
+    const file = new File([text], `${name}.grasp`, { type: "application/json" });
+    // Not every device will take an unknown extension, and one that will not
+    // says so before anything is shown to the reader.
+    if (!navigator.canShare?.({ files: [file] })) return false;
+    try {
+      await navigator.share({ files: [file], title: name });
+    } catch {
+      // A share the reader backed out of is not a failure worth falling back on.
+    }
+    return true;
+  }
+
+  // Save is left doing exactly what it did unless the share button asked for it.
+  const saveAs = window.api.file.saveAs;
+  window.api.file.saveAs = async (text: string, suggested: string) => {
+    if (!wanted) return saveAs(text, suggested);
+    wanted = false;
+    return (await hand(text, suggested)) ? null : saveAs(text, suggested);
+  };
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "tool spike-share";
+  button.title = "Share this sketch";
+  button.setAttribute("aria-label", "Share this sketch");
+  const mark = icon(ICONS.share);
+  mark.setAttribute("width", String(SHARE_ICON_SIZE));
+  mark.setAttribute("height", String(SHARE_ICON_SIZE));
+  button.append(mark);
+  button.addEventListener("click", () => {
+    wanted = true;
+    tap("KeyS", "s", true);
+  });
+
+  /** The rail is React's, so the button is put back if a render takes it out. */
+  function attach() {
+    const rail = document.querySelector(".toolbox");
+    if (rail && button.parentElement !== rail) rail.append(button);
+  }
+  attach();
+  new MutationObserver(attach).observe(document.body, { childList: true, subtree: true });
+}
+
+/**
  * A coarse pointer is the test rather than a width, because a narrow desktop
  * window is still a mouse and does not want any of this. `?spike=on` forces it
  * so the layout can be looked at on a desktop, and `?spike=off` takes it away
@@ -355,4 +415,5 @@ export function installMobileSpike() {
   document.body.append(build());
   installTwoFingerPan();
   installLongPressFlyouts();
+  installShare();
 }
