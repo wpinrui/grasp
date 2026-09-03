@@ -2164,6 +2164,7 @@ export function App() {
       <div className="app__workspace">
         <Toolbox
           activeTool={activeTool}
+          onShare={phone ? () => void doc.share() : undefined}
           onSelectTool={setActiveTool}
           variants={variants}
           onPickVariant={pickVariant}

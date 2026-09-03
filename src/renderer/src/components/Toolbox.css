@@ -162,3 +162,12 @@
   font-size: 11px;
   color: var(--color-text-secondary);
 }
+
+/*
+  Share, which is not one of the drawing tools and does not sit in their run.
+  It goes to the foot of the rail with the space between pushing it there.
+*/
+.tool--share {
+  margin-top: auto;
+  color: var(--color-text);
+}

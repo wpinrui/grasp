@@ -1,11 +1,20 @@
-import { useState } from "react";
-import { FlyoutMarker } from "./icons";
+import { type PointerEvent, useEffect, useRef, useState } from "react";
+import { usePhone } from "../phone";
+import { FlyoutMarker, ShareIcon } from "./icons";
 import { TOOLS } from "./tools";
 import "./Toolbox.css";
 
 const TOOL_PITCH = 50;
 const RAIL_PADDING = 6;
 const TOOLTIP_OFFSET = 3;
+
+/**
+ * How long a tool is held before its variants come out, and how far a finger
+ * may wander in that time and still be holding rather than starting a drag.
+ * A press is what stands in for a hover, there being no hover to have.
+ */
+const HOLD_MS = 450;
+const HOLD_SLOP = 8;
 
 interface ToolboxProps {
   activeTool: string;
@@ -20,6 +29,12 @@ interface ToolboxProps {
    * one line saying why. They grey out, take no press, and open no flyout.
    */
   off: Record<string, string>;
+  /**
+   * Hand the sketch to the device. Left off where there is nothing to hand it
+   * to, which is everywhere the sheet is worked on with a pointer and a file
+   * system is a keystroke away.
+   */
+  onShare?: () => void;
 }
 
 export function Toolbox({
@@ -29,11 +44,58 @@ export function Toolbox({
   onPickVariant,
   onDoubleClickTool,
   off,
+  onShare,
 }: ToolboxProps) {
   const [hovered, setHovered] = useState<number | null>(null);
   const tip = hovered === null ? null : TOOLS[hovered];
   // A tool with variants opens them on hover, in place of its tooltip.
   const opened = tip?.variants?.length && !off[tip.id] ? tip : null;
+
+  const phone = usePhone();
+  /** The press being timed, if one is. */
+  const holding = useRef<{ x: number; y: number; timer: number } | null>(null);
+  /** A hold that came good, so the press that ends it is not also a tap. */
+  const opening = useRef(false);
+
+  function dropHold() {
+    if (holding.current) window.clearTimeout(holding.current.timer);
+    holding.current = null;
+  }
+
+  function startHold(index: number, event: PointerEvent<HTMLButtonElement>) {
+    dropHold();
+    opening.current = false;
+    holding.current = {
+      x: event.clientX,
+      y: event.clientY,
+      timer: window.setTimeout(() => {
+        holding.current = null;
+        opening.current = true;
+        setHovered(index);
+      }, HOLD_MS),
+    };
+  }
+
+  function keepHold(event: PointerEvent<HTMLButtonElement>) {
+    if (!holding.current) return;
+    const gone = Math.hypot(event.clientX - holding.current.x, event.clientY - holding.current.y);
+    if (gone > HOLD_SLOP) dropHold();
+  }
+
+  /**
+   * With no pointer to move away, what puts the flyout back is a press
+   * somewhere else. A press on the flyout itself is one of its own buttons.
+   */
+  useEffect(() => {
+    if (!phone || hovered === null) return;
+    function away(event: Event) {
+      const target = event.target;
+      if (target instanceof Element && target.closest(".variants")) return;
+      setHovered(null);
+    }
+    window.addEventListener("pointerdown", away);
+    return () => window.removeEventListener("pointerdown", away);
+  }, [phone, hovered]);
 
   return (
     <div className="toolbox">
@@ -53,13 +115,25 @@ export function Toolbox({
             aria-disabled={idle !== undefined}
             aria-pressed={tool.id === activeTool}
             onClick={() => {
+              // The press that opened the variants is spent on opening them.
+              if (opening.current) {
+                opening.current = false;
+                return;
+              }
               if (!idle) onSelectTool(tool.id);
             }}
             onDoubleClick={() => {
               if (!idle) onDoubleClickTool(tool.id);
             }}
-            onMouseEnter={() => setHovered(index)}
-            onMouseLeave={() => setHovered(null)}
+            // A touch screen sends mouse events of its own after a tap, which
+            // would open a flyout on a plain press, so it gets the hold instead
+            // and none of the hover.
+            onPointerDown={phone && !idle ? (event) => startHold(index, event) : undefined}
+            onPointerMove={phone ? keepHold : undefined}
+            onPointerUp={phone ? dropHold : undefined}
+            onPointerCancel={phone ? dropHold : undefined}
+            onMouseEnter={phone ? undefined : () => setHovered(index)}
+            onMouseLeave={phone ? undefined : () => setHovered(null)}
           >
             {tool.id === activeTool && <span className="tool__rail" />}
             <Icon />
@@ -73,8 +147,8 @@ export function Toolbox({
         <div
           className="variants"
           style={{ top: `${RAIL_PADDING + hovered * TOOL_PITCH}px` }}
-          onMouseEnter={() => setHovered(hovered)}
-          onMouseLeave={() => setHovered(null)}
+          onMouseEnter={phone ? undefined : () => setHovered(hovered)}
+          onMouseLeave={phone ? undefined : () => setHovered(null)}
         >
           {opened.variants?.map((variant) => (
             <button
@@ -99,6 +173,17 @@ export function Toolbox({
             <span className="tooltip__key">{opened.key}</span>
           </span>
         </div>
+      )}
+
+      {onShare && (
+        <button
+          type="button"
+          className="tool tool--share"
+          aria-label="Share this sketch"
+          onClick={onShare}
+        >
+          <ShareIcon />
+        </button>
       )}
 
       {tip && !opened && hovered !== null && (

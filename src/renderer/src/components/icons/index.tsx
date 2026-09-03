@@ -9,6 +9,7 @@ export {
   MaximizeIcon,
   MenuCheckIcon,
   MinimizeIcon,
+  ShareIcon,
   SubmenuArrowIcon,
 } from "./chrome";
 export {

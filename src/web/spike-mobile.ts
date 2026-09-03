@@ -14,24 +14,6 @@
  * reaches into `src/renderer`.
  */
 
-function key(code: string, name: string, down: boolean, modified = false) {
-  window.dispatchEvent(
-    new KeyboardEvent(down ? "keydown" : "keyup", {
-      code,
-      key: name,
-      ctrlKey: modified,
-      bubbles: true,
-      cancelable: true,
-    }),
-  );
-}
-
-/** A press and its release, for the keys that are not held down. */
-function tap(code: string, name: string, modified = false) {
-  key(code, name, true, modified);
-  key(code, name, false, modified);
-}
-
 /**
  * The on state again, in the shape the stored settings keep it in rather than
  * the shape the sheet reads. Seeded before the first frame, so a phone opens
@@ -163,154 +145,6 @@ function installTwoFingerPan() {
 }
 
 /**
- * A long press on a tool opens its variants.
- *
- * The toolbox opens them on hover, which a finger does not have. Rather than
- * teach it a second way in, the press is turned into the hover it is already
- * listening for: React works its enter and leave events out from `mouseover`
- * and `mouseout`, so those are what go in. Tapping anywhere else puts the
- * flyout away again, which is the leave.
- */
-const HOLD_MS = 450;
-/** How far a finger can wander and still be holding still rather than dragging. */
-const HOLD_SLOP = 8;
-
-function hover(element: Element, over: boolean) {
-  element.dispatchEvent(
-    new MouseEvent(over ? "mouseover" : "mouseout", { bubbles: true, relatedTarget: null }),
-  );
-}
-
-function installLongPressFlyouts() {
-  let held: { tool: Element; x: number; y: number; timer: number } | null = null;
-  let open: Element | null = null;
-
-  function drop() {
-    if (held) window.clearTimeout(held.timer);
-    held = null;
-  }
-
-  document.addEventListener(
-    "pointerdown",
-    (event) => {
-      if (event.pointerType !== "touch") return;
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-
-      // A press anywhere that is not the flyout itself puts an open one away.
-      if (open && !target.closest(".variants")) {
-        hover(open, false);
-        open = null;
-      }
-
-      const tool = target.closest(".toolbox .tool");
-      if (!tool) return;
-      held = {
-        tool,
-        x: event.clientX,
-        y: event.clientY,
-        timer: window.setTimeout(() => {
-          hover(tool, true);
-          open = tool;
-          held = null;
-        }, HOLD_MS),
-      };
-    },
-    true,
-  );
-
-  document.addEventListener(
-    "pointermove",
-    (event) => {
-      if (!held) return;
-      const gone = Math.hypot(event.clientX - held.x, event.clientY - held.y);
-      if (gone > HOLD_SLOP) drop();
-    },
-    true,
-  );
-
-  for (const when of ["pointerup", "pointercancel"] as const) {
-    document.addEventListener(when, drop, true);
-  }
-}
-
-/**
- * A share button on the tool rail, handing the sketch to whatever the device
- * shares with.
- *
- * The document only exists inside the app, so the file is got the way the app
- * already makes one: Save is asked for, and the call it makes to write the
- * sketch out is answered here instead of on disk. That keeps the sketch's own
- * serialising in one place rather than a second copy of it living here.
- */
-const SHARE_ICON_SIZE = 22;
-
-/** The share mark: an arrow leaving an open box. */
-const SHARE_PATH =
-  "M10 2.8 V12 M6.6 6.2 L10 2.8 L13.4 6.2 M4.6 11 V16.2 A1 1 0 0 0 5.6 17.2 H14.4 A1 1 0 0 0 15.4 16.2 V11";
-
-function shareIcon(): SVGElement {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("width", String(SHARE_ICON_SIZE));
-  svg.setAttribute("height", String(SHARE_ICON_SIZE));
-  svg.setAttribute("viewBox", "0 0 20 20");
-  svg.setAttribute("aria-hidden", "true");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "1.6");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  const shape = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  shape.setAttribute("d", SHARE_PATH);
-  svg.append(shape);
-  return svg;
-}
-
-function installShare() {
-  let wanted = false;
-
-  async function hand(text: string, name: string): Promise<boolean> {
-    const file = new File([text], `${name}.grasp`, { type: "application/json" });
-    // Not every device will take an unknown extension, and one that will not
-    // says so before anything is shown to the reader.
-    if (!navigator.canShare?.({ files: [file] })) return false;
-    try {
-      await navigator.share({ files: [file], title: name });
-    } catch {
-      // A share the reader backed out of is not a failure worth falling back on.
-    }
-    return true;
-  }
-
-  // Save is left doing exactly what it did unless the share button asked for it.
-  const saveAs = window.api.file.saveAs;
-  window.api.file.saveAs = async (text: string, suggested: string) => {
-    if (!wanted) return saveAs(text, suggested);
-    wanted = false;
-    return (await hand(text, suggested)) ? null : saveAs(text, suggested);
-  };
-
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "tool spike-share";
-  button.title = "Share this sketch";
-  button.setAttribute("aria-label", "Share this sketch");
-  button.append(shareIcon());
-  button.addEventListener("click", () => {
-    wanted = true;
-    tap("KeyS", "s", true);
-  });
-
-  /** The rail is React's, so the button is put back if a render takes it out. */
-  function attach() {
-    const rail = document.querySelector(".toolbox");
-    if (rail && button.parentElement !== rail) rail.append(button);
-  }
-  attach();
-  new MutationObserver(attach).observe(document.body, { childList: true, subtree: true });
-}
-
-/**
  * The keyboard's half of the screen.
  *
  * A phone keyboard does not resize the window, it covers it: the layout
@@ -349,7 +183,5 @@ export function installMobileSpike() {
   if (!onAPhone()) return;
   document.body.classList.add("spike-mobile");
   installTwoFingerPan();
-  installLongPressFlyouts();
-  installShare();
   installViewportTracking();
 }

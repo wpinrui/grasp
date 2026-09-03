@@ -53,6 +53,12 @@ const api = {
       ipcRenderer.invoke("file:write", path, text),
     saveAs: (text: string, suggested: string): Promise<SavedDocument | null> =>
       ipcRenderer.invoke("file:save-as", text, suggested),
+    /**
+     * Hand the sketch to whatever the device shares with, answering whether it
+     * went. A desktop has no share sheet to hand it to: saving is how a file
+     * leaves GRASP here, so this always declines and the caller saves instead.
+     */
+    share: (_text: string, _suggested: string): Promise<boolean> => Promise.resolve(false),
     confirmUnsaved: (name: string): Promise<SavePrompt> =>
       ipcRenderer.invoke("file:confirm-unsaved", name),
     reportError: (message: string): Promise<void> =>

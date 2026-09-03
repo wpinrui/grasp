@@ -68,3 +68,22 @@ export function FlyoutMarker() {
     </svg>
   );
 }
+
+/** Share: something leaving an open box. */
+export function ShareIcon() {
+  return (
+    <svg
+      width="1em"
+      height="1em"
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 2.8 V12 M6.6 6.2 L10 2.8 L13.4 6.2 M4.6 11 V16.2 A1 1 0 0 0 5.6 17.2 H14.4 A1 1 0 0 0 15.4 16.2 V11" />
+    </svg>
+  );
+}
