@@ -238,3 +238,10 @@ body.spike-mobile .dialog__body {
 body.spike-mobile .dialog__bar {
   touch-action: manipulation;
 }
+
+/* No zoom on a phone. The readout is hidden as well as the preference being
+   off, so a sketch that was saved on a desktop with zooming on cannot bring the
+   control back and put it over the sheet again. */
+body.spike-mobile .canvas__zoom {
+  display: none;
+}
