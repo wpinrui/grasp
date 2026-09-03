@@ -398,6 +398,29 @@ function installShare() {
 }
 
 /**
+ * The keyboard's half of the screen.
+ *
+ * A phone keyboard does not resize the window, it covers it: the layout
+ * viewport stays the height it was and `dvh` with it, so a dialog centred in
+ * the window ends up behind the keyboard the moment a field in it is tapped.
+ * What does move is the visual viewport, so its height and its offset are
+ * published as custom properties and the dialogs are laid out in those instead.
+ */
+function installViewportTracking() {
+  const view = window.visualViewport;
+  if (!view) return;
+  function measure() {
+    if (!view) return;
+    const root = document.documentElement;
+    root.style.setProperty("--spike-seen-height", `${view.height}px`);
+    root.style.setProperty("--spike-seen-top", `${view.offsetTop}px`);
+  }
+  measure();
+  view.addEventListener("resize", measure);
+  view.addEventListener("scroll", measure);
+}
+
+/**
  * A coarse pointer is the test rather than a width, because a narrow desktop
  * window is still a mouse and does not want any of this. `?spike=on` forces it
  * so the layout can be looked at on a desktop, and `?spike=off` takes it away
@@ -416,4 +439,5 @@ export function installMobileSpike() {
   installTwoFingerPan();
   installLongPressFlyouts();
   installShare();
+  installViewportTracking();
 }

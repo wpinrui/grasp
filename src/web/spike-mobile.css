@@ -206,3 +206,35 @@ body.spike-mobile .flyout__item {
   margin-top: auto;
   color: var(--color-text);
 }
+
+/* Dialogs. On a desktop one is a small draggable panel placed wherever it was
+   left; on a phone there is nowhere to drag it to and a keyboard waiting to
+   cover the bottom of the screen. So each one is pinned across the top of what
+   is actually visible and held to half of it, which is the half the keyboard
+   never reaches. The placement is inline, from the drag, so it takes an
+   important to override.
+
+   The height comes from the visual viewport rather than the window, so when the
+   keyboard opens and that shrinks, the dialog shrinks with it and stays whole
+   rather than sliding underneath. */
+body.spike-mobile .dialog {
+  top: calc(var(--spike-seen-top, 0px) + 8px) !important;
+  left: 8px !important;
+  right: 8px !important;
+  width: auto !important;
+  max-height: calc(var(--spike-seen-height, 100dvh) / 2);
+  display: flex;
+  flex-direction: column;
+}
+
+/* The body is what gives way when there is not room for all of it, so the title
+   and the buttons are never the parts that go. */
+body.spike-mobile .dialog__body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Nothing to drag it to any more. */
+body.spike-mobile .dialog__bar {
+  touch-action: manipulation;
+}
