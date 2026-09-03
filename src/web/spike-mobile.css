@@ -19,15 +19,19 @@ body.spike-mobile .app {
   /* App.css floors the whole app at 720px tall, which on a phone pushes the
      page bar off the bottom before anything else gets a chance to go wrong. */
   min-height: 0;
-  height: 100dvh;
+  height: calc(100dvh - var(--spike-bar-height));
 }
 
-/* Narrower rails and smaller icons. 44px is the floor: below that a finger
-   cannot reliably hit one button rather than its neighbour. */
+/* The tool rail and the menu bar, a quarter larger than the sizes the desktop
+   draws them at, because a finger is not a pointer and these two are what it
+   aims at most. Everything downstream is written in these tokens, so the icons,
+   the hit areas and the bar's own height all follow from the four numbers. */
 body.spike-mobile {
-  --toolbox-width: 46px;
-  --tool-size: 40px;
-  --tool-gap: 3px;
+  --toolbox-width: 58px;
+  --tool-size: 50px;
+  --tool-gap: 4px;
+  --menubar-height: 45px;
+  --spike-bar-height: 52px;
 }
 
 body.spike-mobile .app__workspace {
@@ -48,47 +52,53 @@ body.spike-mobile .toolbox::-webkit-scrollbar {
 }
 
 /* The touch bar: the gestures the sheet has no other way to reach on a phone.
-   Across the bottom edge rather than down the side, where a thumb is, and where
-   it costs the sheet a strip rather than a column. The zoom readout is top
-   right, which is the other reason this edge is the free one. */
+   A bar across the bottom edge rather than a cluster in the corner, so the keys
+   are where a thumb already is and the sheet gives up a strip of a known height
+   instead of having something float over its corner. Each key reads across:
+   the icon, then its name. */
 .spike-touchbar {
   position: fixed;
-  right: 8px;
-  bottom: 8px;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 50;
+  height: var(--spike-bar-height);
   display: flex;
-  flex-direction: row;
-  gap: 6px;
+  align-items: stretch;
+  justify-content: space-evenly;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
 }
 
 .spike-touchbar__key {
-  width: 46px;
-  height: 46px;
+  flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  border: 1px solid var(--color-border);
+  gap: 6px;
+  min-width: 0;
+  border: 0;
   border-radius: 8px;
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text);
   font: inherit;
-  font-size: 18px;
   line-height: 1;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
   touch-action: manipulation;
 }
 
-/* The name under the icon. Small, because it is a reminder rather than the
-   thing being read: the icon is what is aimed at. */
+.spike-touchbar__key svg {
+  flex: none;
+}
+
 .spike-touchbar__name {
-  font-size: 9px;
-  letter-spacing: 0.2px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .spike-touchbar__key--on {
-  border-color: var(--color-accent);
   background: var(--color-accent);
   color: var(--color-bg);
 }
@@ -154,9 +164,18 @@ body.spike-mobile .menubar__anchor {
   flex: none;
 }
 
+/* The titles and the AI button are sized in their own components rather than
+   off a token, so the quarter the rails were given is added to them here. */
+body.spike-mobile .menubar__item {
+  font-size: 16px;
+}
+
 body.spike-mobile .menubar__tool {
   position: sticky;
   right: 0;
   flex: none;
+  height: 28px;
+  padding: 0 11px;
   background: var(--color-bg);
+  font-size: 15px;
 }

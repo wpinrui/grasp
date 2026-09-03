@@ -70,6 +70,10 @@ const ICONS = {
 
 function icon(path: string): SVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  // An inline SVG with no size given fills whatever holds it, which in a flex
+  // row is the whole key.
+  svg.setAttribute("width", "17");
+  svg.setAttribute("height", "17");
   svg.setAttribute("viewBox", "0 0 20 20");
   svg.setAttribute("aria-hidden", "true");
   svg.setAttribute("fill", "none");
