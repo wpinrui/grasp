@@ -11,7 +11,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain } from "electron";
-import { pageHtml, type PrintJob } from "../shared/print";
+import { type PrintJob, pageHtml } from "../shared/print";
 
 export type { PrintJob };
 

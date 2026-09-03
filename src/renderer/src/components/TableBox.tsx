@@ -103,6 +103,7 @@ export function TableBox({
   }
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: a box dragged around the sheet, not a control; what it holds is a real table
     <div
       ref={root}
       data-id={table.id}

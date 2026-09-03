@@ -107,7 +107,12 @@ export function upload(accept: string): Promise<File | null> {
     });
     window.addEventListener(
       "focus",
-      () => setTimeout(() => (input.isConnected ? (input.remove(), done(null)) : undefined), 500),
+      () =>
+        setTimeout(() => {
+          if (!input.isConnected) return;
+          input.remove();
+          done(null);
+        }, 500),
       { once: true },
     );
     input.click();

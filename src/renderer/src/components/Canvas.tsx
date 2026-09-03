@@ -12,6 +12,7 @@ import {
   type WheelEvent,
 } from "react";
 import { insertAtCaret, linkHtml, plainText, withNames } from "../sketch/captions";
+import { LABEL_REACH, type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
 import {
   anglesAt,
   angleWanted,
@@ -43,13 +44,14 @@ import {
   createPoint,
   createTick,
   crossings,
+  degreesOf,
   distance,
   distanceToPath,
   endsById,
   familyOf,
   filledPath,
   fillLook,
-  insideShape,
+  HALF_TURN,
   isArc,
   isButton,
   isCaption,
@@ -90,7 +92,9 @@ import {
   pathIn,
   pointOnPath,
   pointsOf,
+  QUARTER_TURN,
   type Rect,
+  radiansOf,
   radiusOf,
   rectBetween,
   type SketchCalculation,
@@ -296,21 +300,6 @@ const CROSS_REACH = 9;
 
 /** The ring drawn where a click would land on a straight object. */
 const SNAP_RING = 8;
-
-/** How far from what it names a label sits until it is dragged, in screen pixels. */
-const LABEL_OFF = 16;
-
-/** Which way a label leans when nothing is in the way: up and to the right. */
-const LABEL_LEAN = -Math.PI / 4;
-
-/** How many ways round a label looks for a gap to sit in. */
-const LABEL_TRIES = 24;
-
-/** How much a way into a fill loses by, more than any gap can make up. */
-const LABEL_SHUN = 10;
-
-/** How far from what it names a label can be dragged, in screen pixels. */
-const LABEL_REACH = 48;
 
 /** How wide a caption comes out when it was asked for rather than dragged. */
 const CAPTION_WIDTH = 220;
@@ -857,7 +846,7 @@ export function Canvas({
     event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>,
   ): Position | null {
     const bounds = sheet.current?.getBoundingClientRect();
-    return bounds ? toSheet(bounds, event.clientX, event.clientY, view, scale) : null;
+    return bounds ? toSheet(bounds, event, { view, scale }) : null;
   }
 
   /** Zoom, holding the sheet still under one point of the canvas. */
@@ -1033,7 +1022,7 @@ export function Canvas({
       }
     }
     if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = (snapping.angleDegrees * Math.PI) / 180;
+      const step = radiansOf(snapping.angleDegrees);
       const bearing = Math.atan2(at.y - from.y, at.x - from.x);
       const base = baseAngle(bearing);
       for (const whole of nearWhole((bearing - base) / step)) {
@@ -1060,7 +1049,7 @@ export function Canvas({
       reach = Math.max(step, Math.round(reach / step) * step);
     }
     if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = (snapping.angleDegrees * Math.PI) / 180;
+      const step = radiansOf(snapping.angleDegrees);
       const base = baseAngle(angle);
       angle = base + Math.round((angle - base) / step) * step;
     }
@@ -1090,7 +1079,7 @@ export function Canvas({
       reach = Math.round(reach / step) * step;
     }
     if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = (snapping.angleDegrees * Math.PI) / 180;
+      const step = radiansOf(snapping.angleDegrees);
       angle = Math.round(angle / step) * step;
     }
     return { x: Math.cos(angle) * reach, y: Math.sin(angle) * reach };
@@ -1282,7 +1271,7 @@ export function Canvas({
     // being written, and clicking bare sheet finishes the caption. The default
     // is stopped so the caret is not lost on the way.
     if (editing && !picking) {
-      const hit = objectAt(objects, at, scale, settled);
+      const hit = objectAt(at, { objects: objects, scale, settled });
       if (hit && hit.id !== editing) {
         event.preventDefault();
         insertLink(hit.id);
@@ -1293,7 +1282,7 @@ export function Canvas({
     // A press on bare sheet puts away whatever panel is open, whatever tool is
     // up and whichever object the panel is about. A press on a panel itself
     // never reaches here: the panel keeps it.
-    if (!objectAt(objects, at, scale, settled)) {
+    if (!objectAt(at, { objects: objects, scale, settled })) {
       setPanel(null);
       setReadingPanel(null);
     }
@@ -1303,7 +1292,7 @@ export function Canvas({
     if (picking) {
       // Whatever is under the pointer goes to the dialog, which knows whether
       // it wanted a point or a straight object and ignores the rest.
-      const hit = objectAt(objects, at, scale, settled);
+      const hit = objectAt(at, { objects: objects, scale, settled });
       if (hit) onPick(hit.id);
       return;
     }
@@ -1373,7 +1362,7 @@ export function Canvas({
     // and hides labels, and only over bare sheet does it drag out a caption.
     const hit =
       (tool === "arrow" || tool === "text") && !held
-        ? objectAt(tool === "arrow" ? pickable : objects, at, scale, settled)
+        ? objectAt(at, { objects: tool === "arrow" ? pickable : objects, scale, settled })
         : null;
     // Pressing empty canvas clears at once, it does not wait for the release.
     // That is why a marquee, which starts from empty canvas, replaces the
@@ -1403,7 +1392,7 @@ export function Canvas({
   function markUnder(at: Position): SketchMark | null {
     for (let index = objects.length - 1; index >= 0; index -= 1) {
       const object = objects[index];
-      if (isMark(object) && nearMark(object, at, scale, settled, objects)) return object;
+      if (isMark(object) && nearMark(object, at, { scale, settled, objects })) return object;
     }
     return null;
   }
@@ -1489,10 +1478,10 @@ export function Canvas({
 
   /** How long the line is so far, written along it and never upside down. */
   function alongText(from: Position, to: Position): GuideText {
-    const turn = (angleBetween(from, to) * 180) / Math.PI;
+    const turn = degreesOf(angleBetween(from, to));
     return {
       at: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
-      turn: turn > 90 || turn <= -90 ? turn + 180 : turn,
+      turn: turn > QUARTER_TURN || turn <= -QUARTER_TURN ? turn + HALF_TURN : turn,
       dy: -GUIDE_LIFT,
       text: sayLength(distance(from, to)),
     };
@@ -1535,7 +1524,7 @@ export function Canvas({
         at: spot(middle, out),
         turn: 0,
         dy: 5,
-        text: sayAngle((Math.abs(sweep) * 180) / Math.PI),
+        text: sayAngle(degreesOf(Math.abs(sweep))),
       },
     };
   }
@@ -1587,7 +1576,7 @@ export function Canvas({
    * not covered by the number taken off it.
    */
   function readingFrom(at: Position): Written | null {
-    const hit = objectAt(objects, at, scale, settled);
+    const hit = objectAt(at, { objects: objects, scale, settled });
     if (!hit) return null;
     const off = (spot: Position, way: Position, far: number) => ({
       x: spot.x + way.x * (far / scale),
@@ -1634,7 +1623,7 @@ export function Canvas({
       const at3 =
         isMark(hit) && !("path" in hit) ? [hit.arms[0], corner, hit.arms[1]] : cornerArms(corner);
       if (!at3) return null;
-      return angleWritten(corner, [at3[0], at3[2]], hit);
+      return angleWritten({ corner, arms: [at3[0], at3[2]] }, hit);
     }
     return null;
   }
@@ -1646,11 +1635,11 @@ export function Canvas({
    * dialog named the arms itself.
    */
   function angleWritten(
-    corner: string,
-    arms: [string, string],
+    angle: { corner: string; arms: [string, string] },
     hit: SketchObject | null,
     named = false,
   ): Written | null {
+    const { corner, arms } = angle;
     {
       const at3 = [arms[0], corner, arms[1]];
       const spot = settled.points.get(corner);
@@ -1676,7 +1665,7 @@ export function Canvas({
       // An angle has to be marked before it can be read: the arcs say which of
       // the angles at that corner the number is about. One already there is
       // used as it is, and the number goes outside it.
-      const mark = angleMarkOn(corner, arms, hit, reflex);
+      const mark = angleMarkOn({ corner, arms, reflex }, hit);
       const made = { ...newReading("angle", at3, spot), reflex };
       const hangs = angleReadingSpot(made, mark, reflex);
       return {
@@ -1730,11 +1719,10 @@ export function Canvas({
 
   /** The mark on an angle, made where that way round is not marked already. */
   function angleMarkOn(
-    corner: string,
-    arms: [string, string],
+    angle: { corner: string; arms: [string, string]; reflex: boolean },
     hit: SketchObject | null,
-    reflex: boolean,
   ): SketchMark {
+    const { corner, arms, reflex } = angle;
     if (hit && isMark(hit) && !("path" in hit) && (hit.reflex === true) === reflex) return hit;
     const already = objects.find(
       (object) =>
@@ -1748,14 +1736,14 @@ export function Canvas({
     const sides = armsAt(corner, objects, settled)
       .filter((arm) => arms.includes(arm.end))
       .map((arm) => arm.side);
-    return createAngleMark(
+    return createAngleMark({
       corner,
       arms,
-      [sides[0], sides[1]] as [string, string],
-      lastMark.current.angle,
+      sides: [sides[0], sides[1]] as [string, string],
+      strokes: lastMark.current.angle,
       reflex,
-      clearOfCorner(corner),
-    );
+      radius: clearOfCorner(corner),
+    });
   }
 
   /**
@@ -2114,7 +2102,7 @@ export function Canvas({
   function panelSpotOf(id: string): Position | null {
     const mark = objects.find((object) => object.id === id);
     if (!mark || !isMark(mark)) return null;
-    const shape = markShape(mark, settled, objects, scale);
+    const shape = markShape(mark, { settled, objects, scale });
     if (!shape) return null;
     // An angle mark turns about its corner, so its panel clears the arcs.
     const lift = shape.form === "angle" ? shape.radius + 16 : 12;
@@ -2137,7 +2125,7 @@ export function Canvas({
 
   /** Which way a tick's arrowheads point on the sheet, once it is drawn. */
   function wayOf(mark: SketchMark): Position | null {
-    const shape = markShape(mark, settled, objects, scale);
+    const shape = markShape(mark, { settled, objects, scale });
     return shape && shape.form !== "angle" ? shape.way : null;
   }
 
@@ -2241,7 +2229,11 @@ export function Canvas({
    * mark's panel instead of laying a second one, so a click is either making
    * the mark or getting at the one that is there, and never both.
    */
-  function layTick(path: SketchObject, along: PathGeometry, spot: Position, beside?: SketchMark) {
+  function layTick(
+    on: { path: SketchObject; along: PathGeometry; spot: Position },
+    beside?: SketchMark,
+  ) {
+    const { path, along, spot } = on;
     const form = marking as "equal" | "parallel";
     const already = objects.find(
       (object) =>
@@ -2255,7 +2247,13 @@ export function Canvas({
     const way = tangentOnPath(along, at);
     const last = lastMark.current.way;
     const flipped = form === "parallel" && last !== null && way.x * last.x + way.y * last.y < 0;
-    const tick = createTick(form, path.id, at, lastMark.current[form], flipped);
+    const tick = createTick({
+      form,
+      path: path.id,
+      at,
+      strokes: lastMark.current[form],
+      flipped,
+    });
     lastMark.current.way = flipped ? { x: -way.x, y: -way.y } : way;
     const before = sketch.read();
     sketch.commit({
@@ -2320,14 +2318,14 @@ export function Canvas({
       setPanel(already.id);
       return;
     }
-    const mark = angleMarkOn(corner, arms, null, reflex);
+    const mark = angleMarkOn({ corner, arms, reflex }, null);
     addMark(mark);
     setPanel(mark.id);
   }
 
   /** Write the number for one angle, by the two arms it runs between. */
   function readAngle(corner: string, arms: [string, string]) {
-    const written = angleWritten(corner, arms, null, true);
+    const written = angleWritten({ corner, arms }, null, true);
     if (!written) return;
     const already = readingAlready(written);
     if (already) {
@@ -2383,14 +2381,14 @@ export function Canvas({
     // tells one armed for points from one armed for markings without a click.
     if (tool === "arrow" && !picking && !grab.current) {
       const over = positionOf(event);
-      const found = over ? objectAt(pickable, over, scale, settled) : null;
+      const found = over ? objectAt(over, { objects: pickable, scale, settled }) : null;
       if ((found?.id ?? null) !== under) setUnder(found?.id ?? null);
     } else if (under !== null) {
       setUnder(null);
     }
     if (tool === "text" && !picking && !grab.current) {
       const over = positionOf(event);
-      const found = over ? objectAt(objects, over, scale, settled) : null;
+      const found = over ? objectAt(over, { objects: objects, scale, settled }) : null;
       const named = found !== null && names.has(found.id);
       if (named !== overNamed) setOverNamed(named);
     }
@@ -2580,7 +2578,7 @@ export function Canvas({
     // The protractor asks the same question the same way: short of the arcs the
     // press is on the corner, and a corner with several angles is asked about.
     if (measuring === "angle" && distance(at, state.origin) < ANGLE_AIM / scale) {
-      const spot = objectAt(objects, at, scale, settled);
+      const spot = objectAt(at, { objects: objects, scale, settled });
       if (spot && isPoint(spot) && anglesAt(spot.id, objects, settled).length > 1) {
         setChoosing({
           corner: spot.id,
@@ -2634,7 +2632,7 @@ export function Canvas({
         }
         const path = "path" in held ? objects.find((object) => object.id === held.path) : undefined;
         const along = path ? pathIn(settled, path.id) : null;
-        if (path && along) layTick(path, along, at, held);
+        if (path && along) layTick({ path, along, spot: at }, held);
         return;
       }
       if (marking === "angle") {
@@ -2683,14 +2681,14 @@ export function Canvas({
           setPanel(already.id);
           return;
         }
-        const mark = createAngleMark(
-          armed.corner,
-          wanted.arms,
-          wanted.sides,
-          lastMark.current.angle,
-          wanted.reflex,
-          clearOfCorner(armed.corner),
-        );
+        const mark = createAngleMark({
+          corner: armed.corner,
+          arms: wanted.arms,
+          sides: wanted.sides,
+          strokes: lastMark.current.angle,
+          reflex: wanted.reflex,
+          radius: clearOfCorner(armed.corner),
+        });
         addMark(mark);
         setPanel(mark.id);
         return;
@@ -2703,7 +2701,7 @@ export function Canvas({
         setPanel(null);
         return;
       }
-      layTick(path, along, at);
+      layTick({ path, along, spot: at });
       return;
     }
 
@@ -2729,7 +2727,7 @@ export function Canvas({
       }
       // A click instead: on a thing it shows what that thing is called, and
       // clicking it again puts the label away.
-      const hit = objectAt(objects, at, scale, settled);
+      const hit = objectAt(at, { objects: objects, scale, settled });
       if (hit && names.has(hit.id)) onToggleLabel(hit.id);
       return;
     }
@@ -2818,7 +2816,7 @@ export function Canvas({
       return;
     }
     if (tool !== "arrow") return;
-    const hit = objectAt(objects, at, scale, settled);
+    const hit = objectAt(at, { objects: objects, scale, settled });
     if (hit && isLine(hit)) onMarkMirror(hit.id);
   }
 
@@ -2862,13 +2860,16 @@ export function Canvas({
     return along ? clipToRect(along, shown) : null;
   }
 
+  /** The page as the labelling reads it. */
+  const labelling: Labelling = { objects, settled, scale, ends, spanOf };
+
   /**
    * What a click at this spot would land on. A point already there wins, then
    * the crossing of two straight objects, then the one straight object under
    * the pointer, which a new point would belong to.
    */
   function snapAt(at: Position): Snap | null {
-    const over = objectAt(objects, at, scale, settled);
+    const over = objectAt(at, { objects: objects, scale, settled });
     if (over && isPoint(over))
       return { kind: "point", ids: [over.id], at: { x: over.x, y: over.y } };
     // The paths the pointer is on, the newest first, as picking has them.
@@ -2916,198 +2917,11 @@ export function Canvas({
       const path = objects.find((object) => object.id === found.ids[0]);
       const along = pathIn(settled, found.ids[0]);
       if (path && along) {
-        const on = pointOnPath(path, along, at, pointSize);
+        const on = pointOnPath({ path, where: along }, at, pointSize);
         if (on) return on;
       }
     }
     return createPoint(at, pointSize);
-  }
-
-  /**
-   * Where an object's label hangs: on a point, halfway along a straight object,
-   * on the rim of a circle, the middle of an arc, the middle of a fill.
-   */
-  function labelAnchor(object: SketchObject): Position | null {
-    // A caption says what it says, and a measurement writes its own name in
-    // front of its value. Neither hangs a label anywhere.
-    if (isWriting(object)) return null;
-    if (isPoint(object)) return ends.get(object.id) ?? null;
-    if (isLine(object)) {
-      const span = spanOf(object);
-      return span ? { x: (span[0].x + span[1].x) / 2, y: (span[0].y + span[1].y) / 2 } : null;
-    }
-    if (isCircle(object)) {
-      const round = settled.circles.get(object.id);
-      if (!round) return null;
-      // Up and to the right of the rim, clear of the centre and the points.
-      return {
-        x: round.at.x + round.radius * Math.cos(-Math.PI / 4),
-        y: round.at.y + round.radius * Math.sin(-Math.PI / 4),
-      };
-    }
-    if (isArc(object)) {
-      const arc = settled.arcs.get(object.id);
-      return arc ? spotOnPath(arc, 0.5) : null;
-    }
-    if (isInterior(object)) {
-      const inside = filledPath(object);
-      if (inside) {
-        const arc = settled.arcs.get(inside);
-        if (arc) {
-          const middle = spotOnPath(arc, 0.5);
-          return wedgeOf(object) === "sector"
-            ? { x: (arc.at.x + middle.x) / 2, y: (arc.at.y + middle.y) / 2 }
-            : middle;
-        }
-        const round = settled.circles.get(inside);
-        return round ? { x: round.at.x, y: round.at.y } : null;
-      }
-      const corners = settled.shapes.get(object.id);
-      if (!corners || corners.length === 0) return null;
-      return {
-        x: corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length,
-        y: corners.reduce((sum, corner) => sum + corner.y, 0) / corners.length,
-      };
-    }
-    const shape = settled.loci.get(object.id);
-    if (shape?.kind !== "points" || shape.at.length === 0) return null;
-    return shape.at[Math.floor(shape.at.length / 2)];
-  }
-
-  /**
-   * The ways objects leave a spot, so a label can be put somewhere none of them
-   * is. One way for a path that stops here, two for one that carries on through.
-   */
-  function throughSpot(at: Position): number[] {
-    const ways: number[] = [];
-    const close = 0.5 / scale;
-    const add = (dx: number, dy: number) => ways.push(Math.atan2(dy, dx));
-    const both = (dx: number, dy: number) => {
-      add(dx, dy);
-      add(-dx, -dy);
-    };
-    const ends = (path: PathGeometry, end: 0 | 1) => distance(spotOnPath(path, end), at) <= close;
-    for (const along of settled.lines.values()) {
-      if (distanceToPath(along, at) > close) continue;
-      const dx = along.b.x - along.a.x;
-      const dy = along.b.y - along.a.y;
-      // A line runs on past both its points, a ray past the second only, and a
-      // segment past neither, so at an end each of those leaves one way only.
-      if (along.form !== "line" && ends(along, 0)) add(dx, dy);
-      else if (along.form === "segment" && ends(along, 1)) add(-dx, -dy);
-      else both(dx, dy);
-    }
-    for (const round of settled.circles.values()) {
-      // A circle runs across the spot along its tangent there.
-      if (distanceToPath(round, at) <= close) both(-(at.y - round.at.y), at.x - round.at.x);
-    }
-    for (const arc of settled.arcs.values()) {
-      if (distanceToPath(arc, at) > close) continue;
-      if (arc.flat) {
-        const dx = arc.flat[1].x - arc.flat[0].x;
-        const dy = arc.flat[1].y - arc.flat[0].y;
-        if (ends(arc, 0)) add(dx, dy);
-        else if (ends(arc, 1)) add(-dx, -dy);
-        else both(dx, dy);
-        continue;
-      }
-      // The tangent, taken the way the arc sweeps, so an end leaves inwards.
-      const onward = arc.sweep >= 0 ? 1 : -1;
-      const dx = -(at.y - arc.at.y) * onward;
-      const dy = (at.x - arc.at.x) * onward;
-      if (ends(arc, 0)) add(dx, dy);
-      else if (ends(arc, 1)) add(-dx, -dy);
-      else both(dx, dy);
-    }
-    return ways;
-  }
-
-  /** How far apart two angles are, never more than half a turn. */
-  function apart(one: number, other: number): number {
-    const gap = Math.abs(((one - other) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-    return gap > Math.PI ? Math.PI * 2 - gap : gap;
-  }
-
-  /** Where a label lands on the sheet when it goes out a given way. */
-  function labelSpot(at: Position, angle: number): Position {
-    return {
-      x: at.x + (Math.cos(angle) * LABEL_OFF) / scale,
-      y: at.y + (Math.sin(angle) * LABEL_OFF) / scale,
-    };
-  }
-
-  /**
-   * Whether a spot falls in a fill, which is no place for a label. A fill's own
-   * label is the exception: that one hangs in the middle of what it names.
-   */
-  function inFill(object: SketchObject, at: Position): boolean {
-    return objects.some((other) => {
-      if (other.id === object.id || !isInterior(other) || filledPath(other)) return false;
-      const corners = settled.shapes.get(other.id);
-      return corners ? insideShape(corners, at) : false;
-    });
-  }
-
-  /** The first of these ways out that keeps the label clear of every fill. */
-  function clearOf(object: SketchObject, at: Position, ways: number[]): number {
-    return ways.find((way) => !inFill(object, labelSpot(at, way))) ?? ways[0];
-  }
-
-  /** Every way out, starting from the one wanted, to look for a clear one. */
-  function around(from: number): number[] {
-    return Array.from(
-      { length: LABEL_TRIES },
-      (_, step) => from + (step / LABEL_TRIES) * Math.PI * 2,
-    );
-  }
-
-  /**
-   * Where a label sits when it has not been dragged: out of the way of
-   * everything running through the spot it hangs from, clear of any fill, and
-   * leaning up and to the right when it is free to.
-   */
-  function labelOff(object: SketchObject, at: Position): Position {
-    const out = (angle: number) => ({
-      x: Math.cos(angle) * LABEL_OFF,
-      y: Math.sin(angle) * LABEL_OFF,
-    });
-    if (isLine(object)) {
-      // Beside the line rather than across it, on the upper side unless that
-      // side is the one filled, in which case the other one.
-      const span = spanOf(object);
-      if (!span) return out(clearOf(object, at, around(LABEL_LEAN)));
-      const angle = Math.atan2(span[1].y - span[0].y, span[1].x - span[0].x) - Math.PI / 2;
-      const upper = Math.sin(angle) > 0 ? angle + Math.PI : angle;
-      return out(clearOf(object, at, [upper, upper + Math.PI]));
-    }
-    if (isCircle(object) || isArc(object)) {
-      // Outside the rim, straight out from the middle.
-      const round = settled.circles.get(object.id) ?? settled.arcs.get(object.id);
-      if (!round || (isArc(object) && settled.arcs.get(object.id)?.flat)) {
-        return out(clearOf(object, at, around(LABEL_LEAN)));
-      }
-      const away = Math.atan2(at.y - round.at.y, at.x - round.at.x);
-      return out(clearOf(object, at, around(away)));
-    }
-    if (!isPoint(object)) return out(clearOf(object, at, around(LABEL_LEAN)));
-    const ways = throughSpot(at);
-    if (ways.length === 0) return out(clearOf(object, at, around(LABEL_LEAN)));
-    // The widest gap between what runs through here, less any gap that leads
-    // into a fill, with the lean breaking any tie so a plain figure still
-    // labels itself the same way throughout.
-    let best = LABEL_LEAN;
-    let score = -Infinity;
-    for (let step = 0; step < LABEL_TRIES; step += 1) {
-      const angle = LABEL_LEAN + (step / LABEL_TRIES) * Math.PI * 2;
-      const room = Math.min(...ways.map((way) => apart(angle, way)));
-      const filled = inFill(object, labelSpot(at, angle)) ? LABEL_SHUN : 0;
-      const worth = room + 0.001 * Math.cos(angle - LABEL_LEAN) - filled;
-      if (worth > score) {
-        score = worth;
-        best = angle;
-      }
-    }
-    return out(best);
   }
 
   /** Drag a label about within its reach of what it names. */
@@ -3180,8 +2994,8 @@ export function Canvas({
     value: SketchMeasurement | SketchParameter | SketchCalculation | SketchFunction,
   ) =>
     isMeasurement(value)
-      ? readingOf(value, everything, names, settled)
-      : readingOfValue(value, quantities.get(value.id) ?? null, names, everything);
+      ? readingOf(value, { objects: everything, names, settled })
+      : readingOfValue(value, quantities.get(value.id) ?? null, { names, objects: everything });
 
   /**
    * What a marquee has caught: the geometry, and any writing it ran over.
@@ -3189,7 +3003,9 @@ export function Canvas({
    * drawn into rather than worked out.
    */
   function caughtBy(rect: Rect): string[] {
-    const caught = objectsTouching(pickable, rect, scale, settled).map((object) => object.id);
+    const caught = objectsTouching(rect, { objects: pickable, scale, settled }).map(
+      (object) => object.id,
+    );
     for (const writing of takesWriting ? [...captions, ...readings, ...tables, ...buttons] : []) {
       const box = boxes.current.get(writing.id);
       if (!box) continue;
@@ -3394,14 +3210,14 @@ export function Canvas({
   const labels = objects.flatMap((object) => {
     if (!object.label?.shown) return [];
     const name = names.get(object.id);
-    const at = name ? labelAnchor(object) : null;
+    const at = name ? labelAnchor(labelling, object) : null;
     if (!at || !name) return [];
     return [
       {
         id: object.id,
         name,
         at,
-        off: object.label.off ?? labelOff(object, at),
+        off: object.label.off ?? labelOff(labelling, object, at),
         look: labelLook(object.label),
       },
     ];
@@ -3410,7 +3226,7 @@ export function Canvas({
   /** Where a mark's caption sits: the same spot its label would hang from. */
   function markAt(id: string): Position | null {
     const object = everything.find((candidate) => candidate.id === id);
-    return object ? labelAnchor(object) : null;
+    return object ? labelAnchor(labelling, object) : null;
   }
 
   /** Where an end of a locus is, and which way it carries on from there. */
@@ -3613,7 +3429,7 @@ export function Canvas({
     const sides = everything
       .filter((side) => {
         const ends = isLine(side) && side.span.kind === "through" ? side.span.ends : null;
-        if (!ends || !ends.includes(corner)) return false;
+        if (!ends?.includes(corner)) return false;
         return ends.includes(one) || ends.includes(other);
       })
       .map((side) => side.id);
@@ -3723,7 +3539,7 @@ export function Canvas({
   const onPanel = panel ? objects.find((object) => object.id === panel) : undefined;
   const panelMark = onPanel && isMark(onPanel) ? onPanel : null;
   const panelSpot = panelMark ? panelSpotOf(panelMark.id) : null;
-  const panelShape = panelMark ? markShape(panelMark, settled, objects, scale) : null;
+  const panelShape = panelMark ? markShape(panelMark, { settled, objects, scale }) : null;
   // The panel on a reading sits just above it, the way a mark's panel does.
   const onReading = readingPanel ? objects.find((object) => object.id === readingPanel) : undefined;
   const readingOpen = onReading && isMeasurement(onReading) ? onReading : null;
@@ -3957,7 +3773,7 @@ export function Canvas({
             )}
             {objects.map((object) => {
               if (!isMark(object)) return null;
-              const shape = markShape(object, settled, objects, scale);
+              const shape = markShape(object, { settled, objects, scale });
               if (!shape) return null;
               const strokes = markStrokes(shape, scale);
               return (
@@ -3965,6 +3781,7 @@ export function Canvas({
                   {selection.includes(object.id) &&
                     strokes.map((stroke, nth) => (
                       <path
+                        // biome-ignore lint/suspicious/noArrayIndexKey: stateless paths in a fixed-length list, redrawn whole
                         key={`halo-${object.id}-${nth}`}
                         className="canvas__mark-halo"
                         d={stroke}
@@ -3973,6 +3790,7 @@ export function Canvas({
                     ))}
                   {strokes.map((stroke, nth) => (
                     <path
+                      // biome-ignore lint/suspicious/noArrayIndexKey: stateless paths in a fixed-length list, redrawn whole
                       key={`${object.id}-${nth}`}
                       className="canvas__mark-stroke"
                       style={strokeLook({ ...object, pattern: undefined })}
@@ -3987,7 +3805,7 @@ export function Canvas({
                 that click would put on it are part of what it would do. */}
             {previewReading?.mark &&
               (() => {
-                const shape = markShape(previewReading.mark, settled, objects, scale);
+                const shape = markShape(previewReading.mark, { settled, objects, scale });
                 if (!shape) return null;
                 return markStrokes(shape, scale).map((stroke) => (
                   <path
@@ -4648,35 +4466,35 @@ export function Canvas({
         })}
 
         {zoomable && (
-        <div className="canvas__zoom" onPointerDown={(event) => event.stopPropagation()}>
-          <button
-            type="button"
-            className="canvas__zoom-button"
-            aria-label="Zoom out"
-            disabled={scale <= MIN_SCALE}
-            onClick={() => zoomTo(stopBelow(scale))}
-          >
-            −
-          </button>
-          <button
-            type="button"
-            className="canvas__zoom-level"
-            aria-label="Zoom to 100%"
-            title="Zoom to 100%"
-            onClick={() => zoomTo(1)}
-          >
-            {Math.round(scale * 100)}%
-          </button>
-          <button
-            type="button"
-            className="canvas__zoom-button"
-            aria-label="Zoom in"
-            disabled={scale >= MAX_SCALE}
-            onClick={() => zoomTo(stopAbove(scale))}
-          >
-            +
-          </button>
-        </div>
+          <div className="canvas__zoom" onPointerDown={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="canvas__zoom-button"
+              aria-label="Zoom out"
+              disabled={scale <= MIN_SCALE}
+              onClick={() => zoomTo(stopBelow(scale))}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="canvas__zoom-level"
+              aria-label="Zoom to 100%"
+              title="Zoom to 100%"
+              onClick={() => zoomTo(1)}
+            >
+              {Math.round(scale * 100)}%
+            </button>
+            <button
+              type="button"
+              className="canvas__zoom-button"
+              aria-label="Zoom in"
+              disabled={scale >= MAX_SCALE}
+              onClick={() => zoomTo(stopAbove(scale))}
+            >
+              +
+            </button>
+          </div>
         )}
       </div>
 

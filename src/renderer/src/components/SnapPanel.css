@@ -94,6 +94,6 @@
 }
 
 .snap__switch--on .snap__switch-knob {
-  background: #fff;
+  background: var(--color-switch-knob);
   transform: translateX(13px);
 }

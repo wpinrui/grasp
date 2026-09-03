@@ -6,7 +6,8 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": false
+    "ignoreUnknown": false,
+    "includes": ["**", "!grasp-landing.html"]
   },
   "formatter": {
     "enabled": true,
@@ -17,7 +18,10 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "style": {
+        "useImportType": "error"
+      }
     }
   },
   "javascript": {

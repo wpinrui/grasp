@@ -117,12 +117,15 @@ export function canSeed(objects: SketchObject[], selection: string[]): boolean {
  * The objects an iteration would add, in the order they must be made. Empty
  * when the map is not filled in, or when nothing hangs off the seeds.
  */
-export function iterated(
-  objects: SketchObject[],
-  seeds: string[],
-  targets: (string | null)[],
-  depth: number,
-): SketchObject[] {
+/** What an Iterate run was asked for: which points move where, and how many times. */
+export interface IterateRun {
+  seeds: string[];
+  targets: (string | null)[];
+  depth: number;
+}
+
+export function iterated(objects: SketchObject[], run: IterateRun): SketchObject[] {
+  const { seeds, targets, depth } = run;
   if (seeds.length === 0 || targets.length !== seeds.length) return [];
   if (targets.some((target) => target === null)) return [];
   const family = withDependents(objects, seeds);

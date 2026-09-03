@@ -2,6 +2,7 @@ import { contextBridge, type IpcRendererEvent, ipcRenderer } from "electron";
 import type { OpenedDocument, SavedDocument, SavePrompt, StartingDocument } from "../main/files";
 import type { PrintJob } from "../main/printing";
 import type { Settings } from "../main/settings";
+import type { PictureToSave } from "../shared/picture";
 
 /** The typed surface exposed to the renderer as `window.api`. Keep it minimal. */
 const api = {
@@ -65,8 +66,7 @@ const api = {
      * Export to a file. Both forms go over, since which one is wanted is only
      * settled by the file the save dialog comes back with. True once written.
      */
-    save: (png: Uint8Array, svg: string, suggested: string): Promise<boolean> =>
-      ipcRenderer.invoke("image:save", png, svg, suggested),
+    save: (drawn: PictureToSave): Promise<boolean> => ipcRenderer.invoke("image:save", drawn),
   },
   about: {
     /** The version GRASP was built as, shown in the About box. */

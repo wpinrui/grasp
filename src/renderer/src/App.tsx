@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { AboutDialog } from "./components/AboutDialog";
 import { ButtonDialog, type ButtonForm } from "./components/ButtonDialog";
 import { CalculatorDialog } from "./components/CalculatorDialog";
@@ -41,44 +41,38 @@ import {
   takesWeight,
   toolDraws,
 } from "./sketch/armed";
+import { type Building, canBuild, wouldBuild } from "./sketch/builds";
 import { captionRowName } from "./sketch/captions";
 import { canDefine, customImager } from "./sketch/custom";
-import type { Expr, Quantity } from "./sketch/expression";
+import type { Expr } from "./sketch/expression";
 import { canSeed, DEFAULT_DEPTH, iterated } from "./sketch/iterate";
+import {
+  markableAngle,
+  markableDistances,
+  markableMirror,
+  markableRatio,
+  markableVector,
+} from "./sketch/markable";
 import {
   inSheetTerms,
   readingOf,
   readingText,
   sayQuantity,
   sheetOf,
-  wouldMeasure,
   writeIn,
 } from "./sketch/measure";
+import { landingSpots } from "./sketch/measured";
 import {
-  alongPath,
-  arcAt,
   asPasted,
   type ButtonAction,
-  clipToRect,
-  createArc,
   createButton,
   createCalculation,
-  createCircle,
   createCustomTransform,
-  createFill,
   createFunction,
-  createInterior,
-  createLine,
-  createLocus,
-  createMeasurement,
   createParameter,
   createTable,
-  createWedge,
-  crossings,
   DEFAULT_LABEL,
   DEFAULT_POINT_SIZE,
-  type Derivation,
-  distance,
   isArc,
   isButton,
   isCalculation,
@@ -95,37 +89,26 @@ import {
   isTable,
   isTransform,
   isValue,
-  isWriting,
   kinOf,
   type LabelState,
   type LineForm,
   type LinePattern,
-  type LineSpan,
   type LineWidth,
-  lineThrough,
   MAX_SAMPLES,
-  type MarkedAngle,
-  type MarkedRatio,
-  type MeasureKind,
   MIN_SAMPLES,
   namesFor,
   type ParameterUnit,
-  type PathGeometry,
-  POINT_SAMPLES,
   type PointSize,
   type Position,
   partsOfAngle,
   partsOfRatio,
   pathIn,
   SAMPLE_STEP,
-  SHAPE_SAMPLES,
-  type SketchArc,
   type SketchCaption,
   type SketchCircle,
   type SketchLine,
   type SketchMeasurement,
   type SketchObject,
-  type SketchPoint,
   type SketchTable,
   settle,
   sharedPointSize,
@@ -138,6 +121,7 @@ import { type Drawn, drawPicture, type PictureOptions, pictureSvg } from "./sket
 import { canvasTokens, type Prefs } from "./sketch/prefs";
 import { buildPrompt } from "./sketch/prompt";
 import { splitMerged, splitMergeFor } from "./sketch/relink";
+import { rolesFor } from "./sketch/roles";
 import { runScript } from "./sketch/script";
 import {
   DEFAULT_VALUES,
@@ -145,7 +129,6 @@ import {
   type Marks,
   makerFor,
   NO_MARKS,
-  pointsFrom,
   type TransformKind,
   type TransformValues,
   transformable,
@@ -191,27 +174,6 @@ const BUILDS = new Set<MenuAction>([
   "measure-value",
 ]);
 
-/** Which reading each Measure entry takes off the selection. */
-const MEASURE_OF: Partial<Record<MenuAction, MeasureKind>> = {
-  "measure-length": "length",
-  "measure-distance": "distance",
-  "measure-perimeter": "perimeter",
-  "measure-circumference": "circumference",
-  "measure-angle": "angle",
-  "measure-area": "area",
-  "measure-arc-angle": "arc-angle",
-  "measure-arc-length": "arc-length",
-  "measure-radius": "radius",
-  "measure-ratio": "ratio",
-  "measure-value": "value",
-};
-
-/** Where the first measurement on a page sits, in screen pixels from the corner. */
-const MEASURE_MARGIN = 14;
-
-/** How far below one measurement the next one is written, in screen pixels. */
-const MEASURE_ROW = 30;
-
 /**
  * How long a Presentation button waits between the buttons it presses, in
  * milliseconds. One after another is only worth having if there is time to see
@@ -224,17 +186,6 @@ const FRAME_MARGIN = 32;
 
 /** How far framing will shrink a figure, matching the canvas's own floor. */
 const MIN_FRAME_SCALE = 0.1;
-
-/**
- * Where Point on Object drops its point: somewhere along the path that looks
- * arbitrary, as the reference app's does, but the same every time so that the
- * hover preview and what lands agree.
- */
-function spotOn(id: string): number {
-  let hash = 0;
-  for (const letter of id) hash = (hash * 31 + letter.charCodeAt(0)) % 997;
-  return 0.2 + (hash / 997) * 0.6;
-}
 
 type Held = ReturnType<typeof window.api.settings.read>;
 
@@ -294,9 +245,9 @@ export function App() {
   });
 
   /** Arm a tool's flyout with one of what it offers. */
-  function pickVariant(tool: string, variant: string) {
+  const pickVariant = useCallback((tool: string, variant: string) => {
     setVariants((armed) => ({ ...armed, [tool]: variant }));
-  }
+  }, []);
   /**
    * What the palette has been set to for the tool that is up, which is how the
    * next thing that tool draws comes out. Switching tools puts it back on the
@@ -574,7 +525,7 @@ export function App() {
       const drawn = await drawPicture(picture, wanted);
       if (!drawn) return;
       if (to === "clipboard") await window.api.image.copy(drawn.png);
-      else await window.api.image.save(drawn.png, drawn.svg, doc.name);
+      else await window.api.image.save({ ...drawn, suggested: doc.name });
     } catch (error) {
       await window.api.file.reportError(
         error instanceof Error ? error.message : "The picture could not be drawn.",
@@ -658,6 +609,17 @@ export function App() {
   const chosenPoints = selected.filter(isPoint);
   // Where every line runs, which is what says whether two of them cross.
   const geometry = settle(objects).settled;
+  const building: Building = {
+    objects,
+    selected,
+    chosenLines,
+    chosenPaths,
+    chosenPoints,
+    geometry,
+    pointSize,
+    view: sketch.view,
+    viewport,
+  };
 
   // A sketch that asked to be framed is put on its figure rather than on the
   // sheet's origin. It waits for the canvas to have a size, since there is no
@@ -700,116 +662,18 @@ export function App() {
   const transform = dialog === "iterate" ? null : dialog;
   const maker =
     transform && transformable(selection, objects)
-      ? makerFor(transform, values, objects, centre, mirror, follows)
+      ? makerFor(transform, { values, objects, centre, mirror, marks: follows })
       : null;
-  const orbit = dialog === "iterate" ? iterated(objects, seeds, targets, depth) : [];
+  const orbit = dialog === "iterate" ? iterated(objects, { seeds, targets, depth }) : [];
   const preview: SketchObject[] = maker
-    ? transformed(selection, objects, pointSize, maker)
+    ? transformed(selection, maker, { objects, size: pointSize })
     : dialog
       ? orbit
       : // No dialog: the sheet shows what the Construct entry under the pointer
         // would build, so hovering Ray says which way it would run.
-        wouldBuild(hovered);
+        wouldBuild(building, hovered);
   /** The row an Iterate click fills: the first empty one, then round again. */
   const nextSeed = Math.max(targets.indexOf(null), 0);
-
-  /**
-   * What each selected object is doing in the construction under the pointer,
-   * so hovering an entry says which point is the centre before it is built.
-   * Only where the roles differ: two points that are both ends of a segment
-   * have nothing to tell apart, while a centre and a point on the rim do.
-   */
-  function rolesFor(action: MenuAction | null): { id: string; label: string }[] {
-    const nth = (index: number, label: string) =>
-      selected[index] ? [{ id: selected[index].id, label }] : [];
-    if (action === "circle-centre-point") {
-      return [...nth(0, "CENTER"), ...nth(1, "POINT ON CIRCUMFERENCE")];
-    }
-    if (action === "circle-centre-radius") {
-      return [
-        ...(chosenPoints[0] ? [{ id: chosenPoints[0].id, label: "CENTER" }] : []),
-        ...(chosenLines[0] ? [{ id: chosenLines[0].id, label: "RADIUS" }] : []),
-      ];
-    }
-    if (action === "arc-on-circle") {
-      const round = selected.find(isCircle);
-      if (!round) return [...nth(0, "CENTER"), ...nth(1, "FROM"), ...nth(2, "TO")];
-      const ends = selected.filter(isPoint);
-      return [
-        { id: round.id, label: "CIRCLE" },
-        ...(ends[0] ? [{ id: ends[0].id, label: "FROM" }] : []),
-        ...(ends[1] ? [{ id: ends[1].id, label: "TO" }] : []),
-      ];
-    }
-    if (action === "arc-through") {
-      return [...nth(0, "FROM"), ...nth(1, "THROUGH"), ...nth(2, "TO")];
-    }
-    if (action === "ray") return [...nth(0, "FROM"), ...nth(1, "TOWARD")];
-    if (action === "parallel" || action === "perpendicular") {
-      const found = alongAndThrough();
-      if (!found) return [];
-      return [
-        { id: found.line.id, label: action === "parallel" ? "PARALLEL TO" : "PERPENDICULAR TO" },
-        ...found.points.map((point) => ({ id: point.id, label: "THROUGH" })),
-      ];
-    }
-    if (action === "bisector") {
-      const span = bisector();
-      return span?.kind === "bisector" ? [{ id: span.corner, label: "CORNER" }] : [];
-    }
-    if (action === "locus") {
-      const parts = locusParts();
-      if (!parts) return [];
-      return [
-        { id: parts.driver.id, label: "DRIVER" },
-        { id: parts.domain.id, label: "DOMAIN" },
-        { id: parts.driven.id, label: "DRIVEN" },
-      ];
-    }
-    if (action === "measure-distance") {
-      // Between two points there is nothing to tell apart. From a point to a
-      // straight object there is.
-      if (chosenPoints.length === selected.length) return [];
-      const point = chosenPoints[0];
-      const line = chosenLines[0];
-      if (!point || !line) return [];
-      return [
-        { id: point.id, label: "FROM" },
-        { id: line.id, label: "TO" },
-      ];
-    }
-    if (action === "measure-angle") {
-      // Two straight objects: the first is the side it turns from, the second
-      // the side it turns to, and the corner is theirs already.
-      if (chosenLines.length === 2) {
-        return [
-          { id: chosenLines[0].id, label: "FROM" },
-          { id: chosenLines[1].id, label: "TO" },
-        ];
-      }
-      return [...nth(0, "FROM"), ...nth(1, "VERTEX"), ...nth(2, "TO")];
-    }
-    if (action === "measure-arc-angle" || action === "measure-arc-length") {
-      const round = selected.find(isCircle);
-      if (!round) return [];
-      const ends = selected.filter(isPoint);
-      const jobs = ends.length === 3 ? ["FROM", "THROUGH", "TO"] : ["FROM", "TO"];
-      return [
-        { id: round.id, label: "CIRCLE" },
-        ...ends.flatMap((end, index) => (jobs[index] ? [{ id: end.id, label: jobs[index] }] : [])),
-      ];
-    }
-    if (action === "measure-ratio") {
-      if (chosenLines.length === 2) {
-        return [
-          { id: chosenLines[0].id, label: "NUMERATOR" },
-          { id: chosenLines[1].id, label: "DENOMINATOR" },
-        ];
-      }
-      return [...nth(0, "ORIGIN"), ...nth(1, "UNIT"), ...nth(2, "POINT")];
-    }
-    return [];
-  }
 
   const named = labelRows();
   const away = hiddenRows();
@@ -1116,7 +980,7 @@ export function App() {
     // Hovering anything else that gives its objects different jobs: each one
     // says which job it has, so the order they were picked in is visible
     // before the entry is clicked rather than after.
-    ...(preview.length > 0 ? rolesFor(hovered) : []),
+    ...(preview.length > 0 ? rolesFor(building, hovered) : []),
     // The centre and the mirror are only ever shown while the dialog that uses
     // them is open.
     ...(centre && (dialog === "rotate" || dialog === "dilate")
@@ -1334,7 +1198,10 @@ export function App() {
     const before = sketch.read();
     sketch.commit({
       ...before,
-      objects: splitMerged(before.objects, splitMerge, geometry, (id) => pathIn(geometry, id)),
+      objects: splitMerged(before.objects, splitMerge, {
+        settled: geometry,
+        paths: (id: string) => pathIn(geometry, id),
+      }),
       // The point it acted on stays picked, since it is what you are working
       // on. Merging two leaves the one that survived.
       selection: [splitMerge.kind === "join" ? splitMerge.to : splitMerge.point],
@@ -1454,127 +1321,30 @@ export function App() {
     });
   }
 
-  /** The last thing of a kind that was picked, which is what a Mark entry takes. */
-  function lastOf<T extends SketchObject>(is: (object: SketchObject) => object is T): T | null {
-    for (let nth = selected.length - 1; nth >= 0; nth -= 1) {
-      const object = selected[nth];
-      if (is(object)) return object;
-    }
-    return null;
-  }
-
-  /** Every number selected whose quantity is the kind wanted, in pick order. */
-  function readingsWhere(wants: (held: Quantity) => boolean): string[] {
-    return selected
-      .filter((object) => {
-        const held = geometry.values.get(object.id);
-        return held ? wants(held) : false;
-      })
-      .map((object) => object.id);
-  }
-
-  /** The straight object a mirror would be marked from. */
-  function markableMirror(): string | null {
-    return lastOf(isLine)?.id ?? null;
-  }
-
-  /** Two points, the first the tail of the vector and the second its head. */
-  function markableVector(): [string, string] | null {
-    const points = chosenPoints;
-    if (points.length < 2) return null;
-    return [points[points.length - 2].id, points[points.length - 1].id];
-  }
-
-  /**
-   * The angle the selection would mark. An angle marker and two straight
-   * objects meeting at a point both come down to three points, so they are
-   * turned into those here rather than carried as their own kind of mark.
-   */
-  function markableAngle(): MarkedAngle | null {
-    const marker = lastOf(isMark);
-    if (marker && "corner" in marker) {
-      return { kind: "points", a: marker.arms[0], corner: marker.corner, b: marker.arms[1] };
-    }
-    const reading = readingsWhere((held) => held.angle === 1 && held.length === 0);
-    if (reading.length > 0) return { kind: "value", of: reading[reading.length - 1] };
-    // Two straight objects sharing an end: the shared end is the corner, and
-    // each object's far end is a point on its arm.
-    const lines = selected.filter(isLine).filter((line) => line.span.kind === "through");
-    if (lines.length >= 2) {
-      const [one, other] = lines.slice(-2);
-      const ends = one.span.kind === "through" ? one.span.ends : null;
-      const theirs = other.span.kind === "through" ? other.span.ends : null;
-      if (ends && theirs) {
-        const corner = ends.find((end) => theirs.includes(end));
-        if (corner) {
-          const a = ends.find((end) => end !== corner);
-          const b = theirs.find((end) => end !== corner);
-          if (a && b) return { kind: "points", a, corner, b };
-        }
-      }
-    }
-    const points = chosenPoints;
-    if (points.length >= 3) {
-      const [a, corner, b] = points.slice(-3);
-      return { kind: "points", a: a.id, corner: corner.id, b: b.id };
-    }
-    return null;
-  }
-
-  /** Whether three points lie on one straight line, near enough to read a ratio along. */
-  function inLine(a: Position, b: Position, c: Position): boolean {
-    const across = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-    const span = Math.hypot(b.x - a.x, b.y - a.y) * Math.hypot(c.x - a.x, c.y - a.y);
-    return span > 0 && Math.abs(across) <= span * 1e-6;
-  }
-
-  /** The ratio the selection would mark, in whichever of its three forms fits. */
-  function markableRatio(): MarkedRatio | null {
-    const segments = selected.filter(isLine).filter((line) => line.form === "segment");
-    if (segments.length >= 2) {
-      const [top, bottom] = segments.slice(-2);
-      return { kind: "segments", top: top.id, bottom: bottom.id };
-    }
-    const reading = readingsWhere((held) => held.angle === 0 && held.length === 0);
-    if (reading.length > 0) return { kind: "value", of: reading[reading.length - 1] };
-    const points = chosenPoints;
-    if (points.length >= 3) {
-      const [a, b, c] = points.slice(-3);
-      if (inLine(a, b, c)) return { kind: "points", a: a.id, b: b.id, c: c.id };
-    }
-    return null;
-  }
-
-  /** One distance for a polar translation, or two for a rectangular one. */
-  function markableDistances(): string[] {
-    const readings = readingsWhere((held) => held.length === 1 && held.angle === 0);
-    return readings.slice(-2);
-  }
-
   /** A Mark entry, which sets what future transforms follow and leaves the selection alone. */
   function mark(action: MenuAction) {
     if (action === "mark-mirror") {
-      const found = markableMirror();
+      const found = markableMirror(building);
       if (found) setMirror(found);
       return;
     }
     if (action === "mark-vector") {
-      const ends = markableVector();
+      const ends = markableVector(building);
       if (ends)
         setValues({ ...values, translate: { ...values.translate, from: ends[0], to: ends[1] } });
       return;
     }
     if (action === "mark-angle") {
-      const angle = markableAngle();
+      const angle = markableAngle(building);
       if (angle) setFollows({ ...follows, angle });
       return;
     }
     if (action === "mark-ratio") {
-      const ratio = markableRatio();
+      const ratio = markableRatio(building);
       if (ratio) setFollows({ ...follows, ratio });
       return;
     }
-    const distances = markableDistances();
+    const distances = markableDistances(building);
     if (distances.length > 0) setFollows({ ...follows, distances });
   }
 
@@ -1625,7 +1395,7 @@ export function App() {
 
   /** Where a new number lands: the stack the Measure menu writes into. */
   function valueSpot(): Position {
-    return landingSpots(1)[0];
+    return landingSpots(building, 1)[0];
   }
 
   /** The sketch as an expression reads it, for the Calculator's preview. */
@@ -1713,7 +1483,7 @@ export function App() {
       setParameterDialog(null);
       return;
     }
-    const made = createParameter(value, unit, places, valueSpot());
+    const made = createParameter({ value, unit, places }, valueSpot());
     // Made from inside the Calculator, it goes into the expression rather than
     // taking the selection over, since the Calculator is still what is in hand.
     if (parameterDialog?.fromCalculator) {
@@ -1896,176 +1666,12 @@ export function App() {
   }
 
   /**
-   * Parallel and Perpendicular want one straight object to follow and the
-   * points to run through, and nothing else in the selection.
-   */
-  function alongAndThrough(): { line: SketchLine; points: SketchPoint[] } | null {
-    if (chosenLines.length !== 1 || chosenPoints.length === 0) return null;
-    if (chosenLines.length + chosenPoints.length !== selected.length) return null;
-    return { line: chosenLines[0], points: chosenPoints };
-  }
-
-  function alongObjects(kind: "parallel" | "perpendicular"): SketchObject[] {
-    const found = alongAndThrough();
-    if (!found) return [];
-    return found.points.map((point) =>
-      createLine("line", { kind, at: point.id, to: found.line.id }),
-    );
-  }
-
-  /** Two segments meeting at a point: that point is the corner to halve. */
-  function bisector(): LineSpan | null {
-    if (chosenLines.length !== 2 || chosenLines.length !== selected.length) return null;
-    const [one, other] = chosenLines;
-    if (one.form !== "segment" || other.form !== "segment") return null;
-    if (one.span.kind !== "through" || other.span.kind !== "through") return null;
-    const ends = other.span.ends;
-    const shared = one.span.ends.filter((end) => ends.includes(end));
-    if (shared.length !== 1) return null;
-    const corner = shared[0];
-    const a = one.span.ends.find((end) => end !== corner);
-    const b = ends.find((end) => end !== corner);
-    return a && b ? { kind: "bisector", corner, a, b } : null;
-  }
-
-  /**
-   * A point at every place the two selected paths meet, since a circle can meet
-   * a line or another circle twice. Empty when they do not meet where they run,
-   * which is what greys the entry out.
-   */
-  function intersections(): Derivation[] {
-    if (chosenPaths.length !== 2 || chosenPaths.length !== selected.length) return [];
-    const one = pathIn(geometry, chosenPaths[0].id);
-    const other = pathIn(geometry, chosenPaths[1].id);
-    if (!one || !other) return [];
-    return crossings(one, other).map((_, pick) => ({
-      kind: "cross" as const,
-      of: chosenPaths[0].id,
-      and: chosenPaths[1].id,
-      pick,
-    }));
-  }
-
-  /**
-   * What Midpoint would build: one for every selected segment, or one for two
-   * selected points. Null when the selection is neither, which greys the entry.
-   */
-  function midpoints(): Derivation[] | null {
-    if (selected.length === 0) return null;
-    // A segment drawn between two points is the only line with a middle.
-    const spans = selected.flatMap((object) =>
-      object.kind === "line" && object.form === "segment" && object.span.kind === "through"
-        ? [object.span.ends]
-        : [],
-    );
-    if (spans.length === selected.length) {
-      return spans.map(([of, and]) => ({ kind: "midpoint" as const, of, and }));
-    }
-    if (selected.length !== 2 || !selected.every(isPoint)) return null;
-    return [{ kind: "midpoint", of: selected[0].id, and: selected[1].id }];
-  }
-
-  /**
-   * A locus's three parts, read off the selection: a point on a path and
-   * something built on it, or an independent point, a path it does not touch,
-   * and something built on it. Null when the selection is neither.
-   */
-  function locusParts(): {
-    driver: SketchPoint;
-    domain: SketchLine | SketchCircle | SketchArc;
-    along: PathGeometry;
-    driven: SketchObject;
-  } | null {
-    const parts = (driver: SketchPoint, domain: SketchObject | undefined, driven: SketchObject) => {
-      const round = domain && (isLine(domain) || isCircle(domain) || isArc(domain));
-      // Writing has no positions to trace out, so it cannot be driven.
-      if (!domain || !round || isLocus(driven) || isWriting(driven)) return null;
-      const along = pathIn(geometry, domain.id);
-      return along ? { driver, domain, along, driven } : null;
-    };
-    if (selected.length === 2) {
-      for (const driver of selected) {
-        if (!isPoint(driver) || driver.from?.kind !== "on") continue;
-        const driven = selected.find((object) => object.id !== driver.id);
-        // The driven object has to be built on the driver, or there is nothing
-        // for the driver to drive.
-        if (!driven || !withDependents(objects, [driver.id]).has(driven.id)) continue;
-        const found = parts(
-          driver,
-          objects.find((object) => object.id === (driver.from as { path: string }).path),
-          driven,
-        );
-        if (found) return found;
-      }
-      return null;
-    }
-    if (selected.length !== 3) return null;
-    for (const driver of selected) {
-      // An independent point brings its own path, which must not be one the
-      // point itself moves.
-      if (!isPoint(driver) || driver.from) continue;
-      const family = withDependents(objects, [driver.id]);
-      const rest = selected.filter((object) => object.id !== driver.id);
-      for (const domain of rest) {
-        if (family.has(domain.id)) continue;
-        const driven = rest.find((object) => object.id !== domain.id);
-        if (!driven || !family.has(driven.id)) continue;
-        const found = parts(driver, domain, driven);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-
-  /**
-   * How much of the domain the driver runs over: the whole of a segment, and
-   * as much of a ray or a line as is on screen when the locus is built, since
-   * neither of those ends.
-   */
-  function spanOver(
-    domain: SketchLine | SketchCircle | SketchArc,
-    along: PathGeometry,
-  ): [number, number] {
-    // A circle closes on itself, and a segment has two ends: either way the
-    // driver runs the whole of it.
-    // A circle closes on itself and a segment and an arc both have two ends:
-    // any of them is run the whole way, with nothing to adjust.
-    if (isCircle(domain) || isArc(domain) || !("form" in along) || domain.form === "segment") {
-      return [0, 1];
-    }
-    const visible = {
-      x: sketch.view.x,
-      y: sketch.view.y,
-      width: viewport.width / sketch.view.scale,
-      height: viewport.height / sketch.view.scale,
-    };
-    const cut = clipToRect(along, visible);
-    if (!cut) return [0, 1];
-    const low = Math.min(alongPath(along, cut[0]), alongPath(along, cut[1]));
-    const high = Math.max(alongPath(along, cut[0]), alongPath(along, cut[1]));
-    if (high - low < 0.05) return [0, 1];
-    return domain.form === "ray" ? [0, high] : [low, high];
-  }
-
-  function locus(): SketchObject[] {
-    const found = locusParts();
-    if (!found) return [];
-    return [
-      createLocus(
-        found.driver.id,
-        found.domain.id,
-        found.driven.id,
-        spanOver(found.domain, found.along),
-        isPoint(found.driven) ? POINT_SAMPLES : SHAPE_SAMPLES,
-      ),
-    ];
-  }
-
-  /**
    * Give one object a name, and optionally hand it over from whatever held it,
    * which puts that one back on the automatic run. An empty name unpins.
    */
-  function pinName(id: string, name: string, freed?: string, kept?: string) {
+  function pinName(id: string, name: string, swap?: { freed?: string; kept?: string }) {
+    const freed = swap?.freed;
+    const kept = swap?.kept;
     const before = sketch.read();
     const names = namesFor(before.objects);
     sketch.commit({
@@ -2129,7 +1735,7 @@ export function App() {
       const name = isCaption(object)
         ? captionRowName(object.html)
         : isMeasurement(object)
-          ? readingText(readingOf(object, objects, names, geometry))
+          ? readingText(readingOf(object, { objects, names, settled: geometry }))
           : names.get(object.id);
       return name
         ? [{ id: object.id, name, kind: kindOf(object).replace(/^(a|an|another) /, "") }]
@@ -2241,198 +1847,13 @@ export function App() {
     });
   }
 
-  /** A fill through the selected points, in the order they were picked. */
-  function interior(): SketchObject[] {
-    if (chosenPoints.length < 3 || chosenPoints.length !== selected.length) return [];
-    return [createInterior(chosenPoints.map((point) => point.id))];
-  }
-
-  /**
-   * Arc on Circle: a circle and two points on it, or a centre and two points
-   * the same distance from it, the centre picked first. Either way the arc runs
-   * counter-clockwise from the first bounding point to the second.
-   */
-  function arcOnCircle(): SketchObject[] {
-    if (selected.length !== 3) return [];
-    const round = selected.find(isCircle);
-    if (round) {
-      const ends = selected.filter(isPoint);
-      const where = geometry.circles.get(round.id);
-      if (ends.length !== 2 || !where) return [];
-      // They have to be on the circle, not merely near it.
-      const on = (spot: SketchPoint) =>
-        Math.abs(distance(where.at, spot) - where.radius) <= Math.max(1e-6, where.radius * 1e-6);
-      if (!ends.every(on)) return [];
-      return [createArc({ kind: "on", circle: round.id, from: ends[0].id, to: ends[1].id })];
-    }
-    if (!selected.every(isPoint)) return [];
-    const [centre, one, other] = selected;
-    const reach = distance(centre, one);
-    if (reach < 1e-6) return [];
-    if (Math.abs(reach - distance(centre, other)) > Math.max(1e-6, reach * 1e-6)) return [];
-    return [createArc({ kind: "centre", centre: centre.id, from: one.id, to: other.id })];
-  }
-
-  /**
-   * Arc through 3 Points: it starts at the first, passes through the second and
-   * ends at the third. Three points in a line with the middle one outside the
-   * others describe no arc, so the entry greys out.
-   */
-  function arcThrough(): SketchObject[] {
-    if (selected.length !== 3 || !selected.every(isPoint)) return [];
-    const span = {
-      kind: "through" as const,
-      from: selected[0].id,
-      via: selected[1].id,
-      to: selected[2].id,
-    };
-    return arcAt(span, geometry) ? [createArc(span)] : [];
-  }
-
-  /** The inside of every selected arc, one fill each, the way asked for. */
-  function arcFills(wedge: "sector" | "segment"): SketchObject[] {
-    const arcs = selected.filter(isArc);
-    if (arcs.length === 0 || arcs.length !== selected.length) return [];
-    return arcs.map((arc) => createWedge(arc.id, wedge));
-  }
-
-  /** The inside of every selected circle, one fill each. */
-  function circleInteriors(): SketchObject[] {
-    const round = selected.filter(isCircle);
-    if (round.length === 0 || round.length !== selected.length) return [];
-    return round.map((circle) => createFill(circle.id));
-  }
-
-  /** One point on each selected path, free to slide along it. */
-  function pointsOnObjects(): SketchObject[] {
-    if (chosenPaths.length === 0 || chosenPaths.length !== selected.length) return [];
-    return chosenPaths.flatMap((path) => {
-      if (!pathIn(geometry, path.id)) return [];
-      const from = { kind: "on" as const, path: path.id, at: spotOn(path.id) };
-      return pointsFrom([from], objects, pointSize);
-    });
-  }
-
-  /**
-   * A circle from two selected points, the first the centre and the second a
-   * point on it, or from a point and a segment whose length is the radius.
-   */
-  function circleFrom(kind: "circle-centre-point" | "circle-centre-radius"): SketchObject[] {
-    if (selected.length !== 2) return [];
-    if (kind === "circle-centre-point") {
-      if (!selected.every(isPoint)) return [];
-      return [createCircle({ kind: "through", centre: selected[0].id, edge: selected[1].id })];
-    }
-    if (chosenPoints.length !== 1 || chosenLines.length !== 1) return [];
-    const along = chosenLines[0];
-    // Only a segment has a length to lend. A ray and a line have no end.
-    if (along.form !== "segment") return [];
-    return [createCircle({ kind: "radius", centre: chosenPoints[0].id, along: along.id })];
-  }
-
-  /** Segment, Ray and Line take the two selected points, in the order picked. */
-  function lineObjects(form: LineForm): SketchObject[] {
-    if (selected.length !== 2 || !selected.every(isPoint)) return [];
-    return [lineThrough(form, [selected[0].id, selected[1].id])];
-  }
-
-  /**
-   * Where the next measurements are written: the top left of what is on screen,
-   * each one below the last, stepping down past anything already written there
-   * so a new number never lands on top of one that is already showing.
-   */
-  function landingSpots(count: number): Position[] {
-    const { x, y, scale } = sketch.view;
-    const margin = MEASURE_MARGIN / scale;
-    const row = MEASURE_ROW / scale;
-    const left = x + margin;
-    const written: Position[] = objects.filter(isMeasurement);
-    const spots: Position[] = [];
-    let top = y + margin;
-    for (let index = 0; index < count; index += 1) {
-      while (
-        [...written, ...spots].some(
-          (one) => Math.abs(one.x - left) < row && Math.abs(one.y - top) < row * 0.9,
-        )
-      ) {
-        top += row;
-      }
-      spots.push({ x: left, y: top });
-      top += row;
-    }
-    return spots;
-  }
-
-  /**
-   * What a Measure entry would write: one measurement per object it was given,
-   * in the order they were picked. Empty when the selection is not one the
-   * entry takes, which is what greys it out.
-   */
-  function measurements(action: MenuAction): SketchObject[] {
-    const measure = MEASURE_OF[action];
-    if (!measure) return [];
-    const groups = wouldMeasure(measure, selected, geometry);
-    if (groups.length === 0) return [];
-    const spots = landingSpots(groups.length);
-    return groups.map((of, index) => createMeasurement(measure, of, spots[index]));
-  }
-
-  /**
-   * What a Construct entry would build with the selection as it stands. It
-   * answers both the click and the hover: hovering an entry draws this on the
-   * sheet as a ghost, which is what says which way a Ray would run.
-   */
-  function wouldBuild(action: MenuAction | null): SketchObject[] {
-    switch (action) {
-      case "segment":
-      case "ray":
-      case "line":
-        return lineObjects(action);
-      case "parallel":
-      case "perpendicular":
-        return alongObjects(action);
-      case "bisector": {
-        const span = bisector();
-        return span ? [createLine("ray", span)] : [];
-      }
-      case "intersection":
-        return pointsFrom(intersections(), objects, pointSize);
-      case "point-on-object":
-        return pointsOnObjects();
-      case "interior":
-        return interior();
-      case "circle-interior":
-        return circleInteriors();
-      case "arc-sector":
-        return arcFills("sector");
-      case "arc-segment":
-        return arcFills("segment");
-      case "arc-on-circle":
-        return arcOnCircle();
-      case "arc-through":
-        return arcThrough();
-      case "locus":
-        return locus();
-      case "circle-centre-point":
-      case "circle-centre-radius":
-        return circleFrom(action);
-      case "midpoint": {
-        const wanted = midpoints();
-        return wanted ? pointsFrom(wanted, objects, pointSize) : [];
-      }
-      default:
-        // Every Measure entry, which writes a number rather than drawing one.
-        return action ? measurements(action) : [];
-    }
-  }
-
   function construct(action: MenuAction) {
-    sketch.addObjects(wouldBuild(action));
+    sketch.addObjects(wouldBuild(building, action));
   }
 
   function applyDialog() {
     if (!maker) return;
-    sketch.addObjects(transformed(selection, objects, pointSize, maker));
+    sketch.addObjects(transformed(selection, maker, { objects, size: pointSize }));
     setDialog(null);
   }
 
@@ -2458,11 +1879,11 @@ export function App() {
     if (action === "define-custom") return canDefine(objects, selection);
     if (action === "edit-custom") return customs.length > 0;
     if (action.startsWith("apply-transform:")) return transformable(selection, objects);
-    if (action === "mark-mirror") return markableMirror() !== null;
-    if (action === "mark-vector") return markableVector() !== null;
-    if (action === "mark-angle") return markableAngle() !== null;
-    if (action === "mark-ratio") return markableRatio() !== null;
-    if (action === "mark-distance") return markableDistances().length > 0;
+    if (action === "mark-mirror") return markableMirror(building) !== null;
+    if (action === "mark-vector") return markableVector(building) !== null;
+    if (action === "mark-angle") return markableAngle(building) !== null;
+    if (action === "mark-ratio") return markableRatio(building) !== null;
+    if (action === "mark-distance") return markableDistances(building).length > 0;
     if (action === "derivative") return chosenFunction() !== undefined;
     if (action === "tabulate") return chosenValues().length > 0;
     if (action === "add-table-data" || action === "remove-table-data") {
@@ -2471,30 +1892,10 @@ export function App() {
     if (action === "hide-objects") return selection.length > 0;
     if (action === "show-all-hidden") return objects.some((object) => object.hidden === true);
     if (action === "iterate") return canSeed(objects, selection);
-    if (action === "parallel" || action === "perpendicular") return alongAndThrough() !== null;
-    if (action === "bisector") return bisector() !== null;
-    if (action === "intersection") return intersections().length > 0;
-    if (action === "midpoint") return midpoints() !== null;
-    if (action === "point-on-object") {
-      return chosenPaths.length > 0 && chosenPaths.length === selected.length;
-    }
-    if (action === "interior") return interior().length > 0;
-    if (action === "circle-interior") return circleInteriors().length > 0;
-    if (action === "arc-sector" || action === "arc-segment") {
-      return arcFills(action === "arc-sector" ? "sector" : "segment").length > 0;
-    }
-    if (action === "arc-on-circle") return arcOnCircle().length > 0;
-    if (action === "arc-through") return arcThrough().length > 0;
-    if (action === "locus") return locusParts() !== null;
-    if (action === "circle-centre-point" || action === "circle-centre-radius") {
-      return circleFrom(action).length > 0;
-    }
-    if (MEASURE_OF[action]) {
-      return wouldMeasure(MEASURE_OF[action] as MeasureKind, selected, geometry).length > 0;
-    }
-    if (action === "segment" || action === "ray" || action === "line") {
-      return selected.length === 2 && selected.every(isPoint);
-    }
+    // Everything the Construct and Measure menus draw or write is answered by
+    // whether there is anything to draw or write.
+    const built = canBuild(building, action);
+    if (built !== null) return built;
     // Every transform asks for what it turns about, or mirrors across, once it
     // is open, so all any of them needs is something it can act on.
     if (
@@ -2521,6 +1922,7 @@ export function App() {
     if (!open || open.hidden === true) setEditing(null);
   }, [editing, objects]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: it runs when the figure moves, which is what a row records
   useEffect(() => {
     const run = collecting.current;
     if (!run) return;
@@ -2547,7 +1949,6 @@ export function App() {
     run.left -= 1;
     if (run.left <= 0) collecting.current = null;
     captureRow(table.id);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: it runs when the figure moves, which is what a row records
   }, [objects]);
 
   /**
@@ -2640,7 +2041,7 @@ export function App() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo, remove, selectAll, doc]);
+  }, [undo, redo, selectAll, doc, pickVariant]);
 
   return (
     <div className="app">
@@ -3004,14 +2405,14 @@ export function App() {
             const holder = objects.find(
               (object) => namesFor(objects).get(object.id) === clash.name,
             );
-            pinName(clash.id, clash.name, holder?.id);
+            pinName(clash.id, clash.name, { freed: holder?.id });
             setClash(null);
           }}
           onBoth={() => {
             const holder = objects.find(
               (object) => namesFor(objects).get(object.id) === clash.name,
             );
-            pinName(clash.id, clash.name, undefined, holder?.id);
+            pinName(clash.id, clash.name, { kept: holder?.id });
             setClash(null);
           }}
           onCancel={() => setClash(null)}

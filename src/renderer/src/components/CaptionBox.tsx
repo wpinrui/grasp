@@ -84,7 +84,7 @@ const NOTATION = ".cap-frac, .cap-root, .cap-bar, .cap-group, sup, sub";
 /** Where the caret is now, as something two moments apart can be compared by. */
 function caretSpot(): { node: Node; offset: number } | null {
   const selection = window.getSelection();
-  if (!selection || !selection.isCollapsed || selection.rangeCount === 0) return null;
+  if (!selection?.isCollapsed || selection.rangeCount === 0) return null;
   const range = selection.getRangeAt(0);
   return { node: range.startContainer, offset: range.startOffset };
 }

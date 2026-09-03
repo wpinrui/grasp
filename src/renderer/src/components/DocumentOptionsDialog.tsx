@@ -1,5 +1,5 @@
 import { type PointerEvent as ReactPointerEvent, useRef, useState } from "react";
-import type { WantedPage } from "../sketch/useSketch";
+import type { WantedPage } from "../sketch/pages";
 import { DialogFrame } from "./DialogFrame";
 import "./DocumentOptionsDialog.css";
 

@@ -13,6 +13,7 @@
  */
 
 import type { OpenedDocument, SavedDocument, StartingDocument } from "../main/files";
+import type { PictureToSave } from "../shared/picture";
 import { type PrintJob, pageHtml } from "../shared/print";
 import { DEFAULT_SETTINGS, type Settings } from "../shared/settings";
 import { askDeletePage, askUnsaved, sayError } from "./dialogs";
@@ -322,7 +323,7 @@ const api = {
       const blob = new Blob([pngPart(png)], { type: "image/png" });
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
     },
-    save: async (png: Uint8Array, svg: string, suggested: string): Promise<boolean> => {
+    save: async ({ png, svg, suggested }: PictureToSave): Promise<boolean> => {
       if (!hasPicker()) {
         download(new Blob([pngPart(png)], { type: "image/png" }), `${suggested}.png`);
         return true;

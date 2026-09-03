@@ -173,11 +173,11 @@ export function CalculatorDialog({
 
   // A value clicked on the sheet lands at the cursor, which is what the
   // reference app does and the quickest way to name a measurement.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: it runs on the name arriving, not on the text moving under it
   useEffect(() => {
     if (insert === null) return;
     drop(insert);
     onInserted();
-    // biome-ignore lint/correctness/useExhaustiveDependencies: it runs on the name arriving, not on the text moving under it
   }, [insert]);
 
   const parsed = parse(text, named, forFunction);
