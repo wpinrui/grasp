@@ -246,14 +246,20 @@ body.spike-mobile .canvas__zoom {
   display: none;
 }
 
-/* The AI dialog, and the prompts the web build draws for itself. Neither goes
-   through DialogFrame: they are centred by a scrim that covers the window, so
-   the rules above do not reach them and the keyboard lands straight on top.
+/* Every overlay that does not go through DialogFrame. Each is centred by a
+   scrim covering the window, so the rule above does not reach it and a keyboard
+   lands straight on top of it.
+
+   All of them, not only the ones reachable from the menus as they stand today:
+   About and Print Preview are behind titles that are currently cut, and a cut
+   that comes back should not bring a broken dialog with it.
 
    Same treatment, done at the scrim: it is pulled onto the visible viewport and
    its contents pushed to the top of that, which is the half a keyboard never
    covers. */
 body.spike-mobile .script__scrim,
+body.spike-mobile .about__scrim,
+body.spike-mobile .preview__scrim,
 body.spike-mobile .web-prompt {
   top: var(--spike-seen-top, 0px);
   bottom: auto;
@@ -263,6 +269,8 @@ body.spike-mobile .web-prompt {
 }
 
 body.spike-mobile .script,
+body.spike-mobile .about,
+body.spike-mobile .preview,
 body.spike-mobile .web-prompt__box {
   width: 100%;
   max-width: none;
@@ -286,4 +294,20 @@ body.spike-mobile .script__prompt,
 body.spike-mobile .script__type {
   height: auto;
   max-height: 30vh;
+}
+
+/* The two popovers that are not dialogs at all.
+
+   A menu dropdown opens downwards from the bar and a phone has far less below
+   it than a desktop does, so it is held inside what is visible and scrolls for
+   the rest. The tool variants open sideways off the rail into a width that was
+   never a phone's, so they scroll the other way. */
+body.spike-mobile .flyout {
+  max-height: calc(var(--spike-seen-height, 100dvh) - var(--menubar-height) - 16px);
+  overflow-y: auto;
+}
+
+body.spike-mobile .variants {
+  max-width: calc(100vw - var(--toolbox-width) - 16px);
+  overflow-x: auto;
 }
