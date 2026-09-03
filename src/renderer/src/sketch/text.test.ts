@@ -13,6 +13,7 @@ import type {
 } from "./model";
 import {
   drawnAs,
+  inkAgreed,
   isWritten,
   lookOf,
   lookOfLabel,
@@ -94,6 +95,8 @@ const button = (over: Partial<SketchButton> = {}): SketchButton => ({
   y: 0,
   ...over,
 });
+
+const inked = (colour?: string): SketchLine => ({ ...line, colour });
 
 const line: SketchLine = {
   id: "l",
@@ -273,5 +276,33 @@ describe("the three style keys over the picked labels", () => {
 
   it("falls back to the way a label starts where it holds nothing", () => {
     expect(marksOfLabels([{}])).toEqual({ bold: true, italic: true, underline: false });
+  });
+});
+
+describe("the ink a pick reads at", () => {
+  it("has nothing to say about nothing", () => {
+    expect(inkAgreed([])).toBeNull();
+  });
+
+  it("says the ink where they share one", () => {
+    expect(inkAgreed([inked("--color-ink-red"), inked("--color-ink-red")])).toBe("--color-ink-red");
+  });
+
+  it("says nothing where they differ, so the bar lights no swatch", () => {
+    expect(inkAgreed([inked("--color-ink-red"), caption()])).toBeNull();
+  });
+
+  it("reads writing that holds no ink at the ink it is drawn in", () => {
+    expect(inkAgreed([reading()])).toBe(DEFAULT_CAPTION.colour);
+    expect(inkAgreed([inked(DEFAULT_CAPTION.colour), reading()])).toBe(DEFAULT_CAPTION.colour);
+  });
+
+  it("says nothing for anything else that holds no ink, since it says nothing", () => {
+    expect(inkAgreed([inked()])).toBeNull();
+    expect(inkAgreed([inked(), inked()])).toBeNull();
+  });
+
+  it("says nothing where writing that holds none is picked with a colour it is not drawn in", () => {
+    expect(inkAgreed([reading(), inked("--color-ink-red")])).toBeNull();
   });
 });

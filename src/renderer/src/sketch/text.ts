@@ -133,6 +133,21 @@ export function textStyling(looks: TextLook[]): TextStyling | null {
   };
 }
 
+/**
+ * The ink a pick reads at, or null where it does not agree on one. Writing that
+ * holds no ink is read at the ink it is drawn in, since that is what the sheet
+ * shows and what the bar has to agree with; anything else that holds none says
+ * nothing about the ink at all, so a pick holding one of those lights nothing.
+ */
+export function inkAgreed(objects: SketchObject[]): string | null {
+  if (objects.length === 0) return null;
+  const inkOf = (object: SketchObject) =>
+    isWritten(object) ? lookOf(object).colour : object.colour;
+  const first = inkOf(objects[0]);
+  if (first === undefined) return null;
+  return objects.every((object) => inkOf(object) === first) ? first : null;
+}
+
 /** What the Font box says where the writing it is set on does not agree on one. */
 export const VARIOUS = "(various)";
 

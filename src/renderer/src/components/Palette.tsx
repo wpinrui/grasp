@@ -2,7 +2,7 @@ import { type MouseEvent, type RefObject, useEffect, useReducer } from "react";
 import { insertAtCaret } from "../sketch/captions";
 import type { CaptionAlign, LinePattern, LineWidth, SketchCaption } from "../sketch/model";
 import { LINE_PATTERNS, LINE_WIDTHS } from "../sketch/model";
-import { type TextStyling, textBoxes } from "../sketch/text";
+import { type LabelMarks, type TextStyling, textBoxes } from "../sketch/text";
 import { PATTERN_SAMPLE, Picker, Popout, Rule, WEIGHT_SAMPLE } from "./PalettePicker";
 import { caretLook, caretMarks, chosenRun, wrapRun } from "./paletteCaret";
 import { FONTS, INKS, NOTATION, SIZES, SYMBOLS } from "./typeset";
@@ -59,7 +59,7 @@ interface PaletteProps {
    * rather than following where the next keystroke would land, and a key the
    * picked labels do not agree on reads off.
    */
-  labelMarks: Record<"bold" | "italic" | "underline", boolean> | null;
+  labelMarks: LabelMarks | null;
   onLabelMark: (mark: "bold" | "italic" | "underline", on: boolean) => void;
   /**
    * How the tool that is up is armed to write, or null where it writes nothing

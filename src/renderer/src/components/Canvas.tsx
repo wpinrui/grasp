@@ -124,6 +124,7 @@ import {
 } from "../sketch/model";
 import { demotedUnder } from "../sketch/overlaps";
 import { togglePick } from "../sketch/picking";
+import { drawnAs } from "../sketch/text";
 import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
@@ -3046,6 +3047,10 @@ export function Canvas({
     // A label is picked on its own: what it names is not picked with it, so the
     // palette is set on the label rather than on the object under it.
     if (tool === "arrow") {
+      // A caption open to type into is what the bar is set on, so it is settled
+      // and put away before a label takes its place: only one of the two is
+      // ever the thing the palette is working on.
+      if (editing) closeCaption(null);
       onLabelPick(id, event.shiftKey || event.ctrlKey);
       sketch.select([]);
     }
@@ -3185,12 +3190,14 @@ export function Canvas({
     // A caption being written into is the one thing the palette is set on, so
     // opening one lets go of the selection and of any picked label rather than
     // setting the bar on two things at once. Putting one away hands it back to
-    // the selection, so the bar is still on it and its grip is still there; a
-    // press on bare sheet lets go of that in its own turn.
+    // the selection, so the bar is still on it and its grip is still there, and
+    // a press on bare sheet with the Arrow lets go of that in its own turn. A
+    // caption left empty is gone by now, and a selection cannot hold what is
+    // not there.
     if (next) {
       sketch.select([]);
       onLabelPick(null);
-    } else if (open) {
+    } else if (open && sketch.read().objects.some((one) => one.id === open.id)) {
       sketch.select([open.id]);
     }
     onEditing(next);
@@ -3212,9 +3219,7 @@ export function Canvas({
           top: `${(found.y - view.y) * scale}px`,
           width: `${found.width}px`,
           textAlign: found.align,
-          fontFamily: `"${found.font}", serif`,
-          fontSize: `${found.size}pt`,
-          color: `var(${found.colour})`,
+          ...drawnAs(found),
         }}
       >
         <div

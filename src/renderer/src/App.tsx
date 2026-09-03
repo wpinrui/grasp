@@ -126,6 +126,7 @@ import { splitMerged, splitMergeFor } from "./sketch/relink";
 import { rolesFor } from "./sketch/roles";
 import { runScript } from "./sketch/script";
 import {
+  inkAgreed,
   isWritten,
   lookOf,
   lookOfLabel,
@@ -264,12 +265,6 @@ export function App() {
     setVariants((armed) => ({ ...armed, [tool]: variant }));
   }, []);
   /**
-   * What the palette has been set to for the tool that is up, which is how the
-   * next thing that tool draws comes out. Switching tools puts it back on the
-   * defaults, so a tool is always picked up on what GRASP says rather than on
-   * what it was left on the last time it was held.
-   */
-  /**
    * The labels picked on the sheet, held as the objects they name, since a
    * label belongs to what it names rather than standing on its own. Picking one
    * lets go of the selection, but the two are held apart rather than kept in
@@ -277,6 +272,12 @@ export function App() {
    * they let go on a tool switch the way the rest of what a tool was doing does.
    */
   const [labelPick, setLabelPick] = useState<string[]>([]);
+  /**
+   * What the palette has been set to for the tool that is up, which is how the
+   * next thing that tool draws comes out. Switching tools puts it back on the
+   * defaults, so a tool is always picked up on what GRASP says rather than on
+   * what it was left on the last time it was held.
+   */
   const [armed, setArmed] = useState<Armed>({});
   const toolWas = useRef(activeTool);
   if (toolWas.current !== activeTool) {
@@ -725,7 +726,8 @@ export function App() {
    * Everything the palette would set: what is selected, and the caption being
    * typed into, which takes the bar along with it.
    */
-  const picked = objects.filter((object) => selection.includes(object.id) || object.id === editing);
+  const written = editing ? objects.find((object) => object.id === editing) : undefined;
+  const picked = written && !selection.includes(written.id) ? [...selected, written] : selected;
 
   /**
    * The writing among it: everything picked that carries a face and a size,
@@ -750,12 +752,7 @@ export function App() {
     ? marksOfLabels(chosenLabels.map((object) => object.label ?? {}))
     : null;
 
-  /**
-   * What the palette's top row is set on: what the selection shares, and what
-   * of the three it can take at all. A stroked object takes a weight and a
-   * pattern, a mark takes a weight but has no pattern, and a fill or a point
-   * takes neither.
-   */
+  /** What a pick shares, or null where it does not share one, over any list. */
   const agreed = <T,>(
     over: SketchObject[],
     read: (object: SketchObject) => T | undefined,
@@ -766,13 +763,6 @@ export function App() {
     return over.every((object) => read(object) === first) ? first : null;
   };
 
-  /**
-   * The ink an object reads at. Writing that holds none is read at the ink it
-   * is drawn in, since that is what the sheet shows and what the bar has to
-   * agree with; anything else that holds none says nothing about the ink.
-   */
-  const inkOf = (object: SketchObject) =>
-    isWritten(object) ? lookOf(object).colour : object.colour;
   const stroked = selected.filter(
     (object) => isLine(object) || isCircle(object) || isArc(object) || isLocus(object),
   );
@@ -798,6 +788,11 @@ export function App() {
   const chosenWeighs = stroked.length > 0 || selected.some(isMark);
   const chosenPatterns = stroked.length > 0;
 
+  /**
+   * What the palette's top row is set on: what the pick shares, and what of the
+   * three it can take at all. A stroked object takes a weight and a pattern, a
+   * mark takes a weight but has no pattern, and a fill or a point takes neither.
+   */
   const styling: Styling = labelsPicked
     ? {
         // A label is written rather than stroked, so the ink is all of the top
@@ -820,7 +815,7 @@ export function App() {
         // so a red segment picked with a black caption lights neither.
         colour:
           picked.length > 0
-            ? agreed(picked, inkOf)
+            ? inkAgreed(picked)
             : (armed.colour ?? (draws.length > 0 ? defaultColour(draws[0]) : null)),
         weight: chosenWeighs
           ? agreed(selected, (object) => object.weight)
