@@ -31,18 +31,12 @@ body.spike-mobile {
   --tool-size: 50px;
   --tool-gap: 4px;
   --menubar-height: 45px;
-  /* The scrollbars are drawn at no width rather than taken away. They are what
-     the sheet is panned by, and an element that is not displayed cannot be
-     scrolled, so the two-finger gesture needs them still there. */
-  --scrollbar-size: 0px;
 }
 
-body.spike-mobile .canvas__scroll--vertical {
-  border-left: 0;
-}
-
-body.spike-mobile .canvas__scroll--horizontal {
-  border-top: 0;
+/* No scrollbars. A finger cannot use a 14px one and does not need to: two
+   fingers on the sheet pan it. */
+body.spike-mobile .canvas__scroll {
+  display: none;
 }
 
 body.spike-mobile .app__workspace {

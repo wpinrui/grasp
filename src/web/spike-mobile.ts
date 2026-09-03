@@ -35,116 +35,6 @@ export const SNAP_ON_SETTINGS = {
 };
 
 /**
- * Two fingers pan the sheet.
- *
- * The sheet is panned by its two scrollbars rather than by anything the canvas
- * exposes, so the gesture drives their scroll positions and the canvas follows
- * the way it does for a mouse. The scrollbars are still there for that reason;
- * they are only drawn at no width.
- *
- * The first finger is left alone, so drawing starts the instant it lands and
- * feels no different for the gesture existing. It is the second finger that
- * changes what is happening, and the canvas is told about that with the
- * `pointercancel` it already handles: the half-drawn construction is abandoned
- * and the tool that was up stays up. Everything from then until the last finger
- * leaves is swallowed, so the finger still down when the other lifts does not
- * start drawing again.
- */
-const PAN_FINGERS = 2;
-
-function scrollers(sheet: Element) {
-  const canvas = sheet.closest(".canvas");
-  return {
-    across: canvas?.querySelector<HTMLElement>(".canvas__scroll--horizontal") ?? null,
-    down: canvas?.querySelector<HTMLElement>(".canvas__scroll--vertical") ?? null,
-  };
-}
-
-function installTwoFingerPan() {
-  /** Where each finger on the sheet is now, by the id the browser gave it. */
-  const fingers = new Map<number, { x: number; y: number }>();
-  /** The point between the fingers last time it was looked at. */
-  let midpoint: { x: number; y: number } | null = null;
-  let panning = false;
-
-  function middle() {
-    const places = [...fingers.values()];
-    const sum = places.reduce((total, at) => ({ x: total.x + at.x, y: total.y + at.y }), {
-      x: 0,
-      y: 0,
-    });
-    return { x: sum.x / places.length, y: sum.y / places.length };
-  }
-
-  function swallow(event: Event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-  function sheetOf(event: PointerEvent): Element | null {
-    const target = event.target;
-    return target instanceof Element ? target.closest(".canvas__sheet") : null;
-  }
-
-  document.addEventListener(
-    "pointerdown",
-    (event) => {
-      if (event.pointerType !== "touch") return;
-      const sheet = sheetOf(event);
-      if (!sheet) return;
-      fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      if (fingers.size < PAN_FINGERS) return;
-      if (!panning) {
-        panning = true;
-        // What the first finger had started is dropped rather than landed.
-        sheet.dispatchEvent(
-          new PointerEvent("pointercancel", { bubbles: true, pointerId: event.pointerId }),
-        );
-      }
-      midpoint = middle();
-      swallow(event);
-    },
-    true,
-  );
-
-  document.addEventListener(
-    "pointermove",
-    (event) => {
-      if (event.pointerType !== "touch" || !fingers.has(event.pointerId)) return;
-      fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      if (!panning) return;
-      swallow(event);
-      const sheet = sheetOf(event) ?? document.querySelector(".canvas__sheet");
-      if (!sheet || !midpoint) return;
-      const now = middle();
-      const { across, down } = scrollers(sheet);
-      // The sheet goes the way the fingers go, so the scroll goes the other
-      // way: dragging right shows what is to the left.
-      if (across) across.scrollLeft -= now.x - midpoint.x;
-      if (down) down.scrollTop -= now.y - midpoint.y;
-      midpoint = now;
-    },
-    true,
-  );
-
-  for (const when of ["pointerup", "pointercancel"] as const) {
-    document.addEventListener(
-      when,
-      (event) => {
-        if (event.pointerType !== "touch" || !fingers.has(event.pointerId)) return;
-        fingers.delete(event.pointerId);
-        if (!panning) return;
-        swallow(event);
-        midpoint = fingers.size > 0 ? middle() : null;
-        // The pan is over only when the sheet is let go of altogether.
-        if (fingers.size === 0) panning = false;
-      },
-      true,
-    );
-  }
-}
-
-/**
  * The keyboard's half of the screen.
  *
  * A phone keyboard does not resize the window, it covers it: the layout
@@ -182,6 +72,5 @@ export function onAPhone(): boolean {
 export function installMobileSpike() {
   if (!onAPhone()) return;
   document.body.classList.add("spike-mobile");
-  installTwoFingerPan();
   installViewportTracking();
 }

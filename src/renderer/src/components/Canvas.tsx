@@ -134,6 +134,9 @@ import "./Canvas.css";
 /** Pointer travel on screen, in pixels, that turns a click into a drag. */
 const DRAG_THRESHOLD = 3;
 
+/** How many fingers on the sheet mean panning rather than drawing. */
+const PAN_FINGERS = 2;
+
 /** The room left between one angle mark at a corner and the next one out. */
 const ANGLE_ROOM = 9;
 
@@ -530,6 +533,32 @@ export function Canvas({
    * clears the selection when there is nothing half drawn.
    */
   const cancel = useRef(() => {});
+
+  /**
+   * Where each finger on the sheet is. One finger draws, exactly as a mouse
+   * does; two pan, which is the only way the sheet moves on a touch screen,
+   * there being no second button to drag with and no key to hold.
+   */
+  const fingers = useRef(new Map<number, Position>());
+
+  /** The point between the fingers, which is what a two-finger pan follows. */
+  function betweenFingers(): Position {
+    const places = [...fingers.current.values()];
+    const total = places.reduce((sum, at) => ({ x: sum.x + at.x, y: sum.y + at.y }), {
+      x: 0,
+      y: 0,
+    });
+    return { x: total.x / places.length, y: total.y / places.length };
+  }
+
+  /** Take the sheet as far as a pan has carried it, from wherever it began. */
+  function panTo(from: NonNullable<Grab["pan"]>, x: number, y: number) {
+    const moved = { x: (x - from.clientX) / scale, y: (y - from.clientY) / scale };
+    if (Math.abs(moved.x) * scale + Math.abs(moved.y) * scale >= DRAG_THRESHOLD) {
+      panMoved.current = true;
+    }
+    onView({ ...viewNow.current, x: from.view.x - moved.x, y: from.view.y - moved.y });
+  }
 
   /** What a plotting tool would land on, lit up while the pointer is over it. */
   const [snap, setSnap] = useState<Snap | null>(null);
@@ -1250,6 +1279,29 @@ export function Canvas({
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") {
+      fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (fingers.current.size >= PAN_FINGERS) {
+        // Whatever the first finger had begun is dropped rather than landed:
+        // the press that added the second finger changed what was being asked
+        // for, and half a construction is not what was wanted.
+        handlePointerCancel();
+        const at = betweenFingers();
+        grab.current = {
+          origin: positionOf(event) ?? { x: 0, y: 0 },
+          pressed: Date.now(),
+          hitId: null,
+          moved: false,
+          moving: null,
+          movingIds: [],
+          marquee: null,
+          pan: { view, clientX: at.x, clientY: at.y },
+          handle: null,
+          started: false,
+        };
+        return;
+      }
+    }
     // The right button pans from anywhere, whatever tool is up and whether or
     // not a dialog is picking. A press that never moves is a right-click still,
     // and the context menu handler cancels on it.
@@ -2369,6 +2421,9 @@ export function Canvas({
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch" && fingers.current.has(event.pointerId)) {
+      fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
     // A marking tool lights the midpoint of a segment it would snap to.
     if (marking && !picking && !grab.current) {
       const over = positionOf(event);
@@ -2448,14 +2503,10 @@ export function Canvas({
     // The sheet follows the hand, so the view goes the other way. Measured off
     // the pointer, because the sheet is moving underneath it.
     if (state.pan) {
-      const moved = {
-        x: (event.clientX - state.pan.clientX) / scale,
-        y: (event.clientY - state.pan.clientY) / scale,
-      };
-      if (Math.abs(moved.x) * scale + Math.abs(moved.y) * scale >= DRAG_THRESHOLD) {
-        panMoved.current = true;
-      }
-      onView({ ...viewNow.current, x: state.pan.view.x - moved.x, y: state.pan.view.y - moved.y });
+      // Two fingers are followed by the point between them, so the sheet does
+      // not lurch when one of them moves more than the other.
+      const at = fingers.current.size >= PAN_FINGERS ? betweenFingers() : null;
+      panTo(state.pan, at?.x ?? event.clientX, at?.y ?? event.clientY);
       return;
     }
 
@@ -2540,6 +2591,7 @@ export function Canvas({
   }
 
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") fingers.current.delete(event.pointerId);
     const state = grab.current;
     grab.current = null;
     setMarquee(null);
@@ -2829,7 +2881,8 @@ export function Canvas({
     if (hit && isLine(hit)) onMarkMirror(hit.id);
   }
 
-  function handlePointerCancel() {
+  function handlePointerCancel(event?: PointerEvent<HTMLDivElement>) {
+    if (event?.pointerType === "touch") fingers.current.delete(event.pointerId);
     const state = grab.current;
     grab.current = null;
     setMarquee(null);
