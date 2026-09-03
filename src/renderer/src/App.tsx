@@ -1,4 +1,4 @@
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { buttonActions } from "./app/buttons";
 import { customActions } from "./app/customs";
 import { Dialogs } from "./app/Dialogs";
@@ -8,12 +8,13 @@ import { paletteState } from "./app/palette";
 import { useDialogs } from "./app/useDialogs";
 import { useKeys } from "./app/useKeys";
 import { prefsFrom, useSettings } from "./app/useSettings";
+import { useTooling } from "./app/useTooling";
 import { useTransforms } from "./app/useTransforms";
 import { valueActions } from "./app/values";
 import { Canvas } from "./components/Canvas";
 import { Dock } from "./components/Dock";
 import type { ExportTo } from "./components/ExportDialog";
-import { type HiddenKinds, HiddenPanel } from "./components/HiddenPanel";
+import { HiddenPanel } from "./components/HiddenPanel";
 import { LabelPanel } from "./components/LabelPanel";
 import type { MenuAction } from "./components/menus";
 import { PageBar } from "./components/PageBar";
@@ -24,12 +25,10 @@ import { TitleBar } from "./components/TitleBar";
 import { Toolbox } from "./components/Toolbox";
 import { TouchBar } from "./components/TouchBar";
 import { usePhone, useVisibleViewport } from "./phone";
-import type { Armed } from "./sketch/armed";
 import type { Building } from "./sketch/builds";
 import { sheetOf } from "./sketch/measure";
 import {
   asPasted,
-  DEFAULT_POINT_SIZE,
   isCaption,
   isCircle,
   isLine,
@@ -42,7 +41,6 @@ import {
   MAX_SAMPLES,
   MIN_SAMPLES,
   namesFor,
-  type PointSize,
   type SketchCircle,
   type SketchLine,
   type SketchObject,
@@ -72,46 +70,7 @@ export function App() {
   // How much room a click is given is settled once, here, where what kind of
   // screen this is is already known. The model does not ask the browser.
   useEffect(() => setPickReach(phone), [phone]);
-  const [activeTool, setActiveTool] = useState("arrow");
-  /** How big the sheet is on screen, which is how far a new locus reaches. */
-  const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  /** The sheet is plain paper until the grid is asked for. */
-  /** What each tool with a flyout is armed with. */
-  const [variants, setVariants] = useState<Record<string, string>>({
-    straightedge: "segment",
-    measure: "length",
-    arrow: "all",
-    marker: "equal",
-  });
-
-  /** Arm a tool's flyout with one of what it offers. */
-  const pickVariant = useCallback((tool: string, variant: string) => {
-    setVariants((armed) => ({ ...armed, [tool]: variant }));
-  }, []);
-  /**
-   * The labels picked on the sheet, held as the objects they name, since a
-   * label belongs to what it names rather than standing on its own. Picking one
-   * lets go of the selection, but the two are held apart rather than kept in
-   * step: selecting something afterwards leaves these held and simply wins, and
-   * they let go on a tool switch the way the rest of what a tool was doing does.
-   */
-  const [labelPick, setLabelPick] = useState<string[]>([]);
-  /**
-   * What the palette has been set to for the tool that is up, which is how the
-   * next thing that tool draws comes out. Switching tools puts it back on the
-   * defaults, so a tool is always picked up on what GRASP says rather than on
-   * what it was left on the last time it was held.
-   */
-  const [armed, setArmed] = useState<Armed>({});
-  const toolWas = useRef(activeTool);
-  if (toolWas.current !== activeTool) {
-    toolWas.current = activeTool;
-    setArmed({});
-    setLabelPick([]);
-  }
-  /** The size a new point is born at, which every Point Style pick resets. */
-  const [pointSize, setPointSize] = useState<PointSize>(DEFAULT_POINT_SIZE);
   /** The Construct entry under the pointer, which the sheet previews. */
   const [hovered, setHovered] = useState<MenuAction | null>(null);
   /**
@@ -146,35 +105,8 @@ export function App() {
     }
   }
 
-  /** What Escape does to the sheet, for the phone's Cancel key to do the same. */
-  const cancelSheet = useRef(() => {});
-
-  /**
-   * The kinds being kept out of the way wholesale, which is a different thing
-   * from hiding an object: it says nothing about any one of them, and letting
-   * them back brings back exactly what was showing before.
-   */
-  const [hiddenKinds, setHiddenKinds] = useState<HiddenKinds>({ marks: false, text: false });
-  /**
-   * The tools with nothing to do while a whole kind is being kept out of the
-   * way: what they would draw would not be drawn. The Measure tool writes its
-   * readings, so it goes with the text.
-   */
-  const toolsOff: Record<string, string> = {
-    ...(hiddenKinds.marks ? { marker: "Markings are hidden" } : {}),
-    ...(hiddenKinds.text ? { text: "Text is hidden", measure: "Text is hidden" } : {}),
-  };
-  // A tool that goes idle hands the sheet back to the Arrow rather than leaving
-  // the pointer on something that can do nothing.
-  if (toolsOff[activeTool]) setActiveTool("arrow");
-  /** The object the label panel is pointing at, lit up on the sheet. */
-  const [spotlight, setSpotlight] = useState<string | null>(null);
-  /** The caption being typed into. It belongs to the window, not to the page. */
-  const [editing, setEditing] = useState<string | null>(null);
-  /** Where the text palette reaches the caption being typed into. */
-  const editor = useRef<HTMLDivElement | null>(null);
-  /** Counted up by a double-click on the Text tool, which asks for a caption. */
-  const [captionWanted, setCaptionWanted] = useState(0);
+  /** What the window has in hand: the tool, its arming, and what is being typed into. */
+  const tools = useTooling();
   /** Which dialog is open, and what it is holding while it is. */
   const dialogs = useDialogs();
   const sketch = useSketch();
@@ -209,9 +141,9 @@ export function App() {
     chosenPaths,
     chosenPoints,
     geometry,
-    pointSize,
+    pointSize: tools.pointSize,
     view: sketch.view,
-    viewport,
+    viewport: tools.viewport,
   };
 
   /** The sketch as an expression reads it, for the Calculator's preview. */
@@ -225,7 +157,7 @@ export function App() {
     selection,
     geometry,
     names,
-    pointSize,
+    pointSize: tools.pointSize,
     hovered,
     calculating: dialogs.calculator !== null,
     setInsert: dialogs.setInsert,
@@ -270,7 +202,7 @@ export function App() {
   // framing anything without one, and happens once: from then on the view is
   // whatever it has been panned and zoomed to.
   useEffect(() => {
-    if (!doc.toFrame || viewport.width === 0 || viewport.height === 0) return;
+    if (!doc.toFrame || tools.viewport.width === 0 || tools.viewport.height === 0) return;
     const spots = [...geometry.points.values()];
     if (spots.length === 0) {
       doc.framed();
@@ -284,8 +216,8 @@ export function App() {
     const bottom = Math.max(...ys);
     // Never past its own size: a small figure is shown at 100% rather than
     // blown up to fill the frame, which is what a sketch opens at everywhere.
-    const across = viewport.width - 2 * FRAME_MARGIN;
-    const down = viewport.height - 2 * FRAME_MARGIN;
+    const across = tools.viewport.width - 2 * FRAME_MARGIN;
+    const down = tools.viewport.height - 2 * FRAME_MARGIN;
     const wide = right - left;
     const tall = bottom - top;
     const scale = Math.max(
@@ -293,12 +225,12 @@ export function App() {
       Math.min(1, wide > 0 ? across / wide : 1, tall > 0 ? down / tall : 1),
     );
     sketch.setView({
-      x: (left + right) / 2 - viewport.width / scale / 2,
-      y: (top + bottom) / 2 - viewport.height / scale / 2,
+      x: (left + right) / 2 - tools.viewport.width / scale / 2,
+      y: (top + bottom) / 2 - tools.viewport.height / scale / 2,
       scale,
     });
     doc.framed();
-  }, [doc, viewport, geometry, sketch]);
+  }, [doc, tools.viewport, geometry, sketch]);
 
   const named = naming.labelRows();
   const away = naming.hiddenRows();
@@ -309,13 +241,13 @@ export function App() {
     objects,
     selected,
     selection,
-    editing,
-    labelPick,
+    editing: tools.editing,
+    labelPick: tools.labelPick,
     prefs: settings.prefs,
-    armed,
-    setArmed,
-    activeTool,
-    variants,
+    armed: tools.armed,
+    setArmed: tools.setArmed,
+    activeTool: tools.activeTool,
+    variants: tools.variants,
   });
 
   /**
@@ -324,8 +256,8 @@ export function App() {
    * undo step. Nothing reaches a page unless the whole script comes good.
    */
   const scriptSheet = () => ({
-    width: viewport.width / sketch.view.scale,
-    height: viewport.height / sketch.view.scale,
+    width: tools.viewport.width / sketch.view.scale,
+    height: tools.viewport.height / sketch.view.scale,
     pixelRatio: window.devicePixelRatio,
   });
 
@@ -354,7 +286,7 @@ export function App() {
     const result = await runScript(dialogs.script, {
       objects: before.objects,
       sheet: scriptSheet(),
-      pointSize: pointSize,
+      pointSize: tools.pointSize,
     });
     dialogs.setScriptRunning(false);
     if (!result.ok) {
@@ -368,7 +300,7 @@ export function App() {
 
   /** Open one of the dock's panels, or close it again. */
   function openPanel(id: string) {
-    setSpotlight(null);
+    tools.setSpotlight(null);
     settings.keepDock({
       panels: settings.panels.includes(id)
         ? settings.panels.filter((open) => open !== id)
@@ -461,10 +393,10 @@ export function App() {
   }
 
   useEffect(() => {
-    if (!editing) return;
-    const open = objects.find((object) => object.id === editing);
-    if (!open || open.hidden === true) setEditing(null);
-  }, [editing, objects]);
+    if (!tools.editing) return;
+    const open = objects.find((object) => object.id === tools.editing);
+    if (!open || open.hidden === true) tools.setEditing(null);
+  }, [tools.editing, objects, tools.setEditing]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: it runs when the figure moves, which is what a row records
   useEffect(() => {
@@ -505,11 +437,11 @@ export function App() {
    */
   // biome-ignore lint/correctness/useExhaustiveDependencies: the caption opening is the trigger
   useEffect(() => {
-    if (!editing || !editor.current) return;
-    const opened = objects.find((object) => object.id === editing);
+    if (!tools.editing || !tools.editor.current) return;
+    const opened = objects.find((object) => object.id === tools.editing);
     if (!opened || !isCaption(opened) || opened.html !== "") return;
     for (const mark of ["bold", "italic", "underline"] as const) {
-      if (!armed[mark]) continue;
+      if (!tools.armed[mark]) continue;
       try {
         if (!document.queryCommandState(mark)) document.execCommand(mark);
       } catch {
@@ -517,11 +449,11 @@ export function App() {
         // the same as never having armed it.
       }
     }
-  }, [editing]);
+  }, [tools.editing]);
 
   useKeys({
     dialogOpen: moves.dialog !== null || dialogs.anyOpen,
-    pickTool: setActiveTool,
+    pickTool: tools.setActiveTool,
     newSketch: doc.newSketch,
     openSketch: () => void doc.open(),
     saveSketch: () => void doc.save(),
@@ -566,11 +498,11 @@ export function App() {
         return;
       }
       palette.styleLabel({ shown: false });
-      setLabelPick([]);
+      tools.setLabelPick([]);
     },
     escape: () => {
-      setActiveTool("arrow");
-      pickVariant("arrow", "all");
+      tools.setActiveTool("arrow");
+      tools.pickVariant("arrow", "all");
     },
     step: stepSelection,
   });
@@ -602,7 +534,7 @@ export function App() {
         clipHeld={clipHeld}
         setClipHeld={setClipHeld}
         shared={shared}
-        setPointSize={setPointSize}
+        setPointSize={tools.setPointSize}
         undo={undo}
         redo={redo}
         remove={remove}
@@ -616,16 +548,16 @@ export function App() {
       />
       <div className="app__workspace">
         <Toolbox
-          activeTool={activeTool}
+          activeTool={tools.activeTool}
           onShare={phone ? () => void doc.share() : undefined}
-          onSelectTool={setActiveTool}
-          variants={variants}
-          onPickVariant={pickVariant}
-          off={toolsOff}
+          onSelectTool={tools.setActiveTool}
+          variants={tools.variants}
+          onPickVariant={tools.pickVariant}
+          off={tools.toolsOff}
           onDoubleClickTool={(tool) => {
             // Double-clicking the Text tool asks for a caption where the sheet
             // is, which is the other way to make one.
-            if (tool === "text") setCaptionWanted((asked) => asked + 1);
+            if (tool === "text") tools.setCaptionWanted((asked) => asked + 1);
           }}
         />
         <div
@@ -633,15 +565,15 @@ export function App() {
           style={canvasTokens(settings.showing.colours) as CSSProperties}
         >
           <Canvas
-            activeTool={activeTool}
-            cancelRef={cancelSheet}
+            activeTool={tools.activeTool}
+            cancelRef={tools.cancelSheet}
             zoomable={settings.prefs.zoom === true}
             sketch={sketch}
-            pointSize={pointSize}
+            pointSize={tools.pointSize}
             view={sketch.view}
             onView={sketch.setView}
-            lineForm={(variants.straightedge ?? "segment") as LineForm}
-            polygonKind={variants.polygon ?? "interior"}
+            lineForm={(tools.variants.straightedge ?? "segment") as LineForm}
+            polygonKind={tools.variants.polygon ?? "interior"}
             picking={moves.dialog !== null || dialogs.calculator !== null}
             onPick={moves.pick}
             preview={moves.preview}
@@ -656,37 +588,37 @@ export function App() {
               const object = objects.find((candidate) => candidate.id === id);
               naming.showLabels([id], object?.label?.shown !== true);
             }}
-            spotlight={settings.panels.length === 0 ? null : spotlight}
-            labelPick={labelPick}
+            spotlight={settings.panels.length === 0 ? null : tools.spotlight}
+            labelPick={tools.labelPick}
             onLabelPick={(id, additive) => {
               if (id === null) {
-                setLabelPick([]);
+                tools.setLabelPick([]);
                 return;
               }
-              setLabelPick((was) => togglePick(was, id, additive === true));
+              tools.setLabelPick((was) => togglePick(was, id, additive === true));
             }}
-            onViewport={setViewport}
+            onViewport={tools.setViewport}
             snapping={settings.snapping}
-            measureKind={variants.measure ?? "length"}
-            arrowKind={variants.arrow ?? "all"}
-            markForm={variants.marker ?? "equal"}
-            hiddenKinds={hiddenKinds}
-            editing={editing}
-            onEditing={setEditing}
-            editor={editor}
-            captionWanted={captionWanted}
+            measureKind={tools.variants.measure ?? "length"}
+            arrowKind={tools.variants.arrow ?? "all"}
+            markForm={tools.variants.marker ?? "equal"}
+            hiddenKinds={tools.hiddenKinds}
+            editing={tools.editing}
+            onEditing={tools.setEditing}
+            editor={tools.editor}
+            captionWanted={tools.captionWanted}
             captionLook={palette.captionLook}
           />
           {settings.showPalette && (
             <Palette
-              editor={editor}
+              editor={tools.editor}
               caption={palette.chosenCaption}
               text={palette.chosenText ?? palette.armedWriting}
-              editing={editing !== null}
+              editing={tools.editing !== null}
               labelMarks={palette.labelMarks}
               onLabelMark={(mark, on) => palette.styleLabel({ [mark]: on })}
               armedText={palette.armedMarks}
-              onArmText={(change) => setArmed((was) => ({ ...was, ...change }))}
+              onArmText={(change) => tools.setArmed((was) => ({ ...was, ...change }))}
               onCaption={palette.styleWriting}
               styling={palette.styling}
               onStyle={palette.styleSelection}
@@ -706,7 +638,7 @@ export function App() {
                   rows={named}
                   onRename={naming.rename}
                   onShow={naming.showLabels}
-                  onSpot={setSpotlight}
+                  onSpot={tools.setSpotlight}
                   labelNew={settings.labelNew}
                   onLabelNew={(on) => settings.keepDock({ labelNewPoints: on })}
                 />
@@ -727,14 +659,14 @@ export function App() {
               count: `${away.length}`,
               body: (
                 <HiddenPanel
-                  kinds={hiddenKinds}
-                  onKinds={(part) => setHiddenKinds((was) => ({ ...was, ...part }))}
+                  kinds={tools.hiddenKinds}
+                  onKinds={(part) => tools.setHiddenKinds((was) => ({ ...was, ...part }))}
                   rows={away}
                   onShow={(ids) => {
-                    setSpotlight(null);
+                    tools.setSpotlight(null);
                     naming.hideObjects(ids, false);
                   }}
-                  onSpot={setSpotlight}
+                  onSpot={tools.setSpotlight}
                 />
               ),
             },
@@ -750,9 +682,9 @@ export function App() {
           snapping={settings.snapping.length || settings.snapping.angle}
           onSnapping={(on) => settings.keepSnapping({ length: on, angle: on })}
           onCancel={() => {
-            cancelSheet.current();
-            setActiveTool("arrow");
-            pickVariant("arrow", "all");
+            tools.cancelSheet.current();
+            tools.setActiveTool("arrow");
+            tools.pickVariant("arrow", "all");
           }}
         />
       )}
