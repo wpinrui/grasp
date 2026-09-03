@@ -23,7 +23,7 @@ import { Canvas } from "./Canvas";
 /** The size the sheet reports, since jsdom lays nothing out. */
 const SHEET = { width: 800, height: 600 };
 
-/** A figure with one of everything the layers draw. */
+/** A figure holding one of every kind the layers draw. */
 const FIGURE: SketchObject[] = [
   { id: "A", kind: "point", x: 120, y: 420, size: "medium", label: { name: "A", shown: true } },
   { id: "B", kind: "point", x: 520, y: 420, size: "medium", label: { name: "B", shown: true } },
@@ -54,6 +54,36 @@ const FIGURE: SketchObject[] = [
     radius: 28,
   },
   { id: "len", kind: "measurement", measure: "length", of: ["seg"], x: 200, y: 470 },
+  // A locus, and the point and path it is driven along, so the layer that draws
+  // it and the arrowheads it is dragged by are covered too.
+  {
+    id: "D",
+    kind: "point",
+    x: 200,
+    y: 300,
+    size: "small",
+    from: { kind: "on", path: "seg", at: 0.2 },
+  },
+  {
+    id: "E",
+    kind: "point",
+    x: 0,
+    y: 0,
+    size: "small",
+    from: { kind: "midpoint", of: "D", and: "C" },
+  },
+  { id: "loc", kind: "locus", driver: "D", domain: "seg", driven: "E", span: [0, 1], samples: 12 },
+  { id: "par", kind: "parameter", value: 3, unit: "none", places: 1, x: 560, y: 120 },
+  { id: "calc", kind: "calculation", expression: { kind: "number", value: 2 }, x: 560, y: 160 },
+  { id: "tab", kind: "table", of: ["par"], rows: [], x: 560, y: 200 },
+  {
+    id: "but",
+    kind: "button",
+    name: "Show",
+    does: { form: "hide-show", does: "toggle", of: ["C"] },
+    x: 560,
+    y: 260,
+  },
   {
     id: "cap",
     kind: "caption",
@@ -241,7 +271,8 @@ describe("the gestures the sheet is drawn with", () => {
     const { sheet, page } = watched([], "point");
     act(() => press(sheet, { x: 100, y: 120 }));
     expect(page().objects).toHaveLength(1);
-    expect(page().objects[0].kind).toBe("point");
+    // The view opens at the origin at 100%, so the click lands where it was made.
+    expect(page().objects[0]).toMatchObject({ kind: "point", x: 100, y: 120 });
   });
 
   it("draws a segment across two clicks of the straightedge", () => {
@@ -254,11 +285,37 @@ describe("the gestures the sheet is drawn with", () => {
   it("catches what a marquee is dragged over", () => {
     const { sheet, page } = watched(FIGURE, "arrow");
     act(() => {
-      fireEvent.pointerDown(sheet, { clientX: 5, clientY: 5, button: 0, pointerId: 1 });
-      fireEvent.pointerMove(sheet, { clientX: 700, clientY: 500, button: 0, pointerId: 1 });
-      fireEvent.pointerUp(sheet, { clientX: 700, clientY: 500, button: 0, pointerId: 1 });
+      // From a corner of bare sheet: the circle drawn about C is wide enough
+      // that a press near the top left lands on it and drags it instead.
+      fireEvent.pointerDown(sheet, { clientX: 795, clientY: 595, button: 0, pointerId: 1 });
+      fireEvent.pointerMove(sheet, { clientX: 60, clientY: 60, button: 0, pointerId: 1 });
+      fireEvent.pointerUp(sheet, { clientX: 60, clientY: 60, button: 0, pointerId: 1 });
     });
-    expect(page().selection.length).toBeGreaterThan(0);
+    // Everything the box was pulled over, not merely something.
+    expect([...page().selection].sort()).toEqual(
+      [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "M",
+        "ang",
+        "arc",
+        "but",
+        "calc",
+        "cap",
+        "circ",
+        "fill",
+        "len",
+        "loc",
+        "par",
+        "ray",
+        "seg",
+        "tab",
+        "tick",
+      ].sort(),
+    );
   });
 
   it("drags a point to where it was let go", () => {

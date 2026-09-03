@@ -6,47 +6,51 @@
  */
 
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
 import { SAMPLE_STEP } from "../sketch/model";
 import { type KeyCommands, useKeys } from "./useKeys";
 
-/** Every command, each one a spy, so a key pressing the wrong one shows up. */
+/**
+ * Every command, each one a spy. The type is what keeps this honest: a command
+ * added to `KeyCommands` and forgotten here fails the typecheck rather than
+ * quietly going untested.
+ */
+type Commands = Omit<KeyCommands, "dialogOpen">;
+
 function commands(over: Partial<KeyCommands> = {}) {
-  const names = [
-    "pickTool",
-    "newSketch",
-    "openSketch",
-    "saveSketch",
-    "closeSketch",
-    "quit",
-    "selectAll",
-    "cut",
-    "copy",
-    "paste",
-    "toggleLabels",
-    "togglePalette",
-    "showHidden",
-    "hide",
-    "selectKin",
-    "labelPanel",
-    "calculate",
-    "midpoint",
-    "segment",
-    "cross",
-    "newParameter",
-    "fill",
-    "applyCustom",
-    "documentOptions",
-    "editDefinition",
-    "undo",
-    "redo",
-    "remove",
-    "escape",
-    "step",
-  ] as const;
-  const spies = Object.fromEntries(names.map((name) => [name, vi.fn()]));
-  return { dialogOpen: false, ...spies, ...over } as KeyCommands &
-    Record<string, ReturnType<typeof vi.fn>>;
+  const spies: Record<keyof Commands, Mock> = {
+    pickTool: vi.fn(),
+    newSketch: vi.fn(),
+    openSketch: vi.fn(),
+    saveSketch: vi.fn(),
+    closeSketch: vi.fn(),
+    quit: vi.fn(),
+    selectAll: vi.fn(),
+    cut: vi.fn(),
+    copy: vi.fn(),
+    paste: vi.fn(),
+    toggleLabels: vi.fn(),
+    togglePalette: vi.fn(),
+    showHidden: vi.fn(),
+    hide: vi.fn(),
+    selectKin: vi.fn(),
+    labelPanel: vi.fn(),
+    calculate: vi.fn(),
+    midpoint: vi.fn(),
+    segment: vi.fn(),
+    cross: vi.fn(),
+    newParameter: vi.fn(),
+    fill: vi.fn(),
+    applyCustom: vi.fn(),
+    documentOptions: vi.fn(),
+    editDefinition: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
+    remove: vi.fn(),
+    escape: vi.fn(),
+    step: vi.fn(),
+  };
+  return { dialogOpen: false, ...spies, ...over } as KeyCommands & Record<keyof Commands, Mock>;
 }
 
 function bound(given: KeyCommands) {
@@ -78,6 +82,32 @@ describe("a key coming down on the window", () => {
     expect(given.showHidden).toHaveBeenCalled();
     // Shift+Ctrl+H is Show All Hidden, and must not also hide the selection.
     expect(given.hide).not.toHaveBeenCalled();
+  });
+
+  it("gives a shifted shortcut to the shifted command, not the bare one", () => {
+    const given = commands();
+    bound(given);
+    fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
+    expect(given.newParameter).toHaveBeenCalled();
+    expect(given.fill).not.toHaveBeenCalled();
+  });
+
+  it("applies the custom transform a digit stands for, counting from zero", () => {
+    const given = commands();
+    bound(given);
+    fireEvent.keyDown(window, { key: "1", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "3", ctrlKey: true });
+    expect(given.applyCustom).toHaveBeenNthCalledWith(1, 0);
+    expect(given.applyCustom).toHaveBeenNthCalledWith(2, 2);
+  });
+
+  it("walks the family tree the way the arrow points", () => {
+    const given = commands();
+    bound(given);
+    fireEvent.keyDown(window, { key: "ArrowUp", altKey: true });
+    fireEvent.keyDown(window, { key: "ArrowDown", altKey: true });
+    expect(given.selectKin).toHaveBeenNthCalledWith(1, "parents");
+    expect(given.selectKin).toHaveBeenNthCalledWith(2, "children");
   });
 
   it("steps a locus with plus and minus", () => {
