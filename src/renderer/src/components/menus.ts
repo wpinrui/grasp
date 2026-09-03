@@ -166,7 +166,13 @@ export const PHONE_CUT = {
     "document-options",
   ]),
   /** Submenus are cut by name, having no action of their own to cut them by. */
-  labels: new Set<string>(["Action Buttons"]),
+  labels: new Set<string>([
+    "Action Buttons",
+    // Recents are kept as handles to files on a machine, which a phone browser
+    // mostly cannot hold on to, and reopening one needs a picker it may not
+    // have either. A list that cannot open what it lists is worse than no list.
+    "Open Recent",
+  ]),
 };
 
 /** Whether a separator has anything left on both sides of it to separate. */
