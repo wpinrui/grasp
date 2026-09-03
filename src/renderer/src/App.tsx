@@ -1,43 +1,35 @@
-import { type CSSProperties, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { buttonActions } from "./app/buttons";
+import { clipboardActions } from "./app/clipboard";
 import { customActions } from "./app/customs";
 import { Dialogs } from "./app/Dialogs";
+import { exportPicture } from "./app/exporting";
 import { labelActions } from "./app/labels";
 import { Menus } from "./app/Menus";
 import { paletteState } from "./app/palette";
+import { scriptActions } from "./app/scripting";
+import { useCollecting } from "./app/useCollecting";
 import { useDialogs } from "./app/useDialogs";
 import { useKeys } from "./app/useKeys";
 import { prefsFrom, useSettings } from "./app/useSettings";
 import { useTooling } from "./app/useTooling";
 import { useTransforms } from "./app/useTransforms";
 import { valueActions } from "./app/values";
-import { Canvas } from "./components/Canvas";
-import { Dock } from "./components/Dock";
-import type { ExportTo } from "./components/ExportDialog";
-import { HiddenPanel } from "./components/HiddenPanel";
-import { LabelPanel } from "./components/LabelPanel";
+import { Workspace } from "./app/Workspace";
 import type { MenuAction } from "./components/menus";
 import { PageBar } from "./components/PageBar";
-import { Palette } from "./components/Palette";
-import { NEW_PAGE } from "./components/ScriptDialog";
-import { SnapPanel } from "./components/SnapPanel";
 import { TitleBar } from "./components/TitleBar";
-import { Toolbox } from "./components/Toolbox";
 import { TouchBar } from "./components/TouchBar";
 import { usePhone, useVisibleViewport } from "./phone";
 import type { Building } from "./sketch/builds";
 import { sheetOf } from "./sketch/measure";
 import {
-  asPasted,
   isCaption,
   isCircle,
   isLine,
   isLocus,
   isParameter,
   isPoint,
-  isTable,
-  kinOf,
-  type LineForm,
   MAX_SAMPLES,
   MIN_SAMPLES,
   namesFor,
@@ -47,13 +39,7 @@ import {
   setPickReach,
   settle,
   sharedPointSize,
-  withFamily,
 } from "./sketch/model";
-import { togglePick } from "./sketch/picking";
-import { drawPicture } from "./sketch/picture";
-import { canvasTokens } from "./sketch/prefs";
-import { buildPrompt } from "./sketch/prompt";
-import { runScript } from "./sketch/script";
 import { useDocument } from "./sketch/useDocument";
 import { useSketch } from "./sketch/useSketch";
 import "./App.css";
@@ -85,25 +71,6 @@ export function App() {
    * have opened something since this one last looked.
    */
   const [recent, setRecent] = useState<string[]>(() => window.api.file.recent());
-  /**
-   * Export: the selection where there is one, and the whole page where there
-   * is not. The picture goes over in both forms, since the save dialog is what
-   * settles which one is written.
-   */
-  async function exportPicture(to: ExportTo) {
-    dialogs.setExportTo(null);
-    const wanted = selection.length > 0 ? new Set(selection) : null;
-    try {
-      const drawn = await drawPicture(settings.picture, wanted);
-      if (!drawn) return;
-      if (to === "clipboard") await window.api.image.copy(drawn.png);
-      else await window.api.image.save({ ...drawn, suggested: doc.name });
-    } catch (error) {
-      await window.api.file.reportError(
-        error instanceof Error ? error.message : "The picture could not be drawn.",
-      );
-    }
-  }
 
   /** What the window has in hand: the tool, its arming, and what is being typed into. */
   const tools = useTooling();
@@ -112,7 +79,7 @@ export function App() {
   const sketch = useSketch();
   const { undo, redo, canUndo, canRedo, remove, restyle, selectAll } = sketch;
   /** What the window remembers between runs: the dock, the steps, the paper. */
-  const settings = useSettings({ sketch, phone });
+  const settings = useSettings({ sketch, phone, setSpotlight: tools.setSpotlight });
   // Whether a point that lands says its name straight away, told to the sketch
   // rather than read there, since every way of making a point goes through it.
   sketch.labelNewPoints(settings.labelNew);
@@ -250,106 +217,28 @@ export function App() {
     variants: tools.variants,
   });
 
-  /**
-   * Scripting. The prompt is built from the window as it is now, and a run
-   * lands what the worker hands back in one commit, so a whole script is one
-   * undo step. Nothing reaches a page unless the whole script comes good.
-   */
-  const scriptSheet = () => ({
-    width: tools.viewport.width / sketch.view.scale,
-    height: tools.viewport.height / sketch.view.scale,
-    pixelRatio: window.devicePixelRatio,
+  /** Asking a model for a script, and running what comes back. */
+  const { promptForRequest, runTheScript } = scriptActions({
+    sketch,
+    dialogs,
+    viewport: tools.viewport,
+    pointSize: tools.pointSize,
+  });
+  /** Cut, copy, paste, and walking the family tree. */
+  const { copySelection, cutSelection, pasteObjects, selectKin } = clipboardActions({
+    sketch,
+    objects,
+    selection,
+    remove,
+    setClipHeld,
   });
 
-  function promptForRequest(): string {
-    const editing = dialogs.scriptTarget !== NEW_PAGE;
-    const page = sketch.pages.find((one) => one.id === dialogs.scriptTarget);
-    return buildPrompt({
-      request: dialogs.request,
-      sheet: scriptSheet(),
-      target:
-        editing && page
-          ? { kind: "edit", page: page.name, objects: sketch.objectsOn(page.id) }
-          : { kind: "new" },
-    });
-  }
-
-  async function runTheScript() {
-    dialogs.setScriptRunning(true);
-    dialogs.setScriptErrors([]);
-    const wanted = sketch.pages.find((one) => one.id === dialogs.scriptTarget);
-    // The page a script works on is the page it is run from, so GRASP goes
-    // there first and the objects it hands back are committed where they land.
-    if (wanted) sketch.selectPage(wanted.id);
-    else sketch.addPage();
-    const before = sketch.read();
-    const result = await runScript(dialogs.script, {
-      objects: before.objects,
-      sheet: scriptSheet(),
-      pointSize: tools.pointSize,
-    });
-    dialogs.setScriptRunning(false);
-    if (!result.ok) {
-      dialogs.setScriptErrors(result.errors);
-      return;
-    }
-    sketch.commit({ objects: result.objects, selection: [] });
-    dialogs.setScriptErrors([]);
-    dialogs.setScriptWay(null);
-  }
-
-  /** Open one of the dock's panels, or close it again. */
-  function openPanel(id: string) {
-    tools.setSpotlight(null);
-    settings.keepDock({
-      panels: settings.panels.includes(id)
-        ? settings.panels.filter((open) => open !== id)
-        : [...settings.panels, id],
-    });
-  }
-
-  /**
-   * Copy: what is selected and everything it hangs off, since a segment cannot
-   * be pasted without its ends. The clipboard belongs to the app rather than to
-   * this window, so a figure copied here pastes into another sketch.
-   */
-  function copySelection() {
-    const taken = withFamily(objects, selection);
-    if (taken.length === 0) return;
-    window.api.objects.write(JSON.stringify(taken));
-    setClipHeld(window.api.objects.peek());
-  }
-
-  /**
-   * Select Parents and Select Children, one step up or down the family tree. An
-   * object with none stays selected; one whose kin are hidden drops out.
-   */
-  function selectKin(way: "parents" | "children") {
-    if (selection.length === 0) return;
-    sketch.select(kinOf(objects, selection, way));
-  }
-
-  /** Cut is a copy and then a delete, which takes the images with it as ever. */
-  function cutSelection() {
-    copySelection();
-    remove();
-  }
-
-  /**
-   * Paste: the copy lands stepped off what it came from, with fresh names, and
-   * comes out selected. Pasting again steps again, so two pastes give two.
-   */
-  function pasteObjects() {
-    const held = window.api.objects.take();
-    if (!held) return;
-    let taken: SketchObject[];
-    try {
-      taken = JSON.parse(held.text) as SketchObject[];
-    } catch {
-      return;
-    }
-    sketch.addObjects(asPasted(taken, held.step));
-  }
+  useCollecting({
+    objects,
+    collecting: dialogs.collecting,
+    rowNow: numbers.rowNow,
+    captureRow: numbers.captureRow,
+  });
 
   /**
    * Plus and minus step what is selected: a locus by its samples, a parameter by
@@ -398,35 +287,6 @@ export function App() {
     if (!open || open.hidden === true) tools.setEditing(null);
   }, [tools.editing, objects, tools.setEditing]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: it runs when the figure moves, which is what a row records
-  useEffect(() => {
-    const run = dialogs.collecting.current;
-    if (!run) return;
-    const table = objects.find((object) => object.id === run.table);
-    if (!table || !isTable(table)) {
-      dialogs.collecting.current = null;
-      return;
-    }
-    const now = Date.now();
-    if (now - run.at < 1000 / run.perSecond) return;
-    const row = numbers.rowNow(table);
-    const last = table.rows[table.rows.length - 1];
-    // Only a change is worth a row. Without this the first move would fill the
-    // table with the same numbers over and over.
-    const moved =
-      last === undefined ||
-      last.some((cell, nth) => {
-        const now = row[nth];
-        if (cell === null || now === null) return cell !== now;
-        return cell.value !== now.value;
-      });
-    if (!moved) return;
-    run.at = now;
-    run.left -= 1;
-    if (run.left <= 0) dialogs.collecting.current = null;
-    numbers.captureRow(table.id);
-  }, [objects]);
-
   /**
    * The marks the Text tool was armed with, put on at the caret the moment a
    * caption opens with nothing written in it yet. Bold, italic and underline
@@ -472,7 +332,7 @@ export function App() {
       ),
     hide: () => naming.hideObjects(selection, true),
     selectKin,
-    labelPanel: () => openPanel("labels"),
+    labelPanel: () => settings.openPanel("labels"),
     calculate: () => dialogs.setCalculator({}),
     midpoint: () => moves.construct("midpoint"),
     segment: () => moves.construct("segment"),
@@ -544,135 +404,25 @@ export function App() {
         copy={copySelection}
         paste={pasteObjects}
         selectKin={selectKin}
-        openPanel={openPanel}
+        openPanel={settings.openPanel}
       />
-      <div className="app__workspace">
-        <Toolbox
-          activeTool={tools.activeTool}
-          onShare={phone ? () => void doc.share() : undefined}
-          onSelectTool={tools.setActiveTool}
-          variants={tools.variants}
-          onPickVariant={tools.pickVariant}
-          off={tools.toolsOff}
-          onDoubleClickTool={(tool) => {
-            // Double-clicking the Text tool asks for a caption where the sheet
-            // is, which is the other way to make one.
-            if (tool === "text") tools.setCaptionWanted((asked) => asked + 1);
-          }}
-        />
-        <div
-          className={`app__canvas${settings.showPalette ? " app__canvas--barred" : ""}`}
-          style={canvasTokens(settings.showing.colours) as CSSProperties}
-        >
-          <Canvas
-            activeTool={tools.activeTool}
-            cancelRef={tools.cancelSheet}
-            zoomable={settings.prefs.zoom === true}
-            sketch={sketch}
-            pointSize={tools.pointSize}
-            view={sketch.view}
-            onView={sketch.setView}
-            lineForm={(tools.variants.straightedge ?? "segment") as LineForm}
-            polygonKind={tools.variants.polygon ?? "interior"}
-            picking={moves.dialog !== null || dialogs.calculator !== null}
-            onPick={moves.pick}
-            preview={moves.preview}
-            marks={moves.marks}
-            onRename={naming.rename}
-            onEditValue={numbers.editValue}
-            onMarkMirror={moves.setMirror}
-            onPressButton={buttons.pressButton}
-            onCaptureRow={numbers.captureRow}
-            onDropRow={(id) => numbers.dropRows(id, false)}
-            onToggleLabel={(id) => {
-              const object = objects.find((candidate) => candidate.id === id);
-              naming.showLabels([id], object?.label?.shown !== true);
-            }}
-            spotlight={settings.panels.length === 0 ? null : tools.spotlight}
-            labelPick={tools.labelPick}
-            onLabelPick={(id, additive) => {
-              if (id === null) {
-                tools.setLabelPick([]);
-                return;
-              }
-              tools.setLabelPick((was) => togglePick(was, id, additive === true));
-            }}
-            onViewport={tools.setViewport}
-            snapping={settings.snapping}
-            measureKind={tools.variants.measure ?? "length"}
-            arrowKind={tools.variants.arrow ?? "all"}
-            markForm={tools.variants.marker ?? "equal"}
-            hiddenKinds={tools.hiddenKinds}
-            editing={tools.editing}
-            onEditing={tools.setEditing}
-            editor={tools.editor}
-            captionWanted={tools.captionWanted}
-            captionLook={palette.captionLook}
-          />
-          {settings.showPalette && (
-            <Palette
-              editor={tools.editor}
-              caption={palette.chosenCaption}
-              text={palette.chosenText ?? palette.armedWriting}
-              editing={tools.editing !== null}
-              labelMarks={palette.labelMarks}
-              onLabelMark={(mark, on) => palette.styleLabel({ [mark]: on })}
-              armedText={palette.armedMarks}
-              onArmText={(change) => tools.setArmed((was) => ({ ...was, ...change }))}
-              onCaption={palette.styleWriting}
-              styling={palette.styling}
-              onStyle={palette.styleSelection}
-            />
-          )}
-        </div>
-        <Dock
-          open={settings.panels}
-          onToggle={openPanel}
-          width={settings.dock.panelWidth}
-          onWidth={(panelWidth) => settings.keepDock({ panelWidth })}
-          panes={{
-            labels: {
-              count: `${named.filter((row) => row.shown).length} of ${named.length}`,
-              body: (
-                <LabelPanel
-                  rows={named}
-                  onRename={naming.rename}
-                  onShow={naming.showLabels}
-                  onSpot={tools.setSpotlight}
-                  labelNew={settings.labelNew}
-                  onLabelNew={(on) => settings.keepDock({ labelNewPoints: on })}
-                />
-              ),
-            },
-            snap: {
-              count: `${
-                [
-                  settings.snapping.objects,
-                  settings.snapping.length,
-                  settings.snapping.angle,
-                  settings.snapping.moving,
-                ].filter(Boolean).length
-              } of 4`,
-              body: <SnapPanel snapping={settings.snapping} onChange={settings.keepSnapping} />,
-            },
-            hidden: {
-              count: `${away.length}`,
-              body: (
-                <HiddenPanel
-                  kinds={tools.hiddenKinds}
-                  onKinds={(part) => tools.setHiddenKinds((was) => ({ ...was, ...part }))}
-                  rows={away}
-                  onShow={(ids) => {
-                    tools.setSpotlight(null);
-                    naming.hideObjects(ids, false);
-                  }}
-                  onSpot={tools.setSpotlight}
-                />
-              ),
-            },
-          }}
-        />
-      </div>
+      <Workspace
+        sketch={sketch}
+        doc={doc}
+        tools={tools}
+        settings={settings}
+        moves={moves}
+        dialogs={dialogs}
+        naming={naming}
+        numbers={numbers}
+        buttons={buttons}
+        palette={palette}
+        objects={objects}
+        named={named}
+        away={away}
+        phone={phone}
+        openPanel={settings.openPanel}
+      />
       {phone && (
         <TouchBar
           canUndo={canUndo}
@@ -714,7 +464,14 @@ export function App() {
         readable={readable}
         buildPrompt={promptForRequest}
         onRunScript={() => void runTheScript()}
-        onExport={(to) => void exportPicture(to)}
+        onExport={(to) =>
+          void exportPicture(to, {
+            options: settings.picture,
+            selection,
+            suggested: doc.name,
+            onDone: () => dialogs.setExportTo(null),
+          })
+        }
       />
       {openMenu && (
         // biome-ignore lint/a11y/noStaticElementInteractions: dismiss layer, the menu items stay reachable

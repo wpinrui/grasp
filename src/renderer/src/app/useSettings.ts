@@ -62,11 +62,13 @@ function settingsFrom(prefs: Prefs): Partial<Held> {
 
 export interface SettingsContext {
   sketch: Sketch;
+  /** Cleared as a panel opens, since the panel is what was pointing at it. */
+  setSpotlight: (id: string | null) => void;
   /** A phone holds a drag to no steps: a finger is nowhere near accurate enough. */
   phone: boolean;
 }
 
-export function useSettings({ sketch, phone }: SettingsContext) {
+export function useSettings({ sketch, phone, setSpotlight }: SettingsContext) {
   /**
    * The dock as it was left last run, read on the first frame so the chrome
    * comes up in place rather than opening a default and correcting it.
@@ -250,7 +252,16 @@ export function useSettings({ sketch, phone }: SettingsContext) {
     });
   }
 
+  /** Open one of the dock's panels, or close it again. */
+  function openPanel(id: string) {
+    setSpotlight(null);
+    keepDock({
+      panels: panels.includes(id) ? panels.filter((open) => open !== id) : [...panels, id],
+    });
+  }
+
   return {
+    openPanel,
     dock,
     panels,
     showPalette,
