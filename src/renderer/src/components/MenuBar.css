@@ -209,3 +209,50 @@
   background: var(--color-border-flyout);
   margin: 4px 10px;
 }
+
+/*
+  A touch screen. The titles and the rows in them go up with the rest of the
+  chrome: a row a mouse can hit at 32px is not one a thumb can.
+
+  AI is held against the right edge and taken out of the row to do it, so the
+  titles cannot push it off however many of them there are. It is placed rather
+  than scrolled to: scrolling the titles would need an overflow on the bar, and
+  an overflow clips, which would leave a bar whose dropdowns cannot be seen.
+*/
+@media (pointer: coarse) {
+  .menubar__item {
+    font-size: 16px;
+  }
+
+  /*
+    Yellow: the one control on the bar that is not a menu, and the one worth
+    finding first on a phone.
+  */
+  .menubar__tool {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 28px;
+    padding: 0 11px;
+    border-radius: 7px;
+    background: var(--color-paint-yellow);
+    color: var(--color-ink-black);
+    font-size: 15px;
+  }
+
+  .flyout {
+    top: 38px;
+    min-width: 232px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(var(--seen-height, 100dvh) - var(--menubar-height) - 16px);
+    padding: 6px;
+    overflow-y: auto;
+  }
+
+  .flyout__item {
+    height: 42px;
+    padding: 0 14px;
+    font-size: 16px;
+  }
+}

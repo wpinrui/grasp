@@ -442,3 +442,16 @@
   outline: 2px solid var(--color-canvas-accent);
   outline-offset: 1px;
 }
+
+/*
+  A touch screen. Two fingers pan the sheet, so the scrollbars have nothing left
+  to do and a finger could not use a 14px one anyway. Zooming is not offered at
+  all, so the readout goes with them rather than sitting over the corner of the
+  sheet a hand rests on.
+*/
+@media (pointer: coarse) {
+  .canvas__scroll,
+  .canvas__zoom {
+    display: none;
+  }
+}

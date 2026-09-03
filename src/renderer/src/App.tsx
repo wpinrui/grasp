@@ -32,7 +32,7 @@ import { TouchBar } from "./components/TouchBar";
 import { TransformDialog } from "./components/TransformDialog";
 import { TOOLS } from "./components/tools";
 import { DEFAULT_ALIGN, DEFAULT_CAPTION } from "./components/typeset";
-import { usePhone } from "./phone";
+import { usePhone, useVisibleViewport } from "./phone";
 import {
   type Armed,
   DEFAULT_PATTERN,
@@ -234,6 +234,7 @@ function settingsFrom(prefs: Prefs): Partial<Held> {
 
 export function App() {
   const phone = usePhone();
+  useVisibleViewport();
   const [activeTool, setActiveTool] = useState("arrow");
   /** How big the sheet is on screen, which is how far a new locus reaches. */
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -399,7 +400,10 @@ export function App() {
     lengthCm: dock.snapLengthCm,
     angle: dock.snapAngle,
     angleDegrees: dock.snapAngleDegrees,
-    moving: dock.snapMoving,
+    // A finger is nowhere near accurate enough for the steps to help while
+    // dragging something that is already drawn, and a phone has no Snap panel
+    // to turn it off with, so there it is off whatever a desk was left set to.
+    moving: phone ? false : dock.snapMoving,
   };
   /**
    * How a picture is drawn. The dialog remembers the last used options for the

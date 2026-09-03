@@ -53,3 +53,16 @@ button {
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/*
+  A touch screen. The page is the window and nothing scrolls behind it. A phone
+  browser hands the page a viewport that changes height as its own chrome slides
+  away, which dvh follows and vh does not.
+*/
+@media (pointer: coarse) {
+  body,
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+  }
+}

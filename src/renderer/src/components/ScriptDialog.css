@@ -267,3 +267,48 @@
   color: var(--color-text-disabled);
   cursor: default;
 }
+
+/*
+  A touch screen. Centred by a scrim covering the window, this would sit under
+  the keyboard the moment the script box was tapped, so the scrim is pulled onto
+  the visible viewport and its contents pushed to the top of it.
+*/
+@media (pointer: coarse) {
+  .script__scrim {
+    top: var(--seen-top, 0px);
+    bottom: auto;
+    height: var(--seen-height, 100dvh);
+    align-items: flex-start;
+    padding: 8px;
+  }
+
+  .script {
+    width: 100%;
+    max-width: none;
+    max-height: calc(var(--seen-height, 100dvh) - 16px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The body gives way, so the bar and the step buttons stay put. */
+  .script__body {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /*
+    The two panes drawn at a desktop's fixed heights are allowed to give. Only
+    these two: the textarea and the painted text behind it are laid across this
+    box and take their size from it, so they are left alone. A floor as well as
+    a ceiling, since a script box collapsed to one line is worse than a tall one.
+  */
+  .script__code {
+    height: auto;
+    min-height: 132px;
+    max-height: calc(var(--seen-height, 100dvh) * 0.34);
+  }
+
+  .script__prompt {
+    max-height: calc(var(--seen-height, 100dvh) * 0.34);
+  }
+}

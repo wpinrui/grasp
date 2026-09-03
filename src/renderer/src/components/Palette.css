@@ -382,3 +382,10 @@
   background: var(--color-surface-hover-strong);
   color: var(--color-text);
 }
+
+/* A touch screen has no room for the bar under the sheet. */
+@media (pointer: coarse) {
+  .palette {
+    display: none;
+  }
+}

@@ -91,3 +91,20 @@
 .about__close:hover {
   background: var(--color-surface-hover-strong);
 }
+
+/* A touch screen: onto the visible viewport, clear of the keyboard. */
+@media (pointer: coarse) {
+  .about__scrim {
+    top: var(--seen-top, 0px);
+    bottom: auto;
+    height: var(--seen-height, 100dvh);
+    align-items: flex-start;
+    padding: 8px;
+  }
+
+  .about {
+    width: 100%;
+    max-height: calc(var(--seen-height, 100dvh) - 16px);
+    overflow-y: auto;
+  }
+}

@@ -171,3 +171,26 @@
   margin-top: auto;
   color: var(--color-text);
 }
+
+/*
+  A touch screen. The rail was never meant to run out of room, so on a short
+  screen the tools past the fold would simply be unreachable; it scrolls
+  instead, without drawing a bar for it. The variants open sideways into a width
+  no phone has, so they scroll the other way.
+*/
+@media (pointer: coarse) {
+  .toolbox {
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+  }
+
+  .toolbox::-webkit-scrollbar {
+    display: none;
+  }
+
+  .variants {
+    max-width: calc(100vw - var(--toolbox-width) - 16px);
+    overflow-x: auto;
+  }
+}

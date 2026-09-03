@@ -134,3 +134,14 @@
   font-size: var(--font-size-caption);
   color: var(--color-text-muted);
 }
+
+/*
+  A touch screen is one page. The tabs are hidden rather than the pages being
+  taken away, so a sketch made at a desk still opens with all of its pages and
+  still has them when it goes back to one.
+*/
+@media (pointer: coarse) {
+  .pagebar {
+    display: none;
+  }
+}

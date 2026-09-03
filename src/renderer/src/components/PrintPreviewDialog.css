@@ -95,3 +95,19 @@
 .preview__gap {
   flex: 1;
 }
+
+/* A touch screen: onto the visible viewport, clear of the keyboard. */
+@media (pointer: coarse) {
+  .preview__scrim {
+    top: var(--seen-top, 0px);
+    bottom: auto;
+    height: var(--seen-height, 100dvh);
+    align-items: flex-start;
+    padding: 8px;
+  }
+
+  .preview {
+    width: 100%;
+    max-height: calc(var(--seen-height, 100dvh) - 16px);
+  }
+}
