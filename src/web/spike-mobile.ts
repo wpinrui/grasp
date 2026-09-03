@@ -61,7 +61,6 @@ export const SNAP_OFF_SETTINGS = {
 const ICONS = {
   undo: "M7.5 5.5 L4 9 L7.5 12.5 M4 9 h7.5 a4 4 0 1 1 0 8 h-2.5",
   redo: "M12.5 5.5 L16 9 L12.5 12.5 M16 9 h-7.5 a4 4 0 1 0 0 8 h2.5",
-  pan: "M10 2.5 V17.5 M2.5 10 H17.5 M10 2.5 L7.8 5 M10 2.5 L12.2 5 M10 17.5 L7.8 15 M10 17.5 L12.2 15 M2.5 10 L5 7.8 M2.5 10 L5 12.2 M17.5 10 L15 7.8 M17.5 10 L15 12.2",
   // The magnet the Snap panel is marked with, which is the panel this button
   // stands in for now that the panel is not on screen.
   snap: "M5.4 5 L5.4 10.6 A 4.6 4.6 0 0 0 14.6 10.6 L14.6 5 M5.4 3.4 L5.4 6.4 M14.6 3.4 L14.6 6.4",
@@ -121,7 +120,6 @@ function build(): HTMLElement {
   bar.append(
     button("Undo", ICONS.undo, () => tap("KeyZ", "z", true), false),
     button("Redo", ICONS.redo, () => tap("KeyR", "r", true), false),
-    button("Pan", ICONS.pan, (on) => key("Space", " ", on), true),
     // Off snaps to what is on the sheet and nothing else. On adds the length
     // and angle steps, which is the state the Snap panel would have been opened
     // to set, and that panel is not on a phone.
@@ -140,6 +138,116 @@ function build(): HTMLElement {
 }
 
 /**
+ * Two fingers pan the sheet.
+ *
+ * The sheet is panned by its two scrollbars rather than by anything the canvas
+ * exposes, so the gesture drives their scroll positions and the canvas follows
+ * the way it does for a mouse. The scrollbars are still there for that reason;
+ * they are only drawn at no width.
+ *
+ * The first finger is left alone, so drawing starts the instant it lands and
+ * feels no different for the gesture existing. It is the second finger that
+ * changes what is happening, and the canvas is told about that with the
+ * `pointercancel` it already handles: the half-drawn construction is abandoned
+ * and the tool that was up stays up. Everything from then until the last finger
+ * leaves is swallowed, so the finger still down when the other lifts does not
+ * start drawing again.
+ */
+const PAN_FINGERS = 2;
+
+function scrollers(sheet: Element) {
+  const canvas = sheet.closest(".canvas");
+  return {
+    across: canvas?.querySelector<HTMLElement>(".canvas__scroll--horizontal") ?? null,
+    down: canvas?.querySelector<HTMLElement>(".canvas__scroll--vertical") ?? null,
+  };
+}
+
+function installTwoFingerPan() {
+  /** Where each finger on the sheet is now, by the id the browser gave it. */
+  const fingers = new Map<number, { x: number; y: number }>();
+  /** The point between the fingers last time it was looked at. */
+  let midpoint: { x: number; y: number } | null = null;
+  let panning = false;
+
+  function middle() {
+    const places = [...fingers.values()];
+    const sum = places.reduce((total, at) => ({ x: total.x + at.x, y: total.y + at.y }), {
+      x: 0,
+      y: 0,
+    });
+    return { x: sum.x / places.length, y: sum.y / places.length };
+  }
+
+  function swallow(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function sheetOf(event: PointerEvent): Element | null {
+    const target = event.target;
+    return target instanceof Element ? target.closest(".canvas__sheet") : null;
+  }
+
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (event.pointerType !== "touch") return;
+      const sheet = sheetOf(event);
+      if (!sheet) return;
+      fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (fingers.size < PAN_FINGERS) return;
+      if (!panning) {
+        panning = true;
+        // What the first finger had started is dropped rather than landed.
+        sheet.dispatchEvent(
+          new PointerEvent("pointercancel", { bubbles: true, pointerId: event.pointerId }),
+        );
+      }
+      midpoint = middle();
+      swallow(event);
+    },
+    true,
+  );
+
+  document.addEventListener(
+    "pointermove",
+    (event) => {
+      if (event.pointerType !== "touch" || !fingers.has(event.pointerId)) return;
+      fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (!panning) return;
+      swallow(event);
+      const sheet = sheetOf(event) ?? document.querySelector(".canvas__sheet");
+      if (!sheet || !midpoint) return;
+      const now = middle();
+      const { across, down } = scrollers(sheet);
+      // The sheet goes the way the fingers go, so the scroll goes the other
+      // way: dragging right shows what is to the left.
+      if (across) across.scrollLeft -= now.x - midpoint.x;
+      if (down) down.scrollTop -= now.y - midpoint.y;
+      midpoint = now;
+    },
+    true,
+  );
+
+  for (const when of ["pointerup", "pointercancel"] as const) {
+    document.addEventListener(
+      when,
+      (event) => {
+        if (event.pointerType !== "touch" || !fingers.has(event.pointerId)) return;
+        fingers.delete(event.pointerId);
+        if (!panning) return;
+        swallow(event);
+        midpoint = fingers.size > 0 ? middle() : null;
+        // The pan is over only when the sheet is let go of altogether.
+        if (fingers.size === 0) panning = false;
+      },
+      true,
+    );
+  }
+}
+
+/**
  * A coarse pointer is the test rather than a width, because a narrow desktop
  * window is still a mouse and does not want any of this. `?spike=on` forces it
  * so the layout can be looked at on a desktop, and `?spike=off` takes it away
@@ -155,4 +263,5 @@ export function installMobileSpike() {
   if (!onAPhone()) return;
   document.body.classList.add("spike-mobile");
   document.body.append(build());
+  installTwoFingerPan();
 }
