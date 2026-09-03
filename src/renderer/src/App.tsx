@@ -264,7 +264,7 @@ export function App() {
     setExportTo(null);
     const wanted = selection.length > 0 ? new Set(selection) : null;
     try {
-      const drawn = await drawPicture(picture, wanted);
+      const drawn = await drawPicture(settings.picture, wanted);
       if (!drawn) return;
       if (to === "clipboard") await window.api.image.copy(drawn.png);
       else await window.api.image.save({ ...drawn, suggested: doc.name });
@@ -324,40 +324,13 @@ export function App() {
   const sketch = useSketch();
   const { undo, redo, canUndo, canRedo, remove, restyle, selectAll } = sketch;
   /** What the window remembers between runs: the dock, the steps, the paper. */
-  const {
-    dock,
-    panels,
-    showPalette,
-    keepDock,
-    labelNew,
-    snapping,
-    keepSnapping,
-    picture,
-    keepPicture,
-    prefs,
-    setPrefs,
-    prefsAt,
-    drafted,
-    setDrafted,
-    scope,
-    setScope,
-    showing,
-    applyPrefs,
-    pageSetup,
-    keepPage,
-    pagePicture,
-    printPage,
-    setupOpen,
-    setSetupOpen,
-    previewing,
-    setPreviewing,
-  } = useSettings({ sketch, phone });
+  const settings = useSettings({ sketch, phone });
   // Whether a point that lands says its name straight away, told to the sketch
   // rather than read there, since every way of making a point goes through it.
-  sketch.labelNewPoints(labelNew);
+  sketch.labelNewPoints(settings.labelNew);
   const doc = useDocument(sketch, {
-    read: () => prefsAt.current,
-    onOpen: (opened) => setPrefs(opened ?? prefsFrom(window.api.settings.read())),
+    read: () => settings.prefsAt.current,
+    onOpen: (opened) => settings.setPrefs(opened ?? prefsFrom(window.api.settings.read())),
   });
   const shared = sharedPointSize(sketch.state);
   const { objects, selection } = sketch.state;
@@ -389,28 +362,7 @@ export function App() {
   const readable = sheetOf(objects, geometry);
   const names = namesFor(objects);
   /** The numbers the sketch holds, and the dialogs that write them. */
-  const {
-    valueSpot,
-    offeredValues,
-    namedInSketch,
-    nextFunctionName,
-    offeredFunctions,
-    chosenFunction,
-    defineDerivative,
-    landParameter,
-    landCalculation,
-    chosenTable,
-    chosenValues,
-    tabulate,
-    rowNow,
-    captureRow,
-    dropRows,
-    startAdding,
-    calculationHeld,
-    parameterHeld,
-    editable,
-    editValue,
-  } = valueActions({
+  const numbers = valueActions({
     sketch,
     building,
     selection,
@@ -425,19 +377,18 @@ export function App() {
     collecting,
   });
   /** Names, labels, and what is out of view. */
-  const { pinName, showLabels, hideObjects, hiddenRows, labelRows, rename, toggleLabels } =
-    labelActions({ sketch, objects, selection, geometry, setClash });
+  const naming = labelActions({ sketch, objects, selection, geometry, setClash });
   /** The buttons on the sheet, and what pressing one does. */
-  const { buttonWants, landButton, pressButton } = buttonActions({
+  const buttons = buttonActions({
     sketch,
     building,
     selection,
     setButtonDialog,
-    spot: valueSpot,
-    hideObjects,
+    spot: numbers.valueSpot,
+    hideObjects: naming.hideObjects,
   });
   /** The transforms this page was shown by example. */
-  const { customs, defineCustom, applyCustom, dropCustom, renameCustom } = customActions({
+  const custom = customActions({
     sketch,
     objects,
     selection,
@@ -498,30 +449,18 @@ export function App() {
   /** The row an Iterate click fills: the first empty one, then round again. */
   const nextSeed = Math.max(targets.indexOf(null), 0);
 
-  const named = labelRows();
-  const away = hiddenRows();
+  const named = naming.labelRows();
+  const away = naming.hiddenRows();
 
   /** The palette: what the bar is set on, and what setting it does. */
-  const {
-    chosenCaption,
-    labelsPicked,
-    chosenText,
-    labelMarks,
-    styling,
-    styleLabel,
-    armedWriting,
-    armedMarks,
-    captionLook,
-    styleSelection,
-    styleWriting,
-  } = paletteState({
+  const palette = paletteState({
     sketch,
     objects,
     selected,
     selection,
     editing,
     labelPick,
-    prefs,
+    prefs: settings.prefs,
     armed,
     setArmed,
     activeTool,
@@ -609,8 +548,10 @@ export function App() {
   /** Open one of the dock's panels, or close it again. */
   function openPanel(id: string) {
     setSpotlight(null);
-    keepDock({
-      panels: panels.includes(id) ? panels.filter((open) => open !== id) : [...panels, id],
+    settings.keepDock({
+      panels: settings.panels.includes(id)
+        ? settings.panels.filter((open) => open !== id)
+        : [...settings.panels, id],
     });
   }
 
@@ -903,22 +844,22 @@ export function App() {
     }
     if (action.startsWith("button-")) {
       const form = action.slice("button-".length) as ButtonForm;
-      return form === "link" ? sketch.pages.length > 0 : buttonWants(form).length > 0;
+      return form === "link" ? sketch.pages.length > 0 : buttons.buttonWants(form).length > 0;
     }
     if (action === "split-merge") return splitMerge !== null;
-    if (action === "edit-definition") return editable() !== null;
+    if (action === "edit-definition") return numbers.editable() !== null;
     if (action === "define-custom") return canDefine(objects, selection);
-    if (action === "edit-custom") return customs.length > 0;
+    if (action === "edit-custom") return custom.customs.length > 0;
     if (action.startsWith("apply-transform:")) return transformable(selection, objects);
     if (action === "mark-mirror") return markableMirror(building) !== null;
     if (action === "mark-vector") return markableVector(building) !== null;
     if (action === "mark-angle") return markableAngle(building) !== null;
     if (action === "mark-ratio") return markableRatio(building) !== null;
     if (action === "mark-distance") return markableDistances(building).length > 0;
-    if (action === "derivative") return chosenFunction() !== undefined;
-    if (action === "tabulate") return chosenValues().length > 0;
+    if (action === "derivative") return numbers.chosenFunction() !== undefined;
+    if (action === "tabulate") return numbers.chosenValues().length > 0;
     if (action === "add-table-data" || action === "remove-table-data") {
-      return chosenTable() !== undefined;
+      return numbers.chosenTable() !== undefined;
     }
     if (action === "hide-objects") return selection.length > 0;
     if (action === "show-all-hidden") return objects.some((object) => object.hidden === true);
@@ -964,7 +905,7 @@ export function App() {
     }
     const now = Date.now();
     if (now - run.at < 1000 / run.perSecond) return;
-    const row = rowNow(table);
+    const row = numbers.rowNow(table);
     const last = table.rows[table.rows.length - 1];
     // Only a change is worth a row. Without this the first move would fill the
     // table with the same numbers over and over.
@@ -979,7 +920,7 @@ export function App() {
     run.at = now;
     run.left -= 1;
     if (run.left <= 0) collecting.current = null;
-    captureRow(table.id);
+    numbers.captureRow(table.id);
   }, [objects]);
 
   /**
@@ -1026,14 +967,14 @@ export function App() {
     cut: cutSelection,
     copy: copySelection,
     paste: pasteObjects,
-    toggleLabels,
-    togglePalette: () => keepDock({ showPalette: !showPalette }),
+    toggleLabels: naming.toggleLabels,
+    togglePalette: () => settings.keepDock({ showPalette: !settings.showPalette }),
     showHidden: () =>
-      hideObjects(
+      naming.hideObjects(
         objects.filter((object) => object.hidden === true).map((object) => object.id),
         false,
       ),
-    hide: () => hideObjects(selection, true),
+    hide: () => naming.hideObjects(selection, true),
     selectKin,
     labelPanel: () => openPanel("labels"),
     calculate: () => setCalculator({}),
@@ -1043,24 +984,24 @@ export function App() {
     newParameter: () => setParameterDialog({}),
     fill: () => construct("interior"),
     applyCustom: (nth) => {
-      const found = customs[nth];
-      if (found) applyCustom(found.id);
+      const found = custom.customs[nth];
+      if (found) custom.applyCustom(found.id);
     },
     documentOptions: () => setDocOptions(true),
     editDefinition: () => {
-      const found = editable();
-      if (found) editValue(found);
+      const found = numbers.editable();
+      if (found) numbers.editValue(found);
     },
     undo,
     redo,
     // Del on a picked label takes the label off and leaves what it names. With
     // no label picked it deletes the selection, the way it always has.
     remove: () => {
-      if (!labelsPicked) {
+      if (!palette.labelsPicked) {
         remove();
         return;
       }
-      styleLabel({ shown: false });
+      palette.styleLabel({ shown: false });
       setLabelPick([]);
     },
     escape: () => {
@@ -1089,13 +1030,13 @@ export function App() {
         recent={recent}
         isTicked={(action) =>
           action === `point-size:${shared}` ||
-          (action === "label-panel" && panels.includes("labels")) ||
-          (action === "hidden-panel" && panels.includes("hidden")) ||
-          (action === "palette" && showPalette) ||
-          (action === "snap-panel" && panels.includes("snap"))
+          (action === "label-panel" && settings.panels.includes("labels")) ||
+          (action === "hidden-panel" && settings.panels.includes("hidden")) ||
+          (action === "palette" && settings.showPalette) ||
+          (action === "snap-panel" && settings.panels.includes("snap"))
         }
         isEnabled={isEnabled}
-        transforms={customs.map((one) => ({ id: one.id, name: one.name }))}
+        transforms={custom.customs.map((one) => ({ id: one.id, name: one.name }))}
         labels={splitMerge ? { "split-merge": splitMerge.label } : {}}
         onAsk={() => {
           setScriptErrors([]);
@@ -1109,11 +1050,11 @@ export function App() {
           if (action === "new-sketch") doc.newSketch();
           else if (action === "open") void doc.open();
           else if (action === "about") setAbout(true);
-          else if (action === "preferences") setDrafted(prefs);
-          else if (action === "page-setup") setSetupOpen(true);
+          else if (action === "preferences") settings.setDrafted(settings.prefs);
+          else if (action === "page-setup") settings.setSetupOpen(true);
           else if (action === "document-options") setDocOptions(true);
-          else if (action === "print-preview") setPreviewing(true);
-          else if (action === "print") void printPage();
+          else if (action === "print-preview") settings.setPreviewing(true);
+          else if (action === "print") void settings.printPage();
           else if (action === "clear-recent") {
             void window.api.file.clearRecent();
             setRecent([]);
@@ -1134,16 +1075,16 @@ export function App() {
           else if (action === "select-all") selectAll();
           else if (action === "select-parents") selectKin("parents");
           else if (action === "select-children") selectKin("children");
-          else if (action === "show-labels") toggleLabels();
+          else if (action === "show-labels") naming.toggleLabels();
           else if (action === "label-panel") openPanel("labels");
           else if (action === "hidden-panel") openPanel("hidden");
-          else if (action === "palette") keepDock({ showPalette: !showPalette });
+          else if (action === "palette") settings.keepDock({ showPalette: !settings.showPalette });
           else if (action === "snap-panel") openPanel("snap");
           else if (action === "export-file") setExportTo("file");
           else if (action === "export-clipboard") setExportTo("clipboard");
-          else if (action === "hide-objects") hideObjects(selection, true);
+          else if (action === "hide-objects") naming.hideObjects(selection, true);
           else if (action === "show-all-hidden") {
-            hideObjects(
+            naming.hideObjects(
               objects.filter((object) => object.hidden === true).map((object) => object.id),
               false,
             );
@@ -1151,16 +1092,16 @@ export function App() {
             setButtonDialog(action.slice("button-".length) as ButtonForm);
           } else if (action === "split-merge") runSplitMerge();
           else if (action === "edit-definition") {
-            const found = editable();
-            if (found) editValue(found);
+            const found = numbers.editable();
+            if (found) numbers.editValue(found);
           } else if (action === "define-custom") setCustomDialog("define");
           else if (action === "edit-custom") setCustomDialog("edit");
           else if (action.startsWith("apply-transform:")) {
-            applyCustom(action.slice("apply-transform:".length));
+            custom.applyCustom(action.slice("apply-transform:".length));
           } else if (action.startsWith("mark-")) mark(action);
           else if (action === "new-function") setCalculator({ forFunction: true });
-          else if (action === "derivative") defineDerivative();
-          else if (action === "tabulate") tabulate();
+          else if (action === "derivative") numbers.defineDerivative();
+          else if (action === "tabulate") numbers.tabulate();
           else if (action === "add-table-data") setTableDialog("add");
           else if (action === "remove-table-data") setTableDialog("remove");
           else if (action === "new-parameter") setParameterDialog({});
@@ -1197,13 +1138,13 @@ export function App() {
           }}
         />
         <div
-          className={`app__canvas${showPalette ? " app__canvas--barred" : ""}`}
-          style={canvasTokens(showing.colours) as CSSProperties}
+          className={`app__canvas${settings.showPalette ? " app__canvas--barred" : ""}`}
+          style={canvasTokens(settings.showing.colours) as CSSProperties}
         >
           <Canvas
             activeTool={activeTool}
             cancelRef={cancelSheet}
-            zoomable={prefs.zoom === true}
+            zoomable={settings.prefs.zoom === true}
             sketch={sketch}
             pointSize={pointSize}
             view={sketch.view}
@@ -1214,17 +1155,17 @@ export function App() {
             onPick={pick}
             preview={preview}
             marks={marks}
-            onRename={rename}
-            onEditValue={editValue}
+            onRename={naming.rename}
+            onEditValue={numbers.editValue}
             onMarkMirror={setMirror}
-            onPressButton={pressButton}
-            onCaptureRow={captureRow}
-            onDropRow={(id) => dropRows(id, false)}
+            onPressButton={buttons.pressButton}
+            onCaptureRow={numbers.captureRow}
+            onDropRow={(id) => numbers.dropRows(id, false)}
             onToggleLabel={(id) => {
               const object = objects.find((candidate) => candidate.id === id);
-              showLabels([id], object?.label?.shown !== true);
+              naming.showLabels([id], object?.label?.shown !== true);
             }}
-            spotlight={panels.length === 0 ? null : spotlight}
+            spotlight={settings.panels.length === 0 ? null : spotlight}
             labelPick={labelPick}
             onLabelPick={(id, additive) => {
               if (id === null) {
@@ -1234,7 +1175,7 @@ export function App() {
               setLabelPick((was) => togglePick(was, id, additive === true));
             }}
             onViewport={setViewport}
-            snapping={snapping}
+            snapping={settings.snapping}
             measureKind={variants.measure ?? "length"}
             arrowKind={variants.arrow ?? "all"}
             markForm={variants.marker ?? "equal"}
@@ -1243,49 +1184,53 @@ export function App() {
             onEditing={setEditing}
             editor={editor}
             captionWanted={captionWanted}
-            captionLook={captionLook}
+            captionLook={palette.captionLook}
           />
-          {showPalette && (
+          {settings.showPalette && (
             <Palette
               editor={editor}
-              caption={chosenCaption}
-              text={chosenText ?? armedWriting}
+              caption={palette.chosenCaption}
+              text={palette.chosenText ?? palette.armedWriting}
               editing={editing !== null}
-              labelMarks={labelMarks}
-              onLabelMark={(mark, on) => styleLabel({ [mark]: on })}
-              armedText={armedMarks}
+              labelMarks={palette.labelMarks}
+              onLabelMark={(mark, on) => palette.styleLabel({ [mark]: on })}
+              armedText={palette.armedMarks}
               onArmText={(change) => setArmed((was) => ({ ...was, ...change }))}
-              onCaption={styleWriting}
-              styling={styling}
-              onStyle={styleSelection}
+              onCaption={palette.styleWriting}
+              styling={palette.styling}
+              onStyle={palette.styleSelection}
             />
           )}
         </div>
         <Dock
-          open={panels}
+          open={settings.panels}
           onToggle={openPanel}
-          width={dock.panelWidth}
-          onWidth={(panelWidth) => keepDock({ panelWidth })}
+          width={settings.dock.panelWidth}
+          onWidth={(panelWidth) => settings.keepDock({ panelWidth })}
           panes={{
             labels: {
               count: `${named.filter((row) => row.shown).length} of ${named.length}`,
               body: (
                 <LabelPanel
                   rows={named}
-                  onRename={rename}
-                  onShow={showLabels}
+                  onRename={naming.rename}
+                  onShow={naming.showLabels}
                   onSpot={setSpotlight}
-                  labelNew={labelNew}
-                  onLabelNew={(on) => keepDock({ labelNewPoints: on })}
+                  labelNew={settings.labelNew}
+                  onLabelNew={(on) => settings.keepDock({ labelNewPoints: on })}
                 />
               ),
             },
             snap: {
               count: `${
-                [snapping.objects, snapping.length, snapping.angle, snapping.moving].filter(Boolean)
-                  .length
+                [
+                  settings.snapping.objects,
+                  settings.snapping.length,
+                  settings.snapping.angle,
+                  settings.snapping.moving,
+                ].filter(Boolean).length
               } of 4`,
-              body: <SnapPanel snapping={snapping} onChange={keepSnapping} />,
+              body: <SnapPanel snapping={settings.snapping} onChange={settings.keepSnapping} />,
             },
             hidden: {
               count: `${away.length}`,
@@ -1296,7 +1241,7 @@ export function App() {
                   rows={away}
                   onShow={(ids) => {
                     setSpotlight(null);
-                    hideObjects(ids, false);
+                    naming.hideObjects(ids, false);
                   }}
                   onSpot={setSpotlight}
                 />
@@ -1311,8 +1256,8 @@ export function App() {
           onUndo={undo}
           canRedo={canRedo}
           onRedo={redo}
-          snapping={snapping.length || snapping.angle}
-          onSnapping={(on) => keepSnapping({ length: on, angle: on })}
+          snapping={settings.snapping.length || settings.snapping.angle}
+          onSnapping={(on) => settings.keepSnapping({ length: on, angle: on })}
           onCancel={() => {
             cancelSheet.current();
             setActiveTool("arrow");
@@ -1329,34 +1274,36 @@ export function App() {
         onDeletePage={deletePage}
         onDuplicatePage={sketch.duplicatePage}
         onMovePage={sketch.movePage}
-        tabs={prefs.pageTabs !== false}
+        tabs={settings.prefs.pageTabs !== false}
         objectCount={sketch.state.objects.length}
       />
       {calculator && (
         <CalculatorDialog
-          start={calculationHeld(calculator.editing)}
+          start={numbers.calculationHeld(calculator.editing)}
           forFunction={calculator.forFunction}
-          lead={calculator.editing ? (names.get(calculator.editing) ?? "f") : nextFunctionName()}
-          values={offeredValues()}
-          functions={offeredFunctions()}
-          named={namedInSketch}
+          lead={
+            calculator.editing ? (names.get(calculator.editing) ?? "f") : numbers.nextFunctionName()
+          }
+          values={numbers.offeredValues()}
+          functions={numbers.offeredFunctions()}
+          named={numbers.namedInSketch}
           sheet={readable}
           names={names}
           insert={insert}
           onInserted={() => setInsert(null)}
           onNewParameter={() => setParameterDialog({ fromCalculator: true })}
           quiet={parameterDialog !== null}
-          onApply={landCalculation}
+          onApply={numbers.landCalculation}
           onCancel={() => setCalculator(null)}
         />
       )}
 
       {parameterDialog && (
         <ParameterDialog
-          start={parameterHeld(parameterDialog.editing)}
-          angleUnit={prefs.units.angle === "radians" ? "radians" : "degrees"}
-          distanceUnit={prefs.units.distance}
-          onApply={landParameter}
+          start={numbers.parameterHeld(parameterDialog.editing)}
+          angleUnit={settings.prefs.units.angle === "radians" ? "radians" : "degrees"}
+          distanceUnit={settings.prefs.units.distance}
+          onApply={numbers.landParameter}
           onCancel={() => setParameterDialog(null)}
         />
       )}
@@ -1365,15 +1312,15 @@ export function App() {
         <DocumentOptionsDialog
           pages={sketch.pages}
           activeId={sketch.activeId}
-          tabs={prefs.pageTabs !== false}
+          tabs={settings.prefs.pageTabs !== false}
           onShow={sketch.selectPage}
           onApply={(wanted, tabs) => {
             setDocOptions(false);
             sketch.reshapePages(wanted);
-            if (tabs !== (prefs.pageTabs !== false)) {
+            if (tabs !== (settings.prefs.pageTabs !== false)) {
               // The tabs are saved with the sketch, so the title bar has to say
               // there is something to save.
-              setPrefs({ ...prefs, pageTabs: tabs });
+              settings.setPrefs({ ...settings.prefs, pageTabs: tabs });
               sketch.touch();
             }
           }}
@@ -1384,37 +1331,40 @@ export function App() {
       {buttonDialog && (
         <ButtonDialog
           form={buttonDialog}
-          count={buttonWants(buttonDialog).length}
+          count={buttons.buttonWants(buttonDialog).length}
           pages={sketch.pages}
-          onApply={landButton}
+          onApply={buttons.landButton}
           onCancel={() => setButtonDialog(null)}
         />
       )}
 
       {customDialog === "define" && (
-        <DefineTransformDialog onApply={defineCustom} onCancel={() => setCustomDialog(null)} />
+        <DefineTransformDialog
+          onApply={custom.defineCustom}
+          onCancel={() => setCustomDialog(null)}
+        />
       )}
 
       {customDialog === "edit" && (
         <EditTransformsDialog
-          transforms={customs.map((one) => ({ id: one.id, name: one.name }))}
-          onRename={renameCustom}
-          onDelete={dropCustom}
+          transforms={custom.customs.map((one) => ({ id: one.id, name: one.name }))}
+          onRename={custom.renameCustom}
+          onDelete={custom.dropCustom}
           onClose={() => setCustomDialog(null)}
         />
       )}
 
       {tableDialog === "add" && (
-        <AddTableDataDialog onApply={startAdding} onCancel={() => setTableDialog(null)} />
+        <AddTableDataDialog onApply={numbers.startAdding} onCancel={() => setTableDialog(null)} />
       )}
 
       {tableDialog === "remove" && (
         <RemoveTableDataDialog
-          rows={chosenTable()?.rows.length ?? 0}
+          rows={numbers.chosenTable()?.rows.length ?? 0}
           onApply={(all) => {
-            const table = chosenTable();
+            const table = numbers.chosenTable();
             setTableDialog(null);
-            if (table) dropRows(table.id, all);
+            if (table) numbers.dropRows(table.id, all);
           }}
           onCancel={() => setTableDialog(null)}
         />
@@ -1447,60 +1397,60 @@ export function App() {
             const holder = objects.find(
               (object) => namesFor(objects).get(object.id) === clash.name,
             );
-            pinName(clash.id, clash.name, { freed: holder?.id });
+            naming.pinName(clash.id, clash.name, { freed: holder?.id });
             setClash(null);
           }}
           onBoth={() => {
             const holder = objects.find(
               (object) => namesFor(objects).get(object.id) === clash.name,
             );
-            pinName(clash.id, clash.name, { kept: holder?.id });
+            naming.pinName(clash.id, clash.name, { kept: holder?.id });
             setClash(null);
           }}
           onCancel={() => setClash(null)}
         />
       )}
       {about && <AboutDialog onClose={() => setAbout(false)} />}
-      {drafted && (
+      {settings.drafted && (
         <PreferencesDialog
-          prefs={drafted}
-          onChange={setDrafted}
-          toSketch={scope.toSketch}
-          toNew={scope.toNew}
-          onScope={(part) => setScope((was) => ({ ...was, ...part }))}
-          onApply={applyPrefs}
-          onCancel={() => setDrafted(null)}
+          prefs={settings.drafted}
+          onChange={settings.setDrafted}
+          toSketch={settings.scope.toSketch}
+          toNew={settings.scope.toNew}
+          onScope={(part) => settings.setScope((was) => ({ ...was, ...part }))}
+          onApply={settings.applyPrefs}
+          onCancel={() => settings.setDrafted(null)}
         />
       )}
-      {setupOpen && (
+      {settings.setupOpen && (
         <PageSetupDialog
-          setup={pageSetup}
-          onChange={keepPage}
-          onApply={() => setSetupOpen(false)}
-          onCancel={() => setSetupOpen(false)}
+          setup={settings.pageSetup}
+          onChange={settings.keepPage}
+          onApply={() => settings.setSetupOpen(false)}
+          onCancel={() => settings.setSetupOpen(false)}
           onPreview={() => {
-            setSetupOpen(false);
-            setPreviewing(true);
+            settings.setSetupOpen(false);
+            settings.setPreviewing(true);
           }}
         />
       )}
-      {previewing && (
+      {settings.previewing && (
         <PrintPreviewDialog
-          setup={pageSetup}
-          picture={pagePicture()}
-          onPrint={() => void printPage()}
+          setup={settings.pageSetup}
+          picture={settings.pagePicture()}
+          onPrint={() => void settings.printPage()}
           onSetup={() => {
-            setPreviewing(false);
-            setSetupOpen(true);
+            settings.setPreviewing(false);
+            settings.setSetupOpen(true);
           }}
-          onClose={() => setPreviewing(false)}
+          onClose={() => settings.setPreviewing(false)}
         />
       )}
       {exportTo && (
         <ExportDialog
           to={exportTo}
-          options={picture}
-          onChange={keepPicture}
+          options={settings.picture}
+          onChange={settings.keepPicture}
           onApply={() => void exportPicture(exportTo)}
           onCancel={() => setExportTo(null)}
         />
