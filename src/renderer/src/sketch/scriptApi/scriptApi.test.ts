@@ -146,8 +146,15 @@ describe("taking something out of view", () => {
     const objects = ran(
       "const a = point(0, 0); const b = point(100, 0); const m = midpoint(a, b); hide(m); segment(a, m);",
     );
-    expect(objects.filter(isPoint)).toHaveLength(3);
+    // Hiding takes one object out of view and nothing else with it, unlike
+    // remove, which takes the dependents too.
+    expect(objects.filter((object) => object.hidden === true)).toHaveLength(1);
+    const points = objects.filter(isPoint);
+    expect(points).toHaveLength(3);
     expect(objects.filter(isLine)).toHaveLength(1);
+    // The midpoint is out of view and still worked out, so the segment drawn to
+    // it still runs where it did.
+    expect(points[2]).toMatchObject({ x: 50, y: 0 });
   });
 
   it("takes a name off without taking the object off", () => {
@@ -161,10 +168,13 @@ describe("taking something out of view", () => {
     expect(made.label?.shown).toBe(true);
   });
 
-  it("says so when there is nothing by that name to hide", () => {
-    const result = evaluate('hide("nothing");', { objects: [], sheet: SHEET });
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.errors).toEqual(['There is nothing here called "nothing".']);
-  });
+  it.each(["hide", "show", "hideLabel", "showLabel"])(
+    "says so when there is nothing by that name for %s to work on",
+    (call) => {
+      const result = evaluate(`${call}("nothing");`, { objects: [], sheet: SHEET });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.errors).toEqual(['There is nothing here called "nothing".']);
+    },
+  );
 });

@@ -58,11 +58,18 @@ function describe(object: SketchObject, names: Map<string, string>): string {
   return `${called}${object.kind}`;
 }
 
-/** The page a script is editing, written out so the edit can be planned. */
+/**
+ * The page a script is editing, written out so the edit can be planned. A
+ * hidden object says so: it is still holding the figure together, so an edit
+ * that cannot tell would label it, restyle it or draw over it expecting it to
+ * show.
+ */
 function describePage(objects: SketchObject[]): string {
   if (objects.length === 0) return "The page is empty.";
   const names = namesFor(objects);
-  return objects.map((object) => `- ${describe(object, names)}`).join("\n");
+  return objects
+    .map((object) => `- ${describe(object, names)}${object.hidden === true ? ", hidden" : ""}`)
+    .join("\n");
 }
 
 function apiText(): string {
