@@ -179,6 +179,11 @@ export const PHONE_CUT = {
     "select-children",
     "split-merge",
     "edit-definition",
+    "preferences",
+    // Hiding something needs it selected first, and getting it back needs a
+    // panel that is not on a phone.
+    "hide-objects",
+    "show-all-hidden",
   ]),
   /** Submenus are cut by name, having no action of their own to cut them by. */
   labels: new Set<string>([
@@ -187,6 +192,8 @@ export const PHONE_CUT = {
     // mostly cannot hold on to, and reopening one needs a picker it may not
     // have either. A list that cannot open what it lists is worse than no list.
     "Open Recent",
+    // Point styling: how a point is drawn is not what a phone is opened for.
+    "Point Style",
   ]),
 };
 
