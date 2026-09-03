@@ -228,6 +228,23 @@ describe("the shapes the landing page cannot be published in", () => {
   });
 
   /**
+   * The tag is found the way the page's own runtime finds it. Read as absent
+   * instead, an island the format lets a page leave out would be taken as
+   * empty, and a framed page written under a tag spelled a little differently
+   * would walk straight past the guard above.
+   */
+  it("finds an island whose tag is written differently", () => {
+    const framed = bundleWith("page_order", '["9a2fdc3c-02c6-4219-b69a-aa00e7e43872"]');
+    const loose = framed.replace(
+      '<script type="__bundler/page_order">',
+      "<script  type='__bundler/page_order'>",
+    );
+    expect(loose).not.toBe(framed);
+    expect(islandText(loose, "page_order")).toContain("9a2fdc3c");
+    expect(() => unpackLanding(loose)).toThrow(/framed pages/);
+  });
+
+  /**
    * The two islands the format lets a page leave out, which the page's own
    * runtime reads as empty. Stopping on those would refuse a page that serves
    * perfectly well.

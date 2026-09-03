@@ -62,16 +62,21 @@ const SUFFIX: Record<string, string> = {
   "text/javascript": ".js",
 };
 
-/** What opens the island of that name. */
-function tagOf(name: string): string {
-  return `<script type="__bundler/${name}">`;
+/**
+ * What opens the island of that name, matched as loosely as the page's own
+ * runtime matches it. A tag written a little differently has to read as the
+ * island it is rather than as no island at all, since absence is a thing the
+ * format gives a meaning to and would go by quietly.
+ */
+function tagOf(name: string): RegExp {
+  return new RegExp(`<script[^>]*type=["']__bundler/${name}["'][^>]*>`);
 }
 
 /** The text of the JSON island of that name, which is one string on its own line. */
 export function islandText(bundle: string, name: string): string {
-  const opens = bundle.indexOf(tagOf(name));
-  if (opens < 0) throw new Error(`The landing page carries no ${name}.`);
-  const from = bundle.indexOf("\n", opens) + 1;
+  const opens = tagOf(name).exec(bundle);
+  if (!opens) throw new Error(`The landing page carries no ${name}.`);
+  const from = bundle.indexOf("\n", opens.index) + 1;
   return bundle.slice(from, bundle.indexOf("</script>", from)).trim();
 }
 
@@ -86,7 +91,7 @@ function island<T>(bundle: string, name: string): T {
  * thing the page's own runtime reads it as.
  */
 function islandOr<T>(bundle: string, name: string, missing: T): T {
-  return bundle.includes(tagOf(name)) ? island<T>(bundle, name) : missing;
+  return tagOf(name).test(bundle) ? island<T>(bundle, name) : missing;
 }
 
 /** One asset's bytes, gunzipped where it was packed that way. */
