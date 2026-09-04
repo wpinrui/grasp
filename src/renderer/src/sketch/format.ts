@@ -29,6 +29,9 @@ const FORMAT = "grasp-sketch";
 /** Bumped when a label started keeping the name it was given. */
 const VERSION = 11;
 
+/** The version from which a label carries its own name, and older files are lettered on read. */
+const KEPT_NAMES = 11;
+
 interface SketchFile {
   /** Absent on a sketch saved before preferences were in the file. */
   prefs?: Prefs;
@@ -419,18 +422,22 @@ function readPrefs(value: unknown): Prefs | undefined {
 }
 
 /**
- * A sketch written before a label kept its name carries the letters it was
- * shown with only in the order it was built, so they are written down as it is
- * opened, exactly as that version lettered them. Without this the figure would
- * be lettered afresh, and a file would not open saying what it said when it
- * was saved.
+ * A sketch written before a label kept its name carries its letters only in the
+ * order it was built, so they are written down as it is opened, exactly as that
+ * version lettered them.
+ *
+ * Every object is written down, not only the ones showing a label: that version
+ * lettered the whole page and printed those letters in readings, table headings
+ * and captions as well, and a file has to open saying what it said when it was
+ * saved. Only sketches made from here on letter what is labelled and nothing
+ * else.
  */
 function letterAsBuilt(page: PageContent): void {
   const names = namesAsBuilt(page.objects);
   for (const object of page.objects) {
-    if (object.label?.shown !== true || object.label.name !== undefined) continue;
+    if (object.label?.name !== undefined) continue;
     const name = names.get(object.id);
-    if (name) object.label.name = name;
+    if (name) object.label = { ...object.label, name };
   }
 }
 
@@ -449,6 +456,6 @@ export function parse(text: string): Opened {
   if (!Array.isArray(pages) || pages.length === 0 || !pages.every(isPage)) {
     throw new Error("That sketch is damaged and cannot be opened.");
   }
-  if (file.version < 11) for (const page of pages) letterAsBuilt(page);
+  if (file.version < KEPT_NAMES) for (const page of pages) letterAsBuilt(page);
   return { pages, prefs: readPrefs(file.prefs) };
 }
