@@ -48,8 +48,6 @@ import {
 
 /** The figure a click is aimed at, and what is half drawn over it. */
 export interface Aiming extends Figure {
-  /** How far off a path still counts as on it, at this zoom. */
-  slack: number;
   snapping: Snapping;
   handles: Handle[];
   pending: Pending | null;
@@ -92,7 +90,7 @@ export function snapAt(at: Position, aiming: Aiming): Snap | null {
   if (over && isPoint(over)) {
     return { kind: "point", ids: [over.id], at: { x: over.x, y: over.y } };
   }
-  const near = pathsUnder(at, { ...aiming, straightOnly: false });
+  const near = pathsUnder(at, aiming);
   if (near.length === 0) return null;
   for (let one = 0; one < near.length; one += 1) {
     for (let other = one + 1; other < near.length; other += 1) {
@@ -293,24 +291,14 @@ export interface Under {
   along: PathGeometry;
 }
 
-/** The figure a search for what lies under the pointer is made against. */
-interface Searching extends Figure {
-  /** How far off a path still counts as on it, at this zoom. */
-  slack: number;
-  /** Set to leave out circles and arcs, for the questions about angle sides. */
-  straightOnly: boolean;
-}
-
-/** The paths the pointer is within slack of, the newest first, as picking has them. */
-function pathsUnder(at: Position, where: Searching): Under[] {
-  const { objects, settled, slack, straightOnly } = where;
+/** The paths the pointer is on, the newest first, as picking has them. */
+function pathsUnder(at: Position, where: Figure): Under[] {
+  const { objects, settled, scale } = where;
+  const slack = slackAt(scale);
   const found: Under[] = [];
   for (let index = objects.length - 1; index >= 0; index -= 1) {
     const object = objects[index];
-    const wanted = straightOnly
-      ? isLine(object)
-      : isLine(object) || isCircle(object) || isArc(object);
-    if (!wanted) continue;
+    if (!isLine(object) && !isCircle(object) && !isArc(object)) continue;
     const along = pathIn(settled, object.id);
     if (along && distanceToPath(along, at) <= slack) found.push({ object, along });
   }
@@ -319,12 +307,14 @@ function pathsUnder(at: Position, where: Searching): Under[] {
 
 /** The topmost path the pointer is on, or none. */
 export function pathUnder(at: Position, where: Figure): Under | null {
-  const slack = slackAt(where.scale);
-  return pathsUnder(at, { ...where, slack, straightOnly: false })[0] ?? null;
+  return pathsUnder(at, where)[0] ?? null;
 }
 
-/** The topmost straight object the pointer is on, or none. */
+/**
+ * The topmost straight object the pointer is on, or none. The questions about
+ * the sides of an angle want a straight object and pass over a circle to reach
+ * one, rather than coming back with the circle.
+ */
 export function lineUnder(at: Position, where: Figure): Under | null {
-  const slack = slackAt(where.scale);
-  return pathsUnder(at, { ...where, slack, straightOnly: true })[0] ?? null;
+  return pathsUnder(at, where).find((found) => isLine(found.object)) ?? null;
 }

@@ -62,7 +62,6 @@ function aiming(snapping: Partial<Snapping>, half: Partial<Aiming> = {}): Aiming
     objects,
     settled: settle(objects).settled,
     scale: 1,
-    slack: 5,
     snapping: { ...OFF, ...snapping },
     handles: [],
     pending: null,

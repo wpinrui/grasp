@@ -610,10 +610,6 @@ export function Canvas({
     setMiddle(null);
   }, [activeTool, sketch.cancelGesture]);
 
-  function startMove(state: Grab, hitId: string) {
-    state.held = takeHold(hitId, sketch);
-  }
-
   /** Put down the first of the two points a drawing tool needs. */
   function startDrawing(found: Snap | null, spot: Position) {
     sketch.beginGesture();
@@ -793,7 +789,7 @@ export function Canvas({
       setReadingPanel(null);
     }
     // An arrowhead is taken hold of before anything under it is picked.
-    const held = tool === "arrow" && !picking ? handleAt(at, aimingNow()) : null;
+    const onHandle = tool === "arrow" && !picking ? handleAt(at, aimingNow()) : null;
     // With a dialog open the sheet is only good for handing it a point.
     if (picking) {
       // Whatever is under the pointer goes to the dialog, which knows whether
@@ -865,13 +861,13 @@ export function Canvas({
     // The Text tool needs to know too: over an object it is the hand that shows
     // and hides labels, and only over bare sheet does it drag out a caption.
     const hit =
-      (tool === "arrow" || tool === "text") && !held
+      (tool === "arrow" || tool === "text") && !onHandle
         ? objectAt(at, { objects: tool === "arrow" ? pickable : objects, scale, settled })
         : null;
     // Pressing empty canvas clears at once, it does not wait for the release.
     // That is why a marquee, which starts from empty canvas, replaces the
     // selection rather than adding to it. An arrowhead is not empty canvas.
-    if (tool === "arrow" && !hit && !held) sketch.select([]);
+    if (tool === "arrow" && !hit && !onHandle) sketch.select([]);
     // The protractor is dragged from one side of an angle to the other, the
     // way the Angle marker is.
     if (measuring === "angle")
@@ -884,12 +880,15 @@ export function Canvas({
       held: null,
       marquee: null,
       pan: tool === "hand" ? { view, clientX: event.clientX, clientY: event.clientY } : null,
-      handle: held
-        ? { handle: held, span: [...spanOfLocus(held.locus, aimingNow())] as [number, number] }
+      handle: onHandle
+        ? {
+            handle: onHandle,
+            span: [...spanOfLocus(onHandle.locus, aimingNow())] as [number, number],
+          }
         : null,
       started: false,
     };
-    if (held) sketch.beginGesture();
+    if (onHandle) sketch.beginGesture();
   }
 
   /** The arcs the angle being dragged out would land as, drawn while it is. */
@@ -967,7 +966,6 @@ export function Canvas({
       objects,
       settled,
       scale,
-      slack,
       snapping,
       handles: handlesOn({ objects, settled }),
       pending,
@@ -1134,7 +1132,7 @@ export function Canvas({
     if (!state.moved) {
       if (distance(at, state.origin) < DRAG_THRESHOLD / scale) return;
       state.moved = true;
-      if (tool === "arrow" && state.hitId) startMove(state, state.hitId);
+      if (tool === "arrow" && state.hitId) state.held = takeHold(state.hitId, sketch);
     }
 
     const held = state.held;
@@ -1633,9 +1631,7 @@ export function Canvas({
     if (!written.current) return;
     const went = heldMove(written.current.ids, by, aimingNow());
     moveBy(written.current, went, sketch);
-    setTravel(
-      travelOf({ ids: written.current.ids, from: written.current.from, went }, aimingNow()),
-    );
+    setTravel(travelOf({ ...written.current, went }, aimingNow()));
   }
 
   function dropWriting() {
