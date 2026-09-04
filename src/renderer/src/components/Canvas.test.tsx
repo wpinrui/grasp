@@ -267,6 +267,18 @@ describe("the figure on the sheet", () => {
     expect(container.querySelector(".canvas__mark-band")).not.toBe(null);
     expect(drawn(container)).toMatchSnapshot();
   });
+
+  /**
+   * A lit fill is drawn as the shape it is, which is the one way an interior is
+   * drawn that carries a stroke to keep at any zoom and no id to pick by.
+   */
+  it("lights a fill as the shape it is", () => {
+    const { container } = put(FIGURE, "arrow", { spotlight: "fill" });
+    const band = container.querySelector("polygon.canvas__snap-band--round");
+    expect(band).not.toBe(null);
+    expect(band?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+    expect(band?.getAttribute("data-id")).toBe(null);
+  });
 });
 
 describe("the gestures the sheet is drawn with", () => {

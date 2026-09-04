@@ -10,9 +10,9 @@ import {
 import { litWith } from "./lighting";
 
 /**
- * Lighting an object up. The sheet's own snapshot reaches only the plain case,
- * where what is lit is what was asked for; the marks, the angle readings and
- * the ids that name nothing are covered here.
+ * Lighting an object up. The sheet's own snapshot reaches the angle-mark case,
+ * where the sides go with the mark; the plain case, the angle readings and the
+ * ids that name nothing are covered here.
  */
 
 const A = { ...createPoint({ x: 0, y: 0 }, "medium"), id: "A" };
