@@ -93,8 +93,6 @@ function movesWith(objects: SketchObject[], held: Held, id: string): boolean {
     if (seen.has(at)) return false;
     seen.add(at);
     const object = objects.find((candidate) => candidate.id === at);
-    // Writing sits where it was put and holds nothing up, so a drag on it moves
-    // nothing else, whatever the writing reads.
     if (!object || isWriting(object)) return false;
     if (held.ids.includes(at)) return true;
     return (familyOf(object) ?? []).some(walk);
