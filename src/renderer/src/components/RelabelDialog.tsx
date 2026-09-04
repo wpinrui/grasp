@@ -13,7 +13,8 @@ interface RelabelDialogProps {
 /**
  * What letter a relabel run starts at. It opens on the vertex that was clicked,
  * which takes that letter, and every vertex clicked after it takes the next one
- * going.
+ * going. What ends a run is not written here: the box is open for one answer,
+ * and by the time a run is ending it is long gone.
  */
 export function RelabelDialog({ at, onStart, onCancel }: RelabelDialogProps) {
   const [from, setFrom] = useState("");
@@ -41,10 +42,7 @@ export function RelabelDialog({ at, onStart, onCancel }: RelabelDialogProps) {
           onChange={(event) => setFrom(event.target.value)}
         />
       </label>
-      <p className="dialog__about">
-        Then click the vertices in the order you want them named. Switching tool or turning to
-        another page ends it.
-      </p>
+      <p className="dialog__about">Then click the vertices in the order you want them named.</p>
     </DialogFrame>
   );
 }
