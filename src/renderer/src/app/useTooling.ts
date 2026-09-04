@@ -14,20 +14,42 @@ import { armedForWriting } from "../components/tools";
 import type { Armed } from "../sketch/armed";
 import { DEFAULT_POINT_SIZE, type PointSize } from "../sketch/model";
 
+/**
+ * What each tool with a flyout can be armed with, one key per such tool. The
+ * six are required, so none of them can be left unarmed and nothing needs a
+ * default of its own; the index signature is what lets the toolbox reach one
+ * by a tool's id.
+ */
+export interface Armings {
+  [tool: string]: string;
+  arrow: string;
+  straightedge: string;
+  polygon: string;
+  text: string;
+  measure: string;
+  marker: string;
+}
+
+/** What each of them is armed with before anything is picked. */
+const ARMED_AS: Armings = {
+  arrow: "all",
+  straightedge: "segment",
+  polygon: "interior-edges",
+  text: "caption",
+  measure: "length",
+  marker: "equal",
+};
+
 export function useTooling() {
   const [activeTool, setActiveTool] = useState("arrow");
   /** How big the sheet is on screen, which is how far a new locus reaches. */
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
-  /** The sheet is plain paper until the grid is asked for. */
-  /** What each tool with a flyout is armed with. */
-  const [variants, setVariants] = useState<Record<string, string>>({
-    straightedge: "segment",
-    polygon: "interior-edges",
-    measure: "length",
-    arrow: "all",
-    marker: "equal",
-    text: "caption",
-  });
+  /**
+   * What each tool with a flyout is armed with, and what it starts on. Every
+   * one of them is here, so nothing anywhere else has to name a default and
+   * none of them can go stale saying a different one.
+   */
+  const [variants, setVariants] = useState<Armings>(ARMED_AS);
 
   /**
    * The labels picked on the sheet, held as the objects they name, since a

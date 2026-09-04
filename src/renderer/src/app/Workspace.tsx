@@ -96,8 +96,8 @@ export function Workspace({
           pointSize={tools.pointSize}
           view={sketch.view}
           onView={sketch.setView}
-          lineForm={(tools.variants.straightedge ?? "segment") as LineForm}
-          polygonKind={tools.variants.polygon ?? "interior-edges"}
+          lineForm={tools.variants.straightedge as LineForm}
+          polygonKind={tools.variants.polygon}
           picking={moves.dialog !== null || dialogs.calculator !== null}
           onPick={moves.pick}
           preview={moves.preview}
@@ -123,14 +123,14 @@ export function Workspace({
           }}
           onViewport={tools.setViewport}
           snapping={settings.snapping}
-          measureKind={tools.variants.measure ?? "length"}
-          arrowKind={tools.variants.arrow ?? "all"}
-          labelKind={tools.variants.text ?? "caption"}
+          measureKind={tools.variants.measure}
+          arrowKind={tools.variants.arrow}
+          labelKind={tools.variants.text}
           relabelName={relabel.nextName}
           onRelabelAsk={relabel.ask}
           onRelabelGive={relabel.give}
           onRegularAsk={regular.ask}
-          markForm={tools.variants.marker ?? "equal"}
+          markForm={tools.variants.marker}
           hiddenKinds={tools.hiddenKinds}
           editing={tools.editing}
           onEditing={tools.setEditing}

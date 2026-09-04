@@ -43,6 +43,16 @@ describe("the polygon tool", () => {
     expect(page().objects.map((object) => object.kind)).toEqual(["point"]);
   });
 
+  it("keeps a half-traced polygon when only the fill arming moves", () => {
+    // Both of those are clicked out the same way and the arming is read again
+    // at the close, so moving between them mid-trace must cost no corners.
+    const { sheet, page, rearm } = watched([], "polygon", { polygonKind: "interior-edges" });
+    act(() => press(sheet, { x: 100, y: 100 }));
+    act(() => press(sheet, { x: 300, y: 100 }));
+    act(() => rearm({ polygonKind: "interior" }));
+    expect(page().objects).toHaveLength(2);
+  });
+
   it("drops a half-traced polygon when it is armed for the regular one", () => {
     // Two corners down, then the flyout moves to Regular. The trace has to go
     // with it: left in flight its gesture would later roll the page back over

@@ -7,7 +7,7 @@
  * about boxes or clicks, so what is built can be checked without either.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { PointSize, Position } from "../sketch/model";
 import { withRegular } from "../sketch/regular";
 import type { Sketch } from "../sketch/useSketch";
@@ -18,14 +18,28 @@ export interface RegularAsked {
   at: { x: number; y: number };
 }
 
-interface RegularContext {
+export interface RegularContext {
   sketch: Sketch;
   /** How big a point comes out, which the corners are laid down at. */
   pointSize: PointSize;
+  /** Whether the polygon tool is armed for the regular one at all. */
+  armed: boolean;
+  /** The page that is up, since the click that asked was made on that one. */
+  page: string;
 }
 
-export function useRegular({ sketch, pointSize }: RegularContext) {
+export function useRegular({ sketch, pointSize, armed, page }: RegularContext) {
   const [asked, setAsked] = useState<RegularAsked | null>(null);
+  // The ask belongs to the arming that made it, and to the page it was made on.
+  // Arming the polygon otherwise, putting the tool down or turning the page
+  // drops it: answering it later would build inside whatever is going on by
+  // then, and a gesture opened since would roll the page back over the shape.
+  const was = useRef({ armed, page });
+  if (was.current.armed !== armed || was.current.page !== page) {
+    const ended = !armed || was.current.page !== page;
+    was.current = { armed, page };
+    if (ended) setAsked(null);
+  }
 
   return {
     asked,
@@ -45,7 +59,11 @@ export function useRegular({ sketch, pointSize }: RegularContext) {
     draw: ({ sides, locked }: { sides: number; locked: boolean }) => {
       if (!asked) return;
       setAsked(null);
-      sketch.commit(withRegular(sketch.read(), { at: asked.spot, sides, size: pointSize, locked }));
+      const before = sketch.read();
+      const after = withRegular(before, { at: asked.spot, sides, size: pointSize, locked });
+      // A count no polygon has leaves the page alone, and a step that changes
+      // nothing is not one to undo.
+      if (after !== before) sketch.commit(after);
     },
   };
 }

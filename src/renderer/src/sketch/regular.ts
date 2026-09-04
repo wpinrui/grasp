@@ -19,7 +19,7 @@
 import {
   createInterior,
   createPoint,
-  lineThrough,
+  edgesRound,
   type PointSize,
   type Position,
   radiansOf,
@@ -97,16 +97,6 @@ export function regularPolygon({ at, sides, size, locked }: RegularWanted): Sket
   );
   const ring = [first, ...rest].map((corner) => corner.id);
   return [...(centre ? [centre] : []), first, ...rest, createInterior(ring), ...edgesRound(ring)];
-}
-
-/**
- * The edges round a ring of corners, closing back to the first, so a polygon is
- * a ring however it was made: clicked out corner by corner, or built.
- */
-export function edgesRound(ring: string[]): SketchObject[] {
-  return ring.map((corner, index) =>
-    lineThrough("segment", [corner, ring[(index + 1) % ring.length]]),
-  );
 }
 
 /**

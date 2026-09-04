@@ -150,7 +150,12 @@ export function App() {
   /** Names, labels, and what is out of view. */
   const naming = labelActions({ sketch, objects, selection, geometry });
   /** The regular polygon in hand, from the click that asked for one. */
-  const regular = useRegular({ sketch, pointSize: tools.pointSize });
+  const regular = useRegular({
+    sketch,
+    pointSize: tools.pointSize,
+    armed: tools.activeTool === "polygon" && tools.variants.polygon === "regular",
+    page: sketch.activeId,
+  });
   /** The relabel run in hand: the letters the Text tool is handing out. */
   const relabel = useRelabel({
     armed: tools.activeTool === "text" && tools.variants.text === "relabel",

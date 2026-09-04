@@ -228,7 +228,7 @@ export function paletteState(context: PaletteContext) {
    * What the tool that is up draws, which is what the palette arms. The Arrow
    * draws nothing, so under it the bar is on the selection alone.
    */
-  const draws = toolDraws(activeTool, variants.polygon ?? "interior-edges");
+  const draws = toolDraws(activeTool, variants.polygon);
   const styling = stylingFor({
     picked,
     selected,

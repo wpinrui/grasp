@@ -126,6 +126,26 @@ describe("a regular polygon", () => {
     expect(drawn.sort()).toEqual(wanted.sort());
   });
 
+  it("goes round the corners in order rather than across them", () => {
+    // Equal sides would let a star through, whose points are all as far apart
+    // as each other, so the ring is checked to advance one step of angle at a
+    // time about the middle rather than jumping across the shape.
+    const made = built(7, false);
+    const points = cornersOf(made);
+    const ring = ringOf(made);
+    const angles = ring.map((id) => {
+      const corner = points.find((point) => point.id === id);
+      return corner ? Math.atan2(corner.y - AT.y, corner.x - AT.x) : Number.NaN;
+    });
+    const step = (2 * Math.PI) / 7;
+    for (let at = 0; at < angles.length; at += 1) {
+      const gone = angles[at] - angles[(at + 1) % angles.length];
+      // One step either way, whichever way round the ring was built.
+      const turned = Math.abs(((gone % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI));
+      expect(Math.min(turned, 2 * Math.PI - turned)).toBeCloseTo(step, 6);
+    }
+  });
+
   it("builds nothing where the number of sides is not one a polygon has", () => {
     expect(canBuildSides(2)).toBe(false);
     expect(canBuildSides(3.5)).toBe(false);
@@ -142,13 +162,16 @@ describe("a regular polygon", () => {
  * shape added to what was there, and it alone left picked.
  */
 describe("a regular polygon landing on the page", () => {
-  const before = { objects: [createPoint({ x: 10, y: 10 }, "medium")], selection: [] };
+  const already = createPoint({ x: 10, y: 10 }, "medium");
+  const before = { objects: [already], selection: [already.id] };
 
   it("adds the shape and leaves nothing but it picked", () => {
     const after = withRegular(before, { at: AT, sides: 5, size: "medium", locked: false });
     // What was there is still there, ahead of what was built.
     expect(after.objects.slice(0, 1)).toEqual(before.objects);
     expect(after.objects).toHaveLength(1 + 5 + 1 + 5);
+    // What was picked before is not picked now: the shape is, and only it.
+    expect(after.selection).not.toContain(already.id);
     expect(after.selection).toEqual(after.objects.slice(1).map((object) => object.id));
   });
 

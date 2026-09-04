@@ -32,6 +32,7 @@ export {
   createPoint,
   createTable,
   createWedge,
+  edgesRound,
   lineThrough,
   pointOnPath,
 } from "./create";

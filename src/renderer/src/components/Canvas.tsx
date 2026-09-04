@@ -32,6 +32,7 @@ import {
   createInterior,
   createPoint,
   distance,
+  edgesRound,
   endsById,
   isArc,
   isButton,
@@ -85,7 +86,6 @@ import {
 } from "../sketch/model";
 import { demotedUnder } from "../sketch/overlaps";
 import { togglePick } from "../sketch/picking";
-import { edgesRound } from "../sketch/regular";
 import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
@@ -488,6 +488,13 @@ export function Canvas({
   const measuring = tool === "measure" ? measureKind : null;
   /** What the Marker would mark, or null while it is not the tool that is up. */
   const marking = tool === "marker" ? (markForm as MarkForm) : null;
+  /**
+   * Whether the polygon tool is armed for the regular one, which is not clicked
+   * out corner by corner. Crossing into or out of it is what strands a trace;
+   * moving between the fill and the fill with its edges does not, since both
+   * are traced the same way and the arming is read again at the close.
+   */
+  const regularArmed = polygonKind === "regular";
   /** Whether the Text tool is handing out letters rather than making captions. */
   const relabelling = tool === "text" && labelKind === "relabel";
   /** The tools that put a point down, and so say what a click would land on. */
@@ -621,9 +628,9 @@ export function Canvas({
   }, [captionWanted]);
 
   // Switching tools drops whatever the straightedge was halfway through, and so
-  // does arming the polygon differently: the regular one is not clicked out
-  // corner by corner, so a trace left in flight would strand its open gesture
-  // and the next thing to cancel would roll the page back over what came after.
+  // does arming the polygon for the regular one: it is not clicked out corner by
+  // corner, so a trace left in flight would strand its open gesture and the next
+  // thing to cancel would roll the page back over what came after.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the tool changing is the whole point
   useEffect(() => {
     sketch.cancelGesture();
@@ -636,7 +643,7 @@ export function Canvas({
     setPanel(null);
     setReadingPanel(null);
     setMiddle(null);
-  }, [activeTool, polygonKind, sketch.cancelGesture]);
+  }, [activeTool, regularArmed, sketch.cancelGesture]);
 
   /** Put down the first of the two points a drawing tool needs. */
   function startDrawing(found: Snap | null, spot: Position) {

@@ -78,7 +78,7 @@ function Harness({
   onRelabelAsk = () => {},
   onRelabelGive = () => {},
   onRegularAsk = () => {},
-  polygonKind = "interior",
+  polygonKind = "interior-edges",
 }: HarnessProps) {
   const sketch = useSketch();
   const laid = useRef(false);
