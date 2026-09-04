@@ -41,6 +41,15 @@ describe("what a figure is called", () => {
     expect(namesToGive(drawn, [drawn[1].id]).get(drawn[1].id)).toBe("B");
   });
 
+  it("gives nothing to what is named already", () => {
+    // Asked for a name it has, it is left out rather than answered with the
+    // one it holds, so nothing that writes these names down renames anything.
+    const drawn = [called(point(0), "A"), point(10)];
+    const given = namesToGive(drawn, [drawn[0].id, drawn[1].id]);
+    expect(given.has(drawn[0].id)).toBe(false);
+    expect(given.get(drawn[1].id)).toBe("B");
+  });
+
   it("keeps a letter when the label beside it is hidden", () => {
     // B's label is put away. A and C are not renumbered by it, and B keeps the
     // name it was given, so showing it again brings the same letter back.

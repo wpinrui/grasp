@@ -33,11 +33,11 @@ function round(value: number): string {
 }
 
 /**
- * How the listing refers to what an object was built from. Most of a page
- * carries no name, since a label is only handed out where one is asked for, so
- * a point that has none says where it sits instead: that tells it from the next
- * one, and the listing runs in the same order as `all()`, which is where a
- * script picks it up.
+ * How the listing refers to what an object was built from. Much of a page
+ * carries no name, since a name comes only of being labelled or of a reading
+ * spelling it out, so a point that has none says where it sits instead: that
+ * tells it from the next one, and the listing runs in the same order as
+ * `all()`, which is where a script picks it up.
  */
 function refer(id: string, objects: SketchObject[], names: Map<string, string>): string {
   const name = names.get(id);

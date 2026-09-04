@@ -304,12 +304,13 @@ describe("whether there is anything to undo", () => {
 });
 
 /**
- * Where a label gets its name. Nothing carries one until a label is asked for,
- * and the name is written down when it is, so the letters of a figure never
- * move afterwards. Every route that shows a label goes through `commit`, which
- * is why this is asserted here rather than at each of them.
+ * Where a name comes from. Nothing carries one until one is wanted, and it is
+ * written down when it is, so the letters of a figure never move afterwards.
+ * Two things want one: a label being shown, and a reading having to spell a
+ * letter out. Both go through `commit`, which is why this is asserted here
+ * rather than at each of the routes into it.
  */
-describe("naming what is labelled", () => {
+describe("naming what needs a name", () => {
   it("leaves what has no label with no name", () => {
     const { result } = renderHook(() => useSketch());
     const a = point({ x: 0, y: 0 });
@@ -364,7 +365,7 @@ describe("naming what is labelled", () => {
     expect(called(result.current.state.objects, a.id)).toBe("A");
   });
 
-  it("shows and names the points a new measurement reads out", () => {
+  it("names the points a new measurement reads out, without showing them", () => {
     const { result } = renderHook(() => useSketch());
     const a = point({ x: 0, y: 0 });
     const b = point({ x: 50, y: 0 });
@@ -372,7 +373,7 @@ describe("naming what is labelled", () => {
     act(() => result.current.commit({ objects: [a, b, seg], selection: [] }));
     expect(called(result.current.state.objects, a.id)).toBeUndefined();
 
-    // "m AB" is what the reading writes, so A and B are what it labels. The
+    // "m AB" is what the reading writes, so A and B are what it names. The
     // segment is not named: its own letter never reaches the reading.
     const length = createMeasurement("length", [seg.id], { x: 0, y: 40 });
     act(() =>
@@ -381,11 +382,72 @@ describe("naming what is labelled", () => {
         selection: [],
       }),
     );
-    expect(showing(result.current.state.objects, a.id)).toBe(true);
-    expect(showing(result.current.state.objects, b.id)).toBe(true);
     expect(called(result.current.state.objects, a.id)).toBe("A");
     expect(called(result.current.state.objects, b.id)).toBe("B");
     expect(called(result.current.state.objects, seg.id)).toBeUndefined();
+    // Naming is what the reading needs. What the figure shows is not the
+    // measurement's to change, so neither label comes on.
+    expect(showing(result.current.state.objects, a.id)).toBe(false);
+    expect(showing(result.current.state.objects, b.id)).toBe(false);
+  });
+
+  it("leaves a label that was put away put away", () => {
+    const { result } = renderHook(() => useSketch());
+    const a = point({ x: 0, y: 0 });
+    const b = point({ x: 50, y: 0 });
+    act(() => result.current.commit({ objects: [a, b], selection: [] }));
+    // A label asked for and then put away again, which is not the same as one
+    // never asked for: it holds a name already, and it stays away.
+    act(() =>
+      result.current.commit({
+        objects: labelled(result.current.state.objects, a.id, true),
+        selection: [],
+      }),
+    );
+    act(() =>
+      result.current.commit({
+        objects: labelled(result.current.state.objects, a.id, false),
+        selection: [],
+      }),
+    );
+    const span = createMeasurement("distance", [a.id, b.id], { x: 0, y: 40 });
+    act(() =>
+      result.current.commit({
+        objects: [...result.current.state.objects, span],
+        selection: [],
+      }),
+    );
+    expect(called(result.current.state.objects, a.id)).toBe("A");
+    expect(called(result.current.state.objects, b.id)).toBe("B");
+    expect(showing(result.current.state.objects, a.id)).toBe(false);
+    expect(showing(result.current.state.objects, b.id)).toBe(false);
+  });
+
+  it("leaves the labels of what it measures however they were", () => {
+    const { result } = renderHook(() => useSketch());
+    const a = point({ x: 0, y: 0 });
+    const b = point({ x: 50, y: 0 });
+    const seg = createLine("segment", { kind: "through", ends: [a.id, b.id] });
+    act(() => result.current.commit({ objects: [a, b, seg], selection: [] }));
+    // One label asked for, the other not, before anything is measured.
+    act(() =>
+      result.current.commit({
+        objects: labelled(result.current.state.objects, a.id, true),
+        selection: [],
+      }),
+    );
+    const length = createMeasurement("length", [seg.id], { x: 0, y: 40 });
+    act(() =>
+      result.current.commit({
+        objects: [...result.current.state.objects, length],
+        selection: [],
+      }),
+    );
+    // Each stays as it was, and A keeps the letter it already had.
+    expect(showing(result.current.state.objects, a.id)).toBe(true);
+    expect(showing(result.current.state.objects, b.id)).toBe(false);
+    expect(called(result.current.state.objects, a.id)).toBe("A");
+    expect(called(result.current.state.objects, b.id)).toBe("B");
   });
 
   it("hands back exactly what was there, names and all", () => {

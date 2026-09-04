@@ -29,10 +29,14 @@ const POINTS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
  * and nothing is keyed by one, so nothing is damaged by it.
  *
  * `onLabel` marks a run whose names are only ever read off a label. Nothing in
- * one of those carries a name until a label is asked for, so the points nobody
+ * one of those carries a name until a name is wanted, so the points nobody
  * labels never eat the letters of the ones that are: label three points out of
  * a dozen and they come out A, B and C. A run without it writes its own name as
  * part of itself, so it is named the moment it is made.
+ *
+ * A label shown is not the only way a name comes to be wanted: a reading has to
+ * spell its letters out whether the labels are showing or not, so measuring two
+ * points names them, and the next point labelled comes out after them.
  */
 const RUNS: Record<string, { letters?: string; stem?: string; onLabel?: boolean }> = {
   point: { letters: POINTS, onLabel: true },
@@ -200,9 +204,10 @@ export function namesFor(objects: SketchObject[]): Map<string, string> {
 }
 
 /**
- * What the run would call each of these, for a label about to be shown on
- * something that has never carried a name. Each takes the first name of its run
- * that nothing on the page answers to, handed out in the order they were built.
+ * What the run would call each of these, for something that has never carried a
+ * name. Each takes the first name of its run that nothing on the page answers
+ * to, handed out in the order they were built. Anything already named is left
+ * out, so nothing here renames what it is passed.
  */
 export function namesToGive(objects: SketchObject[], ids: string[]): Map<string, string> {
   const already = namesFor(objects);
@@ -231,22 +236,30 @@ export function namesAsBuilt(objects: SketchObject[]): Map<string, string> {
 }
 
 /**
- * The page with a name written onto anything whose label is shown but which has
- * never carried one. This is the one place the run hands a name out, so a label
- * asked for by the panel, by a key, by a paste, by a transform or by a script
- * is named the same way, and once written the name is kept: a figure's letters
- * do not move again.
+ * The page with a name written onto each of these that has none. This is the
+ * one place the run hands a name out, whatever the reason for asking: a label
+ * shown by the panel, by a key, by a paste, by a transform or by a script, or a
+ * reading that has to spell a letter out. Once written the name is kept, so a
+ * figure's letters do not move again.
  */
-export function namedWhereShown(objects: SketchObject[]): SketchObject[] {
-  const wanting = objects.filter((object) => object.label?.shown === true && !object.label.name);
-  if (wanting.length === 0) return objects;
-  const given = namesToGive(
-    objects,
-    wanting.map((object) => object.id),
-  );
+export function namedAmong(objects: SketchObject[], ids: string[]): SketchObject[] {
+  if (ids.length === 0) return objects;
+  const given = namesToGive(objects, ids);
   if (given.size === 0) return objects;
   return objects.map((object) => {
     const name = given.get(object.id);
     return name ? { ...object, label: { ...object.label, name } } : object;
   });
+}
+
+/**
+ * The page with a name written onto anything whose label is shown but which has
+ * never carried one. Showing a label is the commonest reason a name is wanted,
+ * and this is the pass that answers it.
+ */
+export function namedWhereShown(objects: SketchObject[]): SketchObject[] {
+  return namedAmong(
+    objects,
+    objects.filter((object) => object.label?.shown === true).map((object) => object.id),
+  );
 }
