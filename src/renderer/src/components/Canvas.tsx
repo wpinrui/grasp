@@ -125,7 +125,6 @@ import {
   readingAlready,
   readingBox,
   readingFrom,
-  sameAngle,
 } from "./canvas/readings";
 import { SheetProvider } from "./canvas/SheetContext";
 import {
@@ -152,7 +151,6 @@ import {
   type Tracing,
   type Travel,
   WHEEL_ZOOM,
-  type Written,
 } from "./canvas/sheet";
 import {
   type Aiming,
@@ -164,6 +162,7 @@ import {
   travelOf,
 } from "./canvas/steps";
 import { useMarking } from "./canvas/useMarking";
+import { useReading } from "./canvas/useReading";
 import type { HiddenKinds } from "./HiddenPanel";
 import { MarkPanel } from "./MarkPanel";
 import { MeasurementBox } from "./MeasurementBox";
@@ -389,7 +388,7 @@ export function Canvas({
   /** The mark whose panel is open, or null with no panel showing. */
 
   /** The reading whose panel is open, which only a length ever has. */
-  const [readingPanel, setReadingPanel] = useState<string | null>(null);
+
   /**
    * Which angle at a corner was meant. A corner with more than two sides
    * running out of it makes more than one angle, and a click on the point says
@@ -428,7 +427,6 @@ export function Canvas({
    * ghost so the number can be seen before it is asked for. Null over anything
    * the armed measure cannot be taken from.
    */
-  const [previewReading, setPreviewReading] = useState<Written | null>(null);
   /**
    * The reading a click would go to rather than write, lit where it sits. Set
    * instead of a ghost, since there is no new number to show.
@@ -540,6 +538,17 @@ export function Canvas({
     setSquare,
     setStrokes,
   } = useMarking({ sketch, objects, settled, scale, view, marking, measuring: measuringNow });
+
+  const {
+    panel: readingPanel,
+    setPanel: setReadingPanel,
+    preview: previewReading,
+    setPreview: setPreviewReading,
+    setBounds,
+    setLeaders,
+    setPlaces,
+    setReflex: setReadingReflex,
+  } = useReading(sketch);
 
   const onScreen = {
     x: view.x,
@@ -1089,77 +1098,6 @@ export function Canvas({
       started: false,
     };
     if (held) sketch.beginGesture();
-  }
-
-  /** How a length is drawn out, and whether it carries its dotted lines. */
-  function setBounds(id: string, bounds: "broken" | "full" | undefined) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, bounds } : object,
-      ),
-    });
-  }
-
-  /**
-   * An angle read the long way round. The mark on that angle goes round with
-   * it: the arcs are what say which of the angles at that corner the number is
-   * about, so they cannot say one thing while the number says the other.
-   */
-  /**
-   * How far one reading is written out. It is pinned on that reading, so it
-   * keeps what it was given while the rest of the sheet follows Preferences.
-   */
-  function setPlaces(id: string, places: number) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, places } : object,
-      ),
-    });
-  }
-
-  function setReadingReflex(id: string, reflex: boolean) {
-    const before = sketch.read();
-    const reading = before.objects.find((object) => object.id === id);
-    if (!reading || !isMeasurement(reading)) return;
-    const [one, corner, other] = reading.of;
-    // Where this is the only number on that angle, the mark goes round with it.
-    // Where both sizes of the angle are written, the arcs cannot agree with
-    // both, so they stay where they are.
-    const alone =
-      before.objects.filter(
-        (object) =>
-          isMeasurement(object) && object.measure === "angle" && sameAngle(object.of, reading.of),
-      ).length === 1;
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) => {
-        if (object.id === id) return { ...reading, reflex };
-        if (
-          alone &&
-          isMark(object) &&
-          !("path" in object) &&
-          object.corner === corner &&
-          object.arms.every((arm) => arm === one || arm === other)
-        ) {
-          return { ...object, reflex };
-        }
-        return object;
-      }),
-    });
-  }
-
-  function setLeaders(id: string, leaders: boolean) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, leaders } : object,
-      ),
-    });
   }
 
   /** The arcs the angle being dragged out would land as, drawn while it is. */
