@@ -59,7 +59,6 @@ import {
   type LabelState,
   LEAST_ANGLE_RADIUS,
   type LineForm,
-  type LocusShape,
   lineThrough,
   type MarkForm,
   markAlong,
@@ -81,13 +80,11 @@ import {
   pointOnPath,
   pointsOf,
   type Rect,
-  radiusOf,
   rectBetween,
   type SketchCalculation,
   type SketchCaption,
   type SketchFunction,
   type SketchLine,
-  type SketchLocus,
   type SketchMark,
   type SketchMeasurement,
   type SketchObject,
@@ -110,6 +107,7 @@ import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
 import { guideOf } from "./canvas/guides";
+import { handlesOn, snapRadius } from "./canvas/handles";
 import { Arms, Resting, Showing } from "./canvas/layers/Angles";
 import { Boxing, MarkCaptions } from "./canvas/layers/Captions";
 import { Dimensions } from "./canvas/layers/Dimensions";
@@ -156,7 +154,6 @@ import {
   overlaps,
   PAN_FINGERS,
   type Pending,
-  SNAP_RING,
   type Snap,
   sameReading,
   snapKey,
@@ -2441,61 +2438,10 @@ export function Canvas({
     return object ? labelAnchor(labelling, object) : null;
   }
 
-  /** Where an end of a locus is, and which way it carries on from there. */
-  function handleFor(locus: SketchLocus, shape: LocusShape, end: 0 | 1): Handle | null {
-    const domain = objects.find((object) => object.id === locus.domain);
-    const along = settled.lines.get(locus.domain);
-    if (!domain || !isLine(domain) || !along) return null;
-    const length = distance(along.a, along.b);
-    if (length < 1) return null;
-    const path = { x: (along.b.x - along.a.x) / length, y: (along.b.y - along.a.y) / length };
-    const handle = { locus: locus.id, end, step: 1 / length };
-    if (shape.kind === "points" && shape.at.length > 1) {
-      // A point locus carries its arrowhead at the end of the curve, pointing
-      // the way the curve was going.
-      const tip = end === 1 ? shape.at[shape.at.length - 1] : shape.at[0];
-      const back = end === 1 ? shape.at[shape.at.length - 2] : shape.at[1];
-      const reach = distance(back, tip);
-      const way =
-        reach < 0.001
-          ? { x: path.x * (end === 1 ? 1 : -1), y: path.y * (end === 1 ? 1 : -1) }
-          : { x: (tip.x - back.x) / reach, y: (tip.y - back.y) / reach };
-      return { ...handle, at: tip, way };
-    }
-    // Anything else has no one end of its own, so the arrowhead sits on the
-    // domain, at the far end of the stretch the driver runs over.
-    const t = locus.span[end];
-    return {
-      ...handle,
-      at: {
-        x: along.a.x + (along.b.x - along.a.x) * t,
-        y: along.a.y + (along.b.y - along.a.y) * t,
-      },
-      way: { x: path.x * (end === 1 ? 1 : -1), y: path.y * (end === 1 ? 1 : -1) },
-    };
-  }
-
   /**
-   * Every arrowhead on the page. A segment fixes both ends of the domain, a ray
-   * fixes only the end it starts from, and a line fixes neither.
+   * Every arrowhead on the page, and the ring where a click would land.
    */
-  const handles: Handle[] = objects.flatMap((object) => {
-    if (!isLocus(object)) return [];
-    const shape = settled.loci.get(object.id);
-    const domain = objects.find((candidate) => candidate.id === object.domain);
-    if (!shape || !domain || !isLine(domain) || domain.form === "segment") return [];
-    const ends: (0 | 1)[] = domain.form === "ray" ? [1] : [0, 1];
-    return ends.flatMap((end) => {
-      const handle = handleFor(object, shape, end);
-      return handle ? [handle] : [];
-    });
-  });
-
-  /** The ring at a snap: around the dot it found, or a fixed one on a path. */
-  function snapRadius(found: Snap): number {
-    const point = found.kind === "point" ? ends.get(found.ids[0]) : undefined;
-    return (point ? radiusOf(point) + 5.5 : SNAP_RING) / scale;
-  }
+  const handles = handlesOn({ objects, settled });
 
   const guide = guideOf({ objects, settled, scale, snapping, travel, pending, tracing });
 
@@ -2571,7 +2517,7 @@ export function Canvas({
                     className="canvas__snap"
                     cx={snap.at.x}
                     cy={snap.at.y}
-                    r={snapRadius(snap)}
+                    r={snapRadius(snap, { scale, ends })}
                     vectorEffect="non-scaling-stroke"
                   />
                 </g>
