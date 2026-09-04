@@ -80,8 +80,10 @@ export function takeHold(hitId: string, sketch: Sketch): Held | null {
 
 /**
  * Whether the drag is moving what holds a path up. `held.ids` names points and
- * writing, never paths, so a path is moving when the points it is built on are
- * among them, however far down it is built.
+ * writing, never paths, so the question goes to `movedBy`: it gives the free
+ * points a drag on the path would move, and the path is moving when any of them
+ * is in the drag. A point on a path reached that way counts as held in place by
+ * its own path, so a path hanging off one of those is not caught here.
  */
 function carrying(objects: SketchObject[], held: Held, path: string): boolean {
   return movedBy(objects, [path]).some((id) => held.ids.includes(id));
