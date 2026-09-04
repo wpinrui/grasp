@@ -32,24 +32,39 @@ function round(value: number): string {
   return `${Math.round(value)}`;
 }
 
+/**
+ * How the listing refers to what an object was built from. Most of a page
+ * carries no name, since a label is only handed out where one is asked for, so
+ * a point that has none says where it sits instead: that tells it from the next
+ * one, and the listing runs in the same order as `all()`, which is where a
+ * script picks it up.
+ */
+function refer(id: string, objects: SketchObject[], names: Map<string, string>): string {
+  const name = names.get(id);
+  if (name) return name;
+  const object = objects.find((candidate) => candidate.id === id);
+  return object && isPoint(object) ? `(${round(object.x)}, ${round(object.y)})` : "?";
+}
+
 /** One object, said the way the page would say it. */
-function describe(object: SketchObject, names: Map<string, string>): string {
+function describe(
+  object: SketchObject,
+  objects: SketchObject[],
+  names: Map<string, string>,
+): string {
   const name = names.get(object.id);
   const called = name ? `${name}: ` : "";
+  const said = (id: string) => refer(id, objects, names);
   if (isPoint(object)) return `${called}point at (${round(object.x)}, ${round(object.y)})`;
   if (isLine(object)) {
     const span = object.span;
     if (span.kind === "through") {
-      const ends = span.ends.map((id) => names.get(id) ?? "?").join(" to ");
-      return `${called}${object.form} ${ends}`;
+      return `${called}${object.form} ${span.ends.map(said).join(" to ")}`;
     }
     if (span.kind === "bisector") return `${called}${object.form}, bisecting an angle`;
-    return `${called}${object.form}, ${span.kind} at ${names.get(span.at) ?? "?"}`;
+    return `${called}${object.form}, ${span.kind} at ${said(span.at)}`;
   }
-  if (isCircle(object)) {
-    const centre = names.get(object.span.centre) ?? "?";
-    return `${called}circle about ${centre}`;
-  }
+  if (isCircle(object)) return `${called}circle about ${said(object.span.centre)}`;
   if (isArc(object)) return `${called}arc`;
   if (isInterior(object)) return `${called}fill`;
   if (isMark(object)) return `${called}${object.form} marking`;
@@ -68,7 +83,10 @@ function describePage(objects: SketchObject[]): string {
   if (objects.length === 0) return "The page is empty.";
   const names = namesFor(objects);
   return objects
-    .map((object) => `- ${describe(object, names)}${object.hidden === true ? ", hidden" : ""}`)
+    .map(
+      (object) =>
+        `- ${describe(object, objects, names)}${object.hidden === true ? ", hidden" : ""}`,
+    )
     .join("\n");
 }
 
@@ -102,7 +120,7 @@ A call GRASP does not have stops the whole script before anything is drawn, so u
 
 ${
   editing
-    ? `This script edits ${target.page}, which already holds:\n\n${describePage(target.objects)}\n\nFind what you need with \`byLabel\`, rather than assuming a handle. You may add to it, restyle it and remove from it.`
+    ? `This script edits ${target.page}, which already holds:\n\n${describePage(target.objects)}\n\nFind what you need with \`byLabel\` where it has a name, and in \`all()\`, which lists the page in the same order as above, where it has not. Do not assume a handle. You may add to it, restyle it and remove from it.`
     : "This script draws on a new, empty page."
 }
 
