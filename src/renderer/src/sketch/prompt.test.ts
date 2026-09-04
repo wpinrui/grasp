@@ -21,11 +21,11 @@ describe("the page an edit is described", () => {
 
   it("says which objects are out of view", () => {
     const helper = { ...createPoint({ x: 50, y: 0 }, "medium"), hidden: true };
-    expect(listing([helper])).toContain("- A: point at (50, 0), hidden");
+    expect(listing([helper])).toContain("- point at (50, 0), hidden");
   });
 
   it("leaves one in view unmarked", () => {
     const drawn = createPoint({ x: 50, y: 0 }, "medium");
-    expect(listing([drawn])).toContain("- A: point at (50, 0)\n");
+    expect(listing([drawn])).toContain("- point at (50, 0)\n");
   });
 });

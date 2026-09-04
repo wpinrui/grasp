@@ -20,6 +20,7 @@ import {
   isLine,
   isMeasurement,
   isPoint,
+  nameable,
   namesFor,
   type Settled,
   type SketchObject,
@@ -33,6 +34,9 @@ export interface LabelContext {
   /** Where everything sits, for reading a measurement out by its number. */
   geometry: Settled;
 }
+
+/** What a row says where the thing it lists has never been labelled. */
+const NAMELESS = "—";
 
 /** What to call an object in a sentence. */
 export function kindOf(object: SketchObject): string {
@@ -60,7 +64,13 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
       ...before,
       objects: before.objects.map((object) => {
         if (object.id === id) {
-          const label = { ...object.label, name: name || undefined };
+          // Typed by hand, so it is not the run's to hand out again: the
+          // panel offers to put a typed name back on the run.
+          const label = {
+            ...object.label,
+            name: name || undefined,
+            typed: name ? true : undefined,
+          };
           return { ...object, label: options?.show ? { ...label, shown: true } : label };
         }
         // The one that was called this pins the name it has now, or the
@@ -115,26 +125,31 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
         ? captionRowName(object.html)
         : isMeasurement(object)
           ? readingText(readingOf(object, { objects, names, settled: geometry }))
-          : names.get(object.id);
+          : nameable(object, objects)
+            ? (names.get(object.id) ?? NAMELESS)
+            : undefined;
       return name
         ? [{ id: object.id, name, kind: kindOf(object).replace(/^(a|an|another) /, "") }]
         : [];
     });
   }
 
-  /** What the panel lists: one row per object that can carry a name. */
+  /**
+   * What the panel lists: one row per object that can carry a name, whether or
+   * not it has one. A row with an empty name is something never labelled, and
+   * typing a name into it is how it gets both its name and its label.
+   */
   function labelRows(): LabelRow[] {
     const names = namesFor(objects);
     return objects.flatMap((object) => {
-      const name = names.get(object.id);
-      if (!name) return [];
+      if (!nameable(object, objects)) return [];
       return [
         {
           id: object.id,
-          name,
+          name: names.get(object.id) ?? "",
           kind: kindOf(object).replace(/^(a|an|another) /, ""),
           shown: object.label?.shown === true,
-          pinned: object.label?.name !== undefined,
+          pinned: object.label?.typed === true,
           selected: selection.includes(object.id),
         },
       ];
@@ -150,15 +165,18 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
   /**
    * A label was typed into, in the panel or on the sheet. The name lands as it
    * was typed, with nothing asked about one already in use: two objects sharing
-   * a name is allowed, and the one that had it keeps it. An empty name puts the
-   * object back on the run.
+   * a name is allowed, and the one that had it keeps it. A name typed onto
+   * something never labelled labels it, since a name asked for is a name meant
+   * to be read. An empty name takes the name away, and a label still showing
+   * takes the next one the run has going.
    */
   function rename(id: string, name: string) {
     if (!name) {
       pinName(id, "");
       return;
     }
-    pinName(id, name, { keep: holderOf(id, name)?.id });
+    const first = objects.find((object) => object.id === id)?.label?.name === undefined;
+    pinName(id, name, { keep: holderOf(id, name)?.id, show: first });
   }
 
   /**
@@ -176,12 +194,11 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
    */
   function toggleLabels() {
     const before = sketch.read();
-    const names = namesFor(before.objects);
     const wanted =
       before.selection.length > 0
         ? before.objects.filter((object) => before.selection.includes(object.id))
         : before.objects;
-    const able = wanted.filter((object) => names.has(object.id));
+    const able = wanted.filter((object) => nameable(object, before.objects));
     if (able.length === 0) return;
     const showing = able.every((object) => object.label?.shown);
     const ids = new Set(able.map((object) => object.id));

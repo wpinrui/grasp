@@ -178,3 +178,8 @@
   background: var(--color-switch-knob);
   transform: translateX(13px);
 }
+
+/* A row for something never labelled, which has no name to show yet. */
+.labels__name--none {
+  color: var(--color-text-dim);
+}

@@ -14,6 +14,7 @@ import {
   type LineSpan,
   MEASURES,
   type MeasureKind,
+  namesAsBuilt,
   PARAMETER_UNITS,
   type ParameterUnit,
   POINT_SIZES,
@@ -25,8 +26,8 @@ import { ANGLE_UNITS, DISTANCE_UNITS, type Prefs } from "./prefs";
 
 const FORMAT = "grasp-sketch";
 
-/** Bumped when a sketch started carrying action buttons. */
-const VERSION = 10;
+/** Bumped when a label started keeping the name it was given. */
+const VERSION = 11;
 
 interface SketchFile {
   /** Absent on a sketch saved before preferences were in the file. */
@@ -417,6 +418,22 @@ function readPrefs(value: unknown): Prefs | undefined {
   return held as Prefs;
 }
 
+/**
+ * A sketch written before a label kept its name carries the letters it was
+ * shown with only in the order it was built, so they are written down as it is
+ * opened, exactly as that version lettered them. Without this the figure would
+ * be lettered afresh, and a file would not open saying what it said when it
+ * was saved.
+ */
+function letterAsBuilt(page: PageContent): void {
+  const names = namesAsBuilt(page.objects);
+  for (const object of page.objects) {
+    if (object.label?.shown !== true || object.label.name !== undefined) continue;
+    const name = names.get(object.id);
+    if (name) object.label.name = name;
+  }
+}
+
 export function parse(text: string): Opened {
   let file: SketchFile;
   try {
@@ -432,5 +449,6 @@ export function parse(text: string): Opened {
   if (!Array.isArray(pages) || pages.length === 0 || !pages.every(isPage)) {
     throw new Error("That sketch is damaged and cannot be opened.");
   }
+  if (file.version < 11) for (const page of pages) letterAsBuilt(page);
   return { pages, prefs: readPrefs(file.prefs) };
 }

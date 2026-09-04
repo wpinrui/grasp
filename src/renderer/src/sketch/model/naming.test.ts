@@ -1,0 +1,76 @@
+// @vitest-environment node
+import { describe, expect, it } from "vitest";
+import { createMeasurement, createPoint } from "./create";
+import type { SketchPoint } from "./figures";
+import { nameable, namesAsBuilt, namesFor, namesToGive } from "./naming";
+import type { SketchObject } from "./values";
+
+function point(x: number): SketchPoint {
+  return createPoint({ x, y: 0 }, "medium");
+}
+
+/** The same point, labelled and carrying the name it was given. */
+function called(one: SketchPoint, name: string, shown = true): SketchPoint {
+  return { ...one, label: { name, shown } };
+}
+
+describe("what a figure is called", () => {
+  it("leaves what was never labelled with no name at all", () => {
+    const names = namesFor([point(0), point(10)]);
+    expect(names.size).toBe(0);
+  });
+
+  it("letters the labelled ones from the start of the run", () => {
+    // Nine points on the page and only the last one labelled: it is A, not J,
+    // because the eight nobody labelled never took a letter.
+    const drawn = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((step) => point(step * 10));
+    const wanted = drawn[8];
+    expect(namesToGive(drawn, [wanted.id]).get(wanted.id)).toBe("A");
+  });
+
+  it("hands out the letters in the order the labels were asked for", () => {
+    const drawn = [point(0), point(10), point(20)];
+    const given = namesToGive(drawn, [drawn[2].id, drawn[0].id]);
+    // Handed out oldest first, whatever order they were asked for in.
+    expect(given.get(drawn[0].id)).toBe("A");
+    expect(given.get(drawn[2].id)).toBe("B");
+  });
+
+  it("steps over a letter something already answers to", () => {
+    const drawn = [called(point(0), "A"), point(10)];
+    expect(namesToGive(drawn, [drawn[1].id]).get(drawn[1].id)).toBe("B");
+  });
+
+  it("keeps a letter when the label beside it is hidden", () => {
+    // B's label is put away. A and C are not renumbered by it, and B keeps the
+    // name it was given, so showing it again brings the same letter back.
+    const drawn = [called(point(0), "A"), called(point(10), "B", false), called(point(20), "C")];
+    const names = namesFor(drawn);
+    expect(names.get(drawn[0].id)).toBe("A");
+    expect(names.get(drawn[1].id)).toBe("B");
+    expect(names.get(drawn[2].id)).toBe("C");
+  });
+
+  it("still names what writes its own name rather than hanging a label", () => {
+    const ends = [point(0), point(10)];
+    const measurement = createMeasurement(
+      "length",
+      ends.map((end) => end.id),
+      { x: 0, y: 0 },
+    );
+    const names = namesFor([...ends, measurement] as SketchObject[]);
+    expect(names.get(measurement.id)).toBe("m1");
+  });
+
+  it("says what can carry a name whether or not it has one", () => {
+    const bare = point(0);
+    expect(nameable(bare, [bare])).toBe(true);
+  });
+
+  it("letters everything as a sketch written before was lettered", () => {
+    // The reading a file older than kept names opens with: every object took
+    // its turn in the run, labelled or not, so the third point is C.
+    const drawn = [point(0), point(10), point(20)];
+    expect(namesAsBuilt(drawn).get(drawn[2].id)).toBe("C");
+  });
+});

@@ -65,7 +65,8 @@ export function asPasted(taken: SketchObject[], step: number): SketchObject[] {
   const off = PASTE_STEP * step;
   for (const object of made) {
     // A copy takes the next free name of its run rather than the one it came
-    // with, since two points called A can never both be on the sheet.
+    // with: a name is allowed to be shared, but not by accident, and a pasted
+    // figure landing on top of the one it came from is exactly that.
     if (object.label?.name !== undefined) {
       object.label = { shown: object.label.shown, off: object.label.off };
     }

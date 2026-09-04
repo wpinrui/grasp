@@ -3,12 +3,15 @@ import "./LabelPanel.css";
 
 export interface LabelRow {
   id: string;
-  /** What it is called now, whether that name was typed or handed out. */
+  /**
+   * What it is called now, whether that name was typed or handed out, and
+   * empty where it has never been labelled and so has no name at all.
+   */
   name: string;
   /** What kind of thing it is, for the row to say. */
   kind: string;
   shown: boolean;
-  /** Set when the name was typed rather than taken from the automatic run. */
+  /** Set when the name was typed rather than handed out by the run. */
   pinned: boolean;
   selected: boolean;
 }
@@ -185,13 +188,13 @@ export function LabelPanel({
                   ) : (
                     <button
                       type="button"
-                      className="labels__name"
+                      className={`labels__name${row.name ? "" : " labels__name--none"}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         setTyping({ id: row.id, text: row.name });
                       }}
                     >
-                      {row.name}
+                      {row.name || "—"}
                     </button>
                   )}
                   {row.pinned ? (
@@ -206,9 +209,9 @@ export function LabelPanel({
                     >
                       pinned
                     </button>
-                  ) : (
+                  ) : row.name ? (
                     <span className="labels__auto">auto</span>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>

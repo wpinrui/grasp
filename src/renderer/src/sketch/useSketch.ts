@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import { type Arming, armedOnto } from "./armed";
 import {
+  namesToGive,
   type PointSize,
   resolve,
   type SketchObject,
@@ -77,15 +78,38 @@ export function useSketch() {
   }, []);
 
   /**
+   * A label shown on something that has never carried a name takes one now, and
+   * keeps it. It is done here rather than at every place a label can be shown,
+   * so one asked for by the panel, by a key, by a paste, by a transform or by a
+   * script is named the same way. Undo and redo go round it: what they hand
+   * back was arrived at once already.
+   */
+  const lettered = useCallback((objects: SketchObject[]): SketchObject[] => {
+    const wanting = objects.filter(
+      (object) => object.label?.shown === true && object.label.name === undefined,
+    );
+    if (wanting.length === 0) return objects;
+    const given = namesToGive(
+      objects,
+      wanting.map((object) => object.id),
+    );
+    if (given.size === 0) return objects;
+    return objects.map((object) => {
+      const name = given.get(object.id);
+      return name ? { ...object, label: { ...object.label, name } } : object;
+    });
+  }, []);
+
+  /**
    * Every change goes through here, so an image is never left behind by the
    * point it came from: `resolve` settles them all before anything is shown.
    */
   const apply = useCallback(
     (next: SketchState, arm = true) => {
-      const objects = arm ? armed(namedIfWanted(next.objects)) : next.objects;
+      const objects = arm ? armed(lettered(namedIfWanted(next.objects))) : next.objects;
       write({ ...next, objects: resolve(objects) });
     },
-    [write, armed, namedIfWanted],
+    [write, armed, lettered, namedIfWanted],
   );
 
   const select = useCallback(

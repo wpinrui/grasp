@@ -104,12 +104,15 @@ export function parentsOf(from: Derivation): string[] {
 }
 
 /**
- * What an object's label is doing. A name that was typed is pinned and stays
- * put; without one the object takes its turn in the automatic run for its kind.
- * `off` is where the label sits from what it names, in screen pixels.
+ * What an object's label is doing. A label carries the name it was given, from
+ * the moment it is first shown, and keeps it: a figure's letters do not move
+ * because the label beside them was hidden. `off` is where the label sits from
+ * what it names, in screen pixels.
  */
 export interface LabelState {
   name?: string;
+  /** Set where the name was typed rather than handed out by the run for its kind. */
+  typed?: boolean;
   shown?: boolean;
   off?: Position;
   /**

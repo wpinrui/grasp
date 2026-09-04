@@ -55,6 +55,7 @@ import {
   markShape,
   markStrokes,
   markSweep,
+  nameable,
   namesFor,
   objectAt,
   objectsTouching,
@@ -1023,7 +1024,7 @@ export function Canvas({
     if (tool === "text" && !picking && !grab.current) {
       const over = positionOf(event);
       const found = over ? objectAt(over, { objects: objects, scale, settled }) : null;
-      const named = found !== null && names.has(found.id);
+      const named = found !== null && nameable(found, objects);
       if (named !== overNamed) setOverNamed(named);
     }
 
@@ -1370,7 +1371,7 @@ export function Canvas({
       // A click instead: on a thing it shows what that thing is called, and
       // clicking it again puts the label away.
       const hit = objectAt(at, { objects: objects, scale, settled });
-      if (hit && names.has(hit.id)) onToggleLabel(hit.id);
+      if (hit && nameable(hit, objects)) onToggleLabel(hit.id);
       return;
     }
 
