@@ -150,7 +150,7 @@ export function readingAlready(written: Written, measuring: Measuring): SketchMe
 export function angleMarkOn(
   angle: { corner: string; arms: [string, string]; reflex: boolean },
   hit: SketchObject | null,
-  measuring: Measuring,
+  measuring: Pick<Measuring, "objects" | "settled" | "lastMark" | "clearOf">,
 ): SketchMark {
   const { corner, arms, reflex } = angle;
   const { objects, settled, lastMark, clearOf } = measuring;

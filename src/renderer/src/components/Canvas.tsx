@@ -1330,8 +1330,7 @@ export function Canvas({
       const pair = landed && landed.id !== fromSide ? cornerBetween(fromSide, landed.id) : null;
       if (pair) {
         setArming(null);
-        if (marking === "angle")
-          markAngle({ corner: pair.corner, arms: pair.arms }, measuringNow());
+        if (marking === "angle") markAngle({ corner: pair.corner, arms: pair.arms });
         else readAngle(pair.corner, pair.arms);
         return;
       }
@@ -1419,7 +1418,7 @@ export function Canvas({
             return;
           }
           if (there.length === 1) {
-            markAngle({ corner: armed.corner, arms: there[0].arms }, measuringNow());
+            markAngle({ corner: armed.corner, arms: there[0].arms });
             return;
           }
           setChoosing({
@@ -2164,7 +2163,7 @@ export function Canvas({
               const { corner, way } = choosing;
               setChoosing(null);
               setShowingArms(null);
-              if (way === "mark") markAngle({ corner, arms }, measuringNow());
+              if (way === "mark") markAngle({ corner, arms });
               else readAngle(corner, arms);
             }}
             onShow={setShowingArms}

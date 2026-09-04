@@ -34,6 +34,7 @@ import {
 } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
 import { angleMarkOn, angleReadingSpot, type Measuring } from "./readings";
+import { ANGLE_ROOM, type LastMark } from "./sheet";
 
 /**
  * What working out where a number hangs takes: where the figure settled, the
@@ -41,8 +42,6 @@ import { angleMarkOn, angleReadingSpot, type Measuring } from "./readings";
  * nothing this hook owns travels back in through its own front door.
  */
 export type Reading = Pick<Measuring, "settled" | "scale" | "saying">;
-
-import { ANGLE_ROOM, type LastMark } from "./sheet";
 
 /**
  * What the last mark of each kind was left as. `LastMark` is the narrow view of
@@ -209,7 +208,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
    * An angle marked the other way round. The number on it goes round too where
    * that number is the only one, which is why the readings are handed in.
    */
-  function flipReflex(id: string, reading: Reading) {
+  function flipReflex(id: string, hangsOn: Reading) {
     const mark = objects.find((object) => object.id === id);
     if (!mark || !isMark(mark) || "path" in mark) return;
     // Turning it round would make it the mark the other side of these arms
@@ -247,7 +246,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
     );
     const alone = readings.length === 1 && marked.length === 1 ? readings[0] : null;
     const hangs = alone
-      ? angleReadingSpot({ reading: alone, mark: turned, reflex }, reading)
+      ? angleReadingSpot({ reading: alone, mark: turned, reflex }, hangsOn)
       : null;
     const before = sketch.read();
     sketch.commit({
@@ -339,10 +338,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
    * mark already there. One angle at a corner is marked once, the same way one
    * path says a thing once.
    */
-  function markAngle(
-    angle: { corner: string; arms: [string, string]; reflex?: boolean },
-    measuring: Measuring,
-  ) {
+  function markAngle(angle: { corner: string; arms: [string, string]; reflex?: boolean }) {
     const { corner, arms, reflex = false } = angle;
     const already = objects.find(
       (object) =>
@@ -356,7 +352,12 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
       setPanel(already.id);
       return;
     }
-    const mark = angleMarkOn({ corner, arms, reflex }, null, measuring);
+    const mark = angleMarkOn({ corner, arms, reflex }, null, {
+      objects,
+      settled,
+      lastMark: lastMark.current,
+      clearOf: clearOfCorner,
+    });
     addMark(mark);
     setPanel(mark.id);
   }
