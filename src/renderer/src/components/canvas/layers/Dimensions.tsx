@@ -8,21 +8,25 @@
  */
 
 import { isMeasurement, type SketchMeasurement, type SketchObject } from "../../../sketch/model";
+import { dimensionOf } from "../dimensions";
+import { useSheet } from "../SheetContext";
 
 interface DimensionsProps {
   /** Everything written on the sheet; only the measurements are drawn out. */
   readings: SketchObject[];
-  /** The runs, heads and dotted lines for one reading, or nothing to draw. */
-  drawnFor: (
-    reading: SketchMeasurement,
-  ) => { lines: string[]; heads: string[]; dotted: string[] } | null;
+  /**
+   * How big a reading came out once it was drawn, which the sheet measures off
+   * the box it was drawn into rather than working out again here.
+   */
+  boxOf: (reading: SketchMeasurement) => { width: number; height: number };
 }
 
-export function Dimensions({ readings, drawnFor }: DimensionsProps) {
+export function Dimensions({ readings, boxOf }: DimensionsProps) {
+  const { settled, scale } = useSheet();
   return (
     <>
       {readings.filter(isMeasurement).map((reading) => {
-        const drawn = drawnFor(reading);
+        const drawn = dimensionOf(reading, boxOf(reading), { settled, scale });
         if (!drawn) return null;
         return (
           <g key={`dimension-${reading.id}`} data-id={reading.id}>

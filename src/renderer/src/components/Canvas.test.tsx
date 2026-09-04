@@ -53,7 +53,8 @@ const FIGURE: SketchObject[] = [
   },
   { id: "len", kind: "measurement", measure: "length", of: ["seg"], x: 200, y: 470 },
   // A locus, and the point and path it is driven along, so the layer that draws
-  // it and the arrowheads it is dragged by are covered too.
+  // it is covered. Its domain is a segment, which has two ends of its own, so
+  // no arrowhead is drawn on it and that half is covered in `shapes.test.ts`.
   {
     id: "D",
     kind: "point",
@@ -103,13 +104,24 @@ interface HarnessProps {
   selection?: string[];
   /** Called on every render with the page as it stands, for a test to read. */
   report?: (state: SketchState) => void;
+  /** An object lit up from somewhere else, so the band drawn on it is covered. */
+  spotlight?: string | null;
+  /** What a dialog is holding, so the rings and bands it draws are covered. */
+  marks?: { id: string; label: string }[];
 }
 
 /**
  * The canvas as the window puts it up, with the props that do not matter to
  * what is drawn tied off.
  */
-function Harness({ objects, tool, selection = [], report }: HarnessProps) {
+function Harness({
+  objects,
+  tool,
+  selection = [],
+  report,
+  spotlight = null,
+  marks = [],
+}: HarnessProps) {
   const sketch = useSketch();
   const laid = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the figure is laid out once, and the sketch handle is stable
@@ -131,9 +143,9 @@ function Harness({ objects, tool, selection = [], report }: HarnessProps) {
       lineForm="segment"
       polygonKind="interior"
       preview={[]}
-      marks={[]}
+      marks={marks}
       onRename={() => {}}
-      spotlight={null}
+      spotlight={spotlight}
       onToggleLabel={() => {}}
       labelPick={[]}
       onLabelPick={() => {}}
@@ -183,10 +195,22 @@ function drawn(container: HTMLElement): string {
 function put(
   objects: SketchObject[],
   tool: string,
-  more: { selection?: string[]; report?: (state: SketchState) => void } = {},
+  more: {
+    selection?: string[];
+    report?: (state: SketchState) => void;
+    spotlight?: string | null;
+    marks?: { id: string; label: string }[];
+  } = {},
 ) {
   return render(
-    <Harness objects={objects} tool={tool} selection={more.selection} report={more.report} />,
+    <Harness
+      objects={objects}
+      tool={tool}
+      selection={more.selection}
+      report={more.report}
+      spotlight={more.spotlight}
+      marks={more.marks}
+    />,
   );
 }
 
@@ -235,6 +259,26 @@ describe("the figure on the sheet", () => {
     });
     expect(drawn(container)).toMatchSnapshot();
   });
+
+  /**
+   * The bands and rings the window asks for rather than the page: an object lit
+   * up from somewhere else, and the points and paths a dialog is holding. The
+   * two figures above draw none of it, so the layers that lay it out would move
+   * with nothing watching.
+   */
+  it("draws what the window is pointing at, lit and held", () => {
+    const { container } = put(FIGURE, "arrow", {
+      spotlight: "circ",
+      marks: [
+        { id: "A", label: "1" },
+        { id: "seg", label: "2" },
+      ],
+    });
+    expect(container.querySelector(".canvas__snap-band")).not.toBe(null);
+    expect(container.querySelector(".canvas__mark")).not.toBe(null);
+    expect(container.querySelector(".canvas__mark-band")).not.toBe(null);
+    expect(drawn(container)).toMatchSnapshot();
+  });
 });
 
 describe("the gestures the sheet is drawn with", () => {
@@ -272,6 +316,37 @@ describe("the gestures the sheet is drawn with", () => {
     act(() => press(sheet, { x: 100, y: 100 }));
     act(() => press(sheet, { x: 300, y: 200 }));
     expect(page().objects.map((object) => object.kind)).toEqual(["point", "point", "line"]);
+  });
+
+  /**
+   * Between the two clicks the sheet says what it would draw: how long the line
+   * is so far, and the angle it makes. It is gone the moment the line lands.
+   */
+  it("says what a half-drawn line comes to, until it lands", () => {
+    const { container } = put([], "straightedge");
+    const sheet = container.querySelector(".canvas__sheet") as HTMLElement;
+    act(() => press(sheet, { x: 100, y: 100 }));
+    act(() => {
+      fireEvent.pointerMove(sheet, { clientX: 300, clientY: 200, pointerId: 1 });
+    });
+    expect(container.querySelector(".canvas__guide")).not.toBe(null);
+    expect(container.querySelector(".canvas__guide-datum")).not.toBe(null);
+    act(() => press(sheet, { x: 300, y: 200 }));
+    expect(container.querySelector(".canvas__guide")).toBe(null);
+  });
+
+  /**
+   * A length asked to be drawn out gets a run between the segment's ends with an
+   * arrowhead at each. The figures above carry a bare number instead, so nothing
+   * there reaches the layer that lays that out.
+   */
+  it("draws out a length that is asked to be drawn out", () => {
+    const bounded = FIGURE.map((object) =>
+      object.id === "len" ? { ...object, bounds: "full" as const } : object,
+    );
+    const { container } = put(bounded, "arrow");
+    expect(container.querySelector(".canvas__dimension")).not.toBe(null);
+    expect(container.querySelectorAll(".canvas__dimension-head")).toHaveLength(2);
   });
 
   it("catches what a marquee is dragged over", () => {

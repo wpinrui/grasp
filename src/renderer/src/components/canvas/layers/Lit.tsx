@@ -7,32 +7,19 @@
  * rather than from what is on the sheet.
  */
 
-import {
-  filledPath,
-  isArc,
-  isCircle,
-  isInterior,
-  isLine,
-  isPoint,
-  type Position,
-  radiusOf,
-  type SketchLine,
-  type SketchPoint,
-  wedgeOf,
-} from "../../../sketch/model";
+import { isArc, isCircle, isInterior, isLine, isPoint, radiusOf } from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
-import { arcPath, wedgePath } from "../shapes";
+import { arcPath, interiorShape } from "../shapes";
 
 interface LitProps {
-  /** What to light, which is what `litWith` worked out for the thing asked for. */
+  /** The ids to draw a band along. */
   ids: string[];
-  /** Every point on the page by id, since a lit dot is drawn where it settled. */
-  ends: Map<string, SketchPoint>;
-  spanOf: (line: SketchLine) => [Position, Position] | null;
 }
 
-export function Lit({ ids, ends, spanOf }: LitProps) {
-  const { everything, settled, scale } = useSheet();
+const ROUND = "canvas__snap-band canvas__snap-band--round";
+
+export function Lit({ ids }: LitProps) {
+  const { everything, settled, scale, ends, spanOf } = useSheet();
 
   function bandFor(id: string) {
     const object = everything.find((candidate) => candidate.id === id);
@@ -40,12 +27,7 @@ export function Lit({ ids, ends, spanOf }: LitProps) {
     if (isArc(object)) {
       const arc = settled.arcs.get(object.id);
       return arc ? (
-        <path
-          key={id}
-          className="canvas__snap-band canvas__snap-band--round"
-          d={arcPath(arc)}
-          vectorEffect="non-scaling-stroke"
-        />
+        <path key={id} className={ROUND} d={arcPath(arc)} vectorEffect="non-scaling-stroke" />
       ) : null;
     }
     if (isCircle(object)) {
@@ -53,7 +35,7 @@ export function Lit({ ids, ends, spanOf }: LitProps) {
       return round ? (
         <circle
           key={id}
-          className="canvas__snap-band canvas__snap-band--round"
+          className={ROUND}
           cx={round.at.x}
           cy={round.at.y}
           r={round.radius}
@@ -62,41 +44,31 @@ export function Lit({ ids, ends, spanOf }: LitProps) {
       ) : null;
     }
     if (isInterior(object)) {
-      const inside = filledPath(object);
-      if (inside) {
-        const wedge = wedgeOf(object);
-        const arc = wedge ? settled.arcs.get(inside) : undefined;
-        if (arc) {
-          return (
-            <path
-              key={id}
-              className="canvas__snap-band canvas__snap-band--round"
-              d={wedgePath(arc, wedge as "sector")}
-              vectorEffect="non-scaling-stroke"
-            />
-          );
-        }
-        const round = settled.circles.get(inside);
-        return round ? (
+      const shape = interiorShape(object, settled);
+      if (!shape) return null;
+      if (shape.kind === "path") {
+        return <path key={id} className={ROUND} d={shape.d} vectorEffect="non-scaling-stroke" />;
+      }
+      if (shape.kind === "circle") {
+        return (
           <circle
             key={id}
-            className="canvas__snap-band canvas__snap-band--round"
-            cx={round.at.x}
-            cy={round.at.y}
-            r={round.radius}
+            className={ROUND}
+            cx={shape.at.x}
+            cy={shape.at.y}
+            r={shape.radius}
             vectorEffect="non-scaling-stroke"
           />
-        ) : null;
+        );
       }
-      const corners = settled.shapes.get(object.id);
-      return corners ? (
+      return (
         <polygon
           key={id}
-          className="canvas__snap-band canvas__snap-band--round"
-          points={corners.map((corner) => `${corner.x},${corner.y}`).join(" ")}
+          className={ROUND}
+          points={shape.points}
           vectorEffect="non-scaling-stroke"
         />
-      ) : null;
+      );
     }
     if (isPoint(object)) {
       const spot = ends.get(object.id);

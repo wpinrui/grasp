@@ -4,14 +4,14 @@
  * around it rather than a colour of its own.
  */
 
-import { fillLook, radiusOf } from "../../../sketch/model";
+import { fillLook, pointsOf, radiusOf } from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
 
 export function Points() {
-  const { points, selection, scale } = useSheet();
+  const { objects, selection, scale } = useSheet();
   return (
     <>
-      {points.map((object) => (
+      {pointsOf(objects).map((object) => (
         <g key={object.id} data-id={object.id}>
           {selection.includes(object.id) && (
             <circle

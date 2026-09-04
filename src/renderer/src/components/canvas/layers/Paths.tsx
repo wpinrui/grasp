@@ -5,27 +5,19 @@
  * than as a change to it.
  *
  * A straight object runs on past its ends, so where it is cut off is worked out
- * against the sheet rather than off the object, and is handed in.
+ * against the viewport rather than off the object.
+ *
+ * The three passes are in paint order: arcs, then circles, then straight
+ * objects. Folding them into one pass over the objects would draw them in the
+ * order they were made instead, which is not the same picture.
  */
 
-import {
-  isArc,
-  isCircle,
-  isLine,
-  type Position,
-  type SketchLine,
-  strokeLook,
-} from "../../../sketch/model";
+import { isArc, isCircle, isLine, strokeLook } from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
 import { arcPath } from "../shapes";
 
-interface PathsProps {
-  /** Where a straight object is cut off by the sheet it is drawn on. */
-  spanOf: (line: SketchLine) => [Position, Position] | null;
-}
-
-export function Paths({ spanOf }: PathsProps) {
-  const { objects, settled, selection } = useSheet();
+export function Paths() {
+  const { objects, settled, selection, spanOf } = useSheet();
   return (
     <>
       {objects.map((object) => {

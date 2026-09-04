@@ -5,27 +5,23 @@
  *
  * The ghosts of what it would make are a different thing and are drawn with the
  * rest of the preview.
+ *
+ * A held point is found among every point on the page, so one that is hidden
+ * still gets its ring; a held line is found among what is drawn, so a hidden
+ * one gets no band. That is how it has always behaved, and it is the reason the
+ * two are looked up in different places.
  */
 
-import {
-  isLine,
-  type Position,
-  radiusOf,
-  type SketchLine,
-  type SketchPoint,
-} from "../../../sketch/model";
+import { isLine, radiusOf } from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
 
 interface HoldingProps {
   /** The ids a dialog has taken, each with the caption drawn by it. */
   marks: { id: string; label: string }[];
-  /** Where each of those sits, for the ones that are points. */
-  ends: Map<string, SketchPoint>;
-  spanOf: (line: SketchLine) => [Position, Position] | null;
 }
 
-export function Holding({ marks, ends, spanOf }: HoldingProps) {
-  const { objects, scale } = useSheet();
+export function Holding({ marks }: HoldingProps) {
+  const { objects, scale, ends, spanOf } = useSheet();
   return (
     <>
       {marks.map((mark) => {

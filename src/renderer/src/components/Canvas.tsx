@@ -42,7 +42,6 @@ import {
   distanceToPath,
   endsById,
   familyOf,
-  filledPath,
   fillLook,
   isArc,
   isButton,
@@ -105,7 +104,6 @@ import {
   toSheet,
   union,
   type View,
-  wedgeOf,
 } from "../sketch/model";
 import { demotedUnder } from "../sketch/overlaps";
 import { togglePick } from "../sketch/picking";
@@ -114,7 +112,6 @@ import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
-import { dimensionOf } from "./canvas/dimensions";
 import { guideOf } from "./canvas/guides";
 import { Dimensions } from "./canvas/layers/Dimensions";
 import { Fills } from "./canvas/layers/Fills";
@@ -137,7 +134,7 @@ import {
   sameAngle,
 } from "./canvas/readings";
 import { SheetProvider } from "./canvas/SheetContext";
-import { arcPath, arrowPoints, wedgePath } from "./canvas/shapes";
+import { arcPath, arrowPoints, interiorShape } from "./canvas/shapes";
 import {
   ANGLE_AIM,
   ANGLE_ROOM,
@@ -496,7 +493,6 @@ export function Canvas({
       !(hiddenKinds.marks && isMark(object)) &&
       !(hiddenKinds.text && isWriting(object)),
   );
-  const points = pointsOf(objects);
   // Where every line runs, worked out once for drawing, picking and marquees.
   const settled = settle(everything).settled;
   // Space pans whatever tool is up, and hands it back on release. Panning has
@@ -2608,7 +2604,7 @@ export function Canvas({
     : null;
 
   return (
-    <SheetProvider value={{ objects, everything, points, settled, selection, scale }}>
+    <SheetProvider value={{ objects, everything, settled, selection, scale, ends, spanOf }}>
       <div className="canvas">
         {/* biome-ignore lint/a11y/noStaticElementInteractions: the sheet is the drawing surface, where every gesture is a pointer gesture; the keyboard reaches the same work through the menus and their shortcuts */}
         <div
@@ -2623,8 +2619,8 @@ export function Canvas({
           onContextMenu={handleContextMenu}
           onWheel={handleWheel}
         >
-          {/* The dots keep their size on screen, so their radii are divided by
-            the scale and their strokes are left unscaled. */}
+          {/* Anything drawn at a size rather than a place keeps that size on
+            screen, so it is divided by the scale and its stroke left unscaled. */}
           <svg className="canvas__objects" aria-hidden="true">
             <g transform={`scale(${scale}) translate(${-view.x} ${-view.y})`}>
               <Fills />
@@ -2640,7 +2636,7 @@ export function Canvas({
                   points={arrowPoints(handle, scale)}
                 />
               ))}
-              <Paths spanOf={spanOf} />
+              <Paths />
               {tracing && (
                 <g>
                   {/* What the polygon would be if it closed here: the fill once
@@ -2849,21 +2845,17 @@ export function Canvas({
                   );
                 })()}
               <Points />
-              {spotlight && (
-                <Lit ids={litWith(spotlight, everything)} ends={ends} spanOf={spanOf} />
-              )}
-              {lit && lit !== spotlight && (
-                <Lit ids={litWith(lit, everything)} ends={ends} spanOf={spanOf} />
-              )}
+              {spotlight && <Lit ids={litWith(spotlight, everything)} />}
+              {lit && lit !== spotlight && <Lit ids={litWith(lit, everything)} />}
               {under && under !== spotlight && !selection.includes(under) && (
-                <Lit ids={litWith(under, everything)} ends={ends} spanOf={spanOf} />
+                <Lit ids={litWith(under, everything)} />
               )}
-              <Lit ids={litReading} ends={ends} spanOf={spanOf} />
+              <Lit ids={litReading} />
               {snap && (
                 <g>
                   {/* The paths a click would attach to, or whose crossing it
                     would build, lit the whole way along. */}
-                  {snap.kind !== "point" && <Lit ids={snap.ids} ends={ends} spanOf={spanOf} />}
+                  {snap.kind !== "point" && <Lit ids={snap.ids} />}
                   <circle
                     className="canvas__snap"
                     cx={snap.at.x}
@@ -2873,7 +2865,7 @@ export function Canvas({
                   />
                 </g>
               )}
-              <Holding marks={marks} ends={ends} spanOf={spanOf} />
+              <Holding marks={marks} />
               {preview.map((object) => {
                 if (isArc(object)) {
                   const arc = previewSettled.arcs.get(object.id);
@@ -2904,38 +2896,24 @@ export function Canvas({
                   return shape ? drawLocus(object.id, shape, true) : null;
                 }
                 if (isInterior(object)) {
-                  const inside = filledPath(object);
-                  if (inside) {
-                    const wedge = wedgeOf(object);
-                    const arc = wedge ? previewSettled.arcs.get(inside) : undefined;
-                    if (arc) {
-                      return (
-                        <path
-                          key={object.id}
-                          className="canvas__interior canvas__interior--preview"
-                          d={wedgePath(arc, wedge as "sector")}
-                        />
-                      );
-                    }
-                    const where = previewSettled.circles.get(inside);
-                    return where ? (
+                  const shape = interiorShape(object, previewSettled);
+                  if (!shape) return null;
+                  const ghost = "canvas__interior canvas__interior--preview";
+                  if (shape.kind === "path") {
+                    return <path key={object.id} className={ghost} d={shape.d} />;
+                  }
+                  if (shape.kind === "circle") {
+                    return (
                       <circle
                         key={object.id}
-                        className="canvas__interior canvas__interior--preview"
-                        cx={where.at.x}
-                        cy={where.at.y}
-                        r={where.radius}
+                        className={ghost}
+                        cx={shape.at.x}
+                        cy={shape.at.y}
+                        r={shape.radius}
                       />
-                    ) : null;
+                    );
                   }
-                  const corners = previewSettled.shapes.get(object.id);
-                  return corners ? (
-                    <polygon
-                      key={object.id}
-                      className="canvas__interior canvas__interior--preview"
-                      points={corners.map((corner) => `${corner.x},${corner.y}`).join(" ")}
-                    />
-                  ) : null;
+                  return <polygon key={object.id} className={ghost} points={shape.points} />;
                 }
                 if (!isLine(object)) return null;
                 const span = spanOf(object, previewSettled);
@@ -2961,10 +2939,7 @@ export function Canvas({
                   vectorEffect="non-scaling-stroke"
                 />
               ))}
-              <Dimensions
-                readings={readings}
-                drawnFor={(reading) => dimensionOf(reading, boxOf(reading), { settled, scale })}
-              />
+              <Dimensions readings={readings} boxOf={boxOf} />
               <Guides guide={guide} />
               {marquee && (
                 <rect

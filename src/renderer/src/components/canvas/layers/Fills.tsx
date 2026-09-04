@@ -4,9 +4,9 @@
  * of an arc.
  */
 
-import { filledPath, fillLook, isInterior, wedgeOf } from "../../../sketch/model";
+import { fillLook, isInterior } from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
-import { wedgePath } from "../shapes";
+import { interiorShape } from "../shapes";
 
 export function Fills() {
   const { objects, settled, selection } = useSheet();
@@ -14,46 +14,37 @@ export function Fills() {
     <>
       {objects.map((object) => {
         if (!isInterior(object)) return null;
+        const shape = interiorShape(object, settled);
+        if (!shape) return null;
         const kind = `canvas__interior${
           selection.includes(object.id) ? " canvas__interior--selected" : ""
         }`;
-        const inside = filledPath(object);
-        if (inside) {
-          const wedge = wedgeOf(object);
-          const arc = wedge ? settled.arcs.get(inside) : undefined;
-          if (arc) {
-            return (
-              <path
-                key={object.id}
-                data-id={object.id}
-                className={kind}
-                style={fillLook(object, true)}
-                d={wedgePath(arc, wedge as "sector")}
-              />
-            );
-          }
-          const where = settled.circles.get(inside);
-          return where ? (
+        const look = fillLook(object, true);
+        if (shape.kind === "path") {
+          return (
+            <path key={object.id} data-id={object.id} className={kind} style={look} d={shape.d} />
+          );
+        }
+        if (shape.kind === "circle") {
+          return (
             <circle
               key={object.id}
               data-id={object.id}
               className={kind}
-              style={fillLook(object, true)}
-              cx={where.at.x}
-              cy={where.at.y}
-              r={where.radius}
+              style={look}
+              cx={shape.at.x}
+              cy={shape.at.y}
+              r={shape.radius}
             />
-          ) : null;
+          );
         }
-        const corners = settled.shapes.get(object.id);
-        if (!corners) return null;
         return (
           <polygon
             key={object.id}
             data-id={object.id}
             className={kind}
-            style={fillLook(object, true)}
-            points={corners.map((corner) => `${corner.x},${corner.y}`).join(" ")}
+            style={look}
+            points={shape.points}
           />
         );
       })}
