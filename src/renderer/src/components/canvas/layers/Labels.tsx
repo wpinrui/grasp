@@ -39,6 +39,13 @@ interface LabelsProps {
    * a caption.
    */
   reachable: boolean;
+  /**
+   * The name a vertex is about to be given, drawn where its label will hang so
+   * that a relabel run says what a click would do before it is made. The label
+   * it stands in for is left out of `labels` while this is up, so the two never
+   * sit one on top of the other.
+   */
+  ghost?: DrawnLabel | null;
   naming: LabelEdit | null;
   onNaming: (naming: LabelEdit | null) => void;
   onRename: (id: string, name: string) => void;
@@ -53,6 +60,7 @@ export function Labels({
   scale,
   picked,
   reachable,
+  ghost,
   naming,
   onNaming,
   onRename,
@@ -60,13 +68,18 @@ export function Labels({
   onDrag,
   onDrop,
 }: LabelsProps) {
+  /** Where a label sits on screen: what it hangs from, moved by its own offset. */
+  function whereOf(label: DrawnLabel) {
+    return {
+      left: `${(label.at.x - view.x) * scale + label.off.x}px`,
+      top: `${(label.at.y - view.y) * scale + label.off.y}px`,
+    };
+  }
+
   return (
     <>
       {labels.map((label) => {
-        const where = {
-          left: `${(label.at.x - view.x) * scale + label.off.x}px`,
-          top: `${(label.at.y - view.y) * scale + label.off.y}px`,
-        };
+        const where = whereOf(label);
         if (naming?.id === label.id) {
           return (
             <input
@@ -108,6 +121,15 @@ export function Labels({
           </span>
         );
       })}
+
+      {ghost && (
+        <span
+          className="canvas__label canvas__label--ghost"
+          style={{ ...whereOf(ghost), ...ghost.look }}
+        >
+          {ghost.name}
+        </span>
+      )}
     </>
   );
 }

@@ -234,6 +234,12 @@ interface CanvasProps {
   measureKind: string;
   /** What the Arrow is armed with: anything, or one kind of thing. */
   arrowKind: string;
+  /** What the Text tool is armed with: captions, or a relabel run. */
+  labelKind: string;
+  /** The name the next vertex clicked would take, or null before a run starts. */
+  relabelName: string | null;
+  onRelabelAsk: (id: string, at: { x: number; y: number }) => void;
+  onRelabelGive: (id: string) => void;
   /** What the Marker is armed with: equal sides, parallel sides, or an angle. */
   markForm: string;
   /** The whole kinds being kept out of the way, from the Hidden panel. */
@@ -280,6 +286,10 @@ export function Canvas({
   snapping,
   measureKind,
   arrowKind,
+  labelKind,
+  relabelName,
+  onRelabelAsk,
+  onRelabelGive,
   markForm,
   hiddenKinds,
   spotlight,
@@ -398,6 +408,8 @@ export function Canvas({
   const [middle, setMiddle] = useState<Position | null>(null);
   /** Whether the Text tool is over something it could put a label on. */
   const [overNamed, setOverNamed] = useState(false);
+  /** The vertex a relabel run would name next, which is the one under the pointer. */
+  const [relabelOver, setRelabelOver] = useState<string | null>(null);
   /** An object a Hot Text link is being pointed at, lit up where it sits. */
   const [lit, setLit] = useState<string | null>(null);
   /** What a reading under the pointer is taken from, lit up where it sits. */
@@ -467,13 +479,16 @@ export function Canvas({
   const measuring = tool === "measure" ? measureKind : null;
   /** What the Marker would mark, or null while it is not the tool that is up. */
   const marking = tool === "marker" ? (markForm as MarkForm) : null;
+  /** Whether the Text tool is handing out letters rather than making captions. */
+  const relabelling = tool === "text" && labelKind === "relabel";
   /** The tools that put a point down, and so say what a click would land on. */
   const plotting = drawing || tool === "point" || tool === "polygon";
   // The Text tool says what a click would do before it is made: over a thing
   // that can be named it is the hand that shows and hides labels, and over bare
   // sheet it is the box a caption would be dragged out of. The other pointers
   // belong to the label, the caption and its grip, which carry their own.
-  const cursor = tool === "text" && overNamed ? "text-label" : tool;
+  const cursor =
+    tool === "text" && (relabelling ? relabelOver !== null : overNamed) ? "text-label" : tool;
 
   const {
     panel,
@@ -1021,11 +1036,21 @@ export function Canvas({
     } else if (under !== null) {
       setUnder(null);
     }
-    if (tool === "text" && !picking && !grab.current) {
+    if (tool === "text" && !relabelling && !picking && !grab.current) {
       const over = positionOf(event);
       const found = over ? objectAt(over, { objects: objects, scale, settled }) : null;
       const named = found !== null && nameable(found, objects);
       if (named !== overNamed) setOverNamed(named);
+    }
+
+    // A relabel run says which vertex the next letter would land on before the
+    // click that lands it, with the letter itself drawn faintly where it will go.
+    if (relabelling && !picking && !grab.current) {
+      const over = positionOf(event);
+      const found = over ? pointUnder(over, { objects, scale }) : null;
+      if ((found?.id ?? null) !== relabelOver) setRelabelOver(found?.id ?? null);
+    } else if (relabelOver !== null) {
+      setRelabelOver(null);
     }
 
     // Both angle tools say what a corner holds before it is pressed. The
@@ -1148,9 +1173,10 @@ export function Canvas({
       return;
     }
 
-    // The Text tool drags out the box the new caption will fill.
+    // The Text tool drags out the box the new caption will fill. Armed for a
+    // relabel run there is no caption to be had, so it drags out nothing.
     if (tool === "text") {
-      if (state.moved && !state.hitId) setBoxing(rectBetween(state.origin, at));
+      if (!relabelling && state.moved && !state.hitId) setBoxing(rectBetween(state.origin, at));
       return;
     }
 
@@ -1357,6 +1383,17 @@ export function Canvas({
         Date.now() - state.pressed >= DRAW_HOLD && distance(at, state.origin) >= DRAW_REACH / scale;
       if (state.started && !pulled) return;
       finishDrawing(aim.found, aim.spot);
+      return;
+    }
+
+    // A relabel run: the vertex clicked takes the next letter going, and the
+    // first one clicked asks which letter to start at.
+    if (relabelling) {
+      const found = state.moved ? null : pointUnder(at, { objects, scale });
+      if (found) {
+        if (relabelName === null) onRelabelAsk(found.id, { x: event.clientX, y: event.clientY });
+        else onRelabelGive(found.id);
+      }
       return;
     }
 
@@ -1673,9 +1710,29 @@ export function Canvas({
     return look;
   }
 
+  /**
+   * The letter the vertex under the pointer is about to take, drawn where its
+   * label will hang. It stands in for that vertex's own label while it is up,
+   * so a vertex being renamed is never drawn saying both names at once.
+   */
+  function relabelGhost() {
+    if (relabelName === null || relabelOver === null) return null;
+    const object = objects.find((candidate) => candidate.id === relabelOver);
+    const at = object ? labelAnchor(labelling, object) : null;
+    if (!object || !at) return null;
+    return {
+      id: object.id,
+      name: relabelName,
+      at,
+      off: object.label?.off ?? labelOff(labelling, object, at),
+      look: labelLook(object.label ?? {}),
+    };
+  }
+  const ghost = relabelGhost();
+
   /** Every label being shown, with where it hangs and how far off it sits. */
   const labels = objects.flatMap((object) => {
-    if (!object.label?.shown) return [];
+    if (!object.label?.shown || object.id === ghost?.id) return [];
     const name = names.get(object.id);
     const at = name ? labelAnchor(labelling, object) : null;
     if (!at || !name) return [];
@@ -1774,7 +1831,10 @@ export function Canvas({
             view={view}
             scale={scale}
             picked={labelPick}
-            reachable={(tool === "arrow" ? takesWriting : tool === "text") && !picking}
+            reachable={
+              (tool === "arrow" ? takesWriting : tool === "text" && !relabelling) && !picking
+            }
+            ghost={ghost}
             naming={naming}
             onNaming={setNaming}
             onRename={onRename}

@@ -20,6 +20,7 @@ import {
   PolygonFillIcon,
   PolygonIcon,
   RayIcon,
+  RelabelIcon,
   SegmentIcon,
   StraightedgeIcon,
   TextIcon,
@@ -87,7 +88,20 @@ export const TOOLS: Tool[] = [
     ],
     Icon: PolygonIcon,
   },
-  { id: "text", name: "Text", key: "T", flyout: false, Icon: TextIcon },
+  {
+    id: "text",
+    name: "Text",
+    key: "T",
+    flyout: true,
+    // Captions and labels are both writing on the sheet, so the one tool does
+    // both: dragging out something to say, and handing out the letters a
+    // figure's vertices are named by.
+    variants: [
+      { id: "caption", name: "Text", Icon: TextIcon },
+      { id: "relabel", name: "Relabel", Icon: RelabelIcon },
+    ],
+    Icon: TextIcon,
+  },
   {
     id: "measure",
     name: "Measure",

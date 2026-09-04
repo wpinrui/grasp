@@ -89,6 +89,9 @@ interface MenusProps {
   setRecent: (recent: string[]) => void;
   /** What the object clipboard is holding, read again as a menu opens. */
   clipHeld: string | null;
+  /** Undo and redo as the window does them, a relabel run stepping back too. */
+  onUndo: () => void;
+  onRedo: () => void;
   setClipHeld: (held: string | null) => void;
   /** The size the selection shares, which is what the menu ticks. */
   shared: PointSize | null;
@@ -120,6 +123,8 @@ export function Menus({
   shared,
   setPointSize,
   clipboard,
+  onUndo,
+  onRedo,
 }: MenusProps) {
   /** Greyed when an entry has nothing to act on. */
   function isEnabled(action: MenuAction): boolean {
@@ -227,8 +232,8 @@ export function Menus({
         else if (action === "save-as") void doc.saveAs();
         else if (action === "close") doc.close();
         else if (action === "quit") void doc.quit();
-        else if (action === "undo") sketch.undo();
-        else if (action === "redo") sketch.redo();
+        else if (action === "undo") onUndo();
+        else if (action === "redo") onRedo();
         else if (action === "clear") sketch.remove();
         else if (action === "cut") clipboard.cutSelection();
         else if (action === "copy") clipboard.copySelection();

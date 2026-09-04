@@ -146,6 +146,32 @@ export function TextIcon() {
   );
 }
 
+/** Relabel: the letters handed out in the order the vertices are clicked. */
+export function RelabelIcon() {
+  const letter = {
+    textAnchor: "middle" as const,
+    fill: "currentColor",
+    stroke: "none",
+    fontFamily: "var(--font-label)",
+    fontWeight: "700",
+    fontSize: "10",
+  };
+  return (
+    <ToolSvg>
+      <text x="5" y="8.5" {...letter}>
+        A
+      </text>
+      <text x="15.5" y="18.5" {...letter}>
+        B
+      </text>
+      <g {...STRAIGHT}>
+        <path d="M8 10 L13.6 15.6" />
+        <path d="M9.4 15.6 L13.9 15.6 L13.9 11.1" />
+      </g>
+    </ToolSvg>
+  );
+}
+
 export function MarkerIcon() {
   return (
     <ToolSvg>

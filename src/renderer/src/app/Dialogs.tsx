@@ -18,6 +18,7 @@ import { PageSetupDialog } from "../components/PageSetupDialog";
 import { ParameterDialog } from "../components/ParameterDialog";
 import { PreferencesDialog } from "../components/PreferencesDialog";
 import { PrintPreviewDialog } from "../components/PrintPreviewDialog";
+import { RelabelDialog } from "../components/RelabelDialog";
 import { ScriptDialog } from "../components/ScriptDialog";
 import { AddTableDataDialog, RemoveTableDataDialog } from "../components/TableDataDialog";
 import { TransformDialog } from "../components/TransformDialog";
@@ -27,6 +28,7 @@ import type { Buttons } from "./buttons";
 import type { Custom } from "./customs";
 import { pagePicture, printPage } from "./printing";
 import type { Dialogs as DialogState } from "./useDialogs";
+import type { Relabelling } from "./useRelabel";
 import type { Settings } from "./useSettings";
 import type { Moves } from "./useTransforms";
 import type { Numbers } from "./values";
@@ -34,6 +36,7 @@ import type { Numbers } from "./values";
 interface DialogsProps {
   dialogs: DialogState;
   numbers: Numbers;
+  relabel: Relabelling;
   buttons: Buttons;
   custom: Custom;
   settings: Settings;
@@ -52,6 +55,7 @@ interface DialogsProps {
 export function Dialogs({
   dialogs,
   numbers,
+  relabel,
   buttons,
   custom,
   settings,
@@ -184,6 +188,13 @@ export function Dialogs({
         />
       )}
 
+      {relabel.asked && (
+        <RelabelDialog
+          at={relabel.asked.at}
+          onStart={relabel.startFrom}
+          onCancel={relabel.dropAsk}
+        />
+      )}
       {dialogs.about && <AboutDialog onClose={() => dialogs.setAbout(false)} />}
       {settings.drafted && (
         <PreferencesDialog

@@ -156,6 +156,10 @@ function Harness({
       preview={preview}
       marks={marks}
       onRename={() => {}}
+      labelKind="caption"
+      relabelName={null}
+      onRelabelAsk={() => {}}
+      onRelabelGive={() => {}}
       spotlight={spotlight}
       onToggleLabel={() => {}}
       labelPick={[]}

@@ -437,6 +437,12 @@
 /* A label picked on its own, which the palette is then set on. It is written
    over the sheet rather than drawn in it, so it says it is picked with a wash
    behind it rather than with the ring an object wears. */
+/* What a relabel run is about to write, before the click that writes it. */
+.canvas__label--ghost {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .canvas__label--picked {
   border-radius: 3px;
   outline: 2px solid var(--color-canvas-accent);

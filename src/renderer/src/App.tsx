@@ -11,6 +11,7 @@ import { scriptActions } from "./app/scripting";
 import { useCollecting } from "./app/useCollecting";
 import { useDialogs } from "./app/useDialogs";
 import { useKeys } from "./app/useKeys";
+import { useRelabel } from "./app/useRelabel";
 import { prefsFrom, useSettings } from "./app/useSettings";
 import { useTooling } from "./app/useTooling";
 import { useTransforms } from "./app/useTransforms";
@@ -77,7 +78,7 @@ export function App() {
   /** Which dialog is open, and what it is holding while it is. */
   const dialogs = useDialogs();
   const sketch = useSketch();
-  const { undo, redo, canUndo, canRedo, remove, selectAll } = sketch;
+  const { canUndo, canRedo, remove, selectAll } = sketch;
   /** What the window remembers between runs: the dock, the steps, the paper. */
   const settings = useSettings({ sketch, phone, setSpotlight: tools.setSpotlight });
   // Whether a point that lands says its name straight away, told to the sketch
@@ -147,6 +148,24 @@ export function App() {
   });
   /** Names, labels, and what is out of view. */
   const naming = labelActions({ sketch, objects, selection, geometry });
+  /** The relabel run in hand: the letters the Text tool is handing out. */
+  const relabel = useRelabel({
+    armed: tools.activeTool === "text" && tools.variants.text === "relabel",
+    naming,
+  });
+  /**
+   * Undo and redo as the window does them. A relabel run's place in the
+   * alphabet steps back with the page, so a vertex clicked twice by mistake
+   * costs one step: the name it took is given back, and so is the letter.
+   */
+  function undo() {
+    relabel.steppedBack();
+    sketch.undo();
+  }
+  function redo() {
+    relabel.steppedForward();
+    sketch.redo();
+  }
   /** The buttons on the sheet, and what pressing one does. */
   const buttons = buttonActions({
     sketch,
@@ -317,7 +336,9 @@ export function App() {
   }, [tools.editing]);
 
   useKeys({
-    dialogOpen: moves.dialog !== null || dialogs.anyOpen,
+    // The letter a relabel run starts at is asked for in a dialog like any
+    // other, so it owns the keyboard while it is up.
+    dialogOpen: moves.dialog !== null || dialogs.anyOpen || relabel.asked !== null,
     pickTool: tools.setActiveTool,
     newSketch: doc.newSketch,
     openSketch: () => void doc.open(),
@@ -394,6 +415,8 @@ export function App() {
         shared={shared}
         setPointSize={tools.setPointSize}
         clipboard={clipboard}
+        onUndo={undo}
+        onRedo={redo}
       />
       <Workspace
         sketch={sketch}
@@ -403,6 +426,7 @@ export function App() {
         moves={moves}
         dialogs={dialogs}
         naming={naming}
+        relabel={relabel}
         numbers={numbers}
         buttons={buttons}
         palette={palette}
@@ -441,6 +465,7 @@ export function App() {
       <Dialogs
         dialogs={dialogs}
         numbers={numbers}
+        relabel={relabel}
         buttons={buttons}
         custom={custom}
         settings={settings}

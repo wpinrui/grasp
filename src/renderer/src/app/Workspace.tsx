@@ -23,6 +23,7 @@ import type { Buttons } from "./buttons";
 import type { Naming } from "./labels";
 import type { Palette as PaletteBar } from "./palette";
 import type { Dialogs } from "./useDialogs";
+import type { Relabelling } from "./useRelabel";
 import type { Settings } from "./useSettings";
 import type { Tools } from "./useTooling";
 import type { Moves } from "./useTransforms";
@@ -36,6 +37,7 @@ interface WorkspaceProps {
   moves: Moves;
   dialogs: Dialogs;
   naming: Naming;
+  relabel: Relabelling;
   numbers: Numbers;
   buttons: Buttons;
   palette: PaletteBar;
@@ -55,6 +57,7 @@ export function Workspace({
   moves,
   dialogs,
   naming,
+  relabel,
   numbers,
   buttons,
   palette,
@@ -119,6 +122,10 @@ export function Workspace({
           snapping={settings.snapping}
           measureKind={tools.variants.measure ?? "length"}
           arrowKind={tools.variants.arrow ?? "all"}
+          labelKind={tools.variants.text ?? "caption"}
+          relabelName={relabel.nextName}
+          onRelabelAsk={relabel.ask}
+          onRelabelGive={relabel.give}
           markForm={tools.variants.marker ?? "equal"}
           hiddenKinds={tools.hiddenKinds}
           editing={tools.editing}

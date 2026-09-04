@@ -24,6 +24,7 @@ export function useTooling() {
     measure: "length",
     arrow: "all",
     marker: "equal",
+    text: "caption",
   });
 
   /**
