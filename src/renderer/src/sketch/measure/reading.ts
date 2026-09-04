@@ -136,27 +136,33 @@ readValuesWith((object, objects, settled) => {
   return worked ? inSheetTerms(worked) : null;
 });
 
-/** The page a reading is read off: what is on it, what things are called, and where they settled. */
-export interface ReadingOn {
+/** The page a reading takes its names off: what is on it, and what it is called. */
+export interface NamingOn {
   objects: SketchObject[];
   names: Map<string, string>;
+}
+
+/** The page a reading is read off: its names, and where everything settled. */
+export interface ReadingOn extends NamingOn {
   settled: Settled;
 }
 
 /** What an object is called in print: by the points it was built from. */
 function nameOf(id: string, objects: SketchObject[], names: Map<string, string>): Naming[] {
   const object = find(objects, id);
-  const plain = [{ text: names.get(id) ?? "" }];
-  if (!object) return plain;
+  // Asked for only where it is used, since most kinds are named by the points
+  // they were built from rather than by their own name.
+  const plain = () => [{ text: names.get(id) ?? "" }];
+  if (!object) return plain();
   const of = (ids: string[]) => ids.map((one) => names.get(one) ?? "?").join("");
   if (isLine(object)) {
     const ends = endsOf(object);
-    if (!ends) return plain;
+    if (!ends) return plain();
     const over = object.form === "segment" ? "bar" : object.form === "ray" ? "ray" : "line";
     return [{ text: of(ends), over }];
   }
   if (isCircle(object)) {
-    if (object.span.kind !== "through") return plain;
+    if (object.span.kind !== "through") return plain();
     return [{ text: `⊙${of([object.span.centre, object.span.edge])}` }];
   }
   if (isArc(object)) return arcNaming(object, objects, names);
@@ -167,7 +173,7 @@ function nameOf(id: string, objects: SketchObject[], names: Map<string, string>)
     }
     return nameOf(filledPath(object) ?? "", objects, names);
   }
-  return plain;
+  return plain();
 }
 
 /** An arc's printed name: the letters it runs through under an arc. */
@@ -196,14 +202,18 @@ function stretchNaming(
 }
 
 /**
- * How a measurement reads: the name of the quantity and its value. Asking for
- * the label instead writes the measurement's own name in front of the value,
- * which is what Show Labels swaps in.
+ * How a measurement reads once its value is worked out: the name of the
+ * quantity written the way it is written in print, and that value after it.
+ *
+ * The naming takes no geometry, which is what lets the sheet ask what a
+ * measurement spells out without settling the page first. Every `names.get`
+ * from here down reaches the printed reading, and `spelledOutBy` takes that as
+ * its definition: one that did not would still be counted as spelled out, and
+ * would have its label shown for nothing.
  */
-export function readingOf(measurement: SketchMeasurement, page: ReadingOn): Reading {
-  const { objects, names, settled } = page;
+function readingWith(measurement: SketchMeasurement, page: NamingOn, value: string): Reading {
+  const { objects, names } = page;
   const measure = measurement.measure;
-  const value = sayQuantity(quantityOf(measurement, objects, settled), measurement.places);
   // Its label showing, a measurement says its own name in front of the value
   // rather than the printed form of what it measures.
   if (measurement.label?.shown) {
@@ -273,6 +283,44 @@ export function readingOf(measurement: SketchMeasurement, page: ReadingOn): Read
       };
     }
   }
+}
+
+/**
+ * How a measurement reads: the name of the quantity and its value. Asking for
+ * the label instead writes the measurement's own name in front of the value,
+ * which is what Show Labels swaps in.
+ */
+export function readingOf(measurement: SketchMeasurement, page: ReadingOn): Reading {
+  const value = sayQuantity(
+    quantityOf(measurement, page.objects, page.settled),
+    measurement.places,
+  );
+  return readingWith(measurement, page, value);
+}
+
+/**
+ * A page's names, keeping every one that is asked for. A reading spells out the
+ * names of what it measures, down through the points each of those was built
+ * from, and this is how the sheet finds out which those are without a second
+ * walk over the same ground to fall out of step with this one.
+ */
+class NamesAsked extends Map<string, string> {
+  readonly asked = new Set<string>();
+  override get(id: string): string | undefined {
+    this.asked.add(id);
+    return super.get(id);
+  }
+}
+
+/**
+ * Everything a measurement's reading writes the name of, its own name aside.
+ * Taking a measurement labels these, since "AB = 5 cm" says nothing while
+ * nothing on the sheet says which point is A.
+ */
+export function spelledOutBy(measurement: SketchMeasurement, page: NamingOn): string[] {
+  const names = new NamesAsked(page.names);
+  readingWith(measurement, { ...page, names }, "");
+  return [...names.asked].filter((id) => id !== measurement.id);
 }
 
 /** A measurement as one line of plain text, for the rows that list it. */

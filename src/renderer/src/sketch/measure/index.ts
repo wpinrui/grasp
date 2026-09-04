@@ -19,13 +19,14 @@ export {
   quantityOfParameter,
   sayQuantity,
 } from "./quantity";
-export type { Naming, Reading } from "./reading";
+export type { Naming, NamingOn, Reading } from "./reading";
 export {
   quantitiesOf,
   readingOf,
   readingOfValue,
   readingText,
   sheetOf,
+  spelledOutBy,
   wouldMeasure,
 } from "./reading";
 export type { Arm } from "./shape";

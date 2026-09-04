@@ -20,6 +20,7 @@ import {
   PolygonFillIcon,
   PolygonIcon,
   RayIcon,
+  RelabelIcon,
   SegmentIcon,
   StraightedgeIcon,
   TextIcon,
@@ -41,6 +42,16 @@ export interface Tool {
   /** What the flyout offers. Empty where the variants are not specified. */
   variants?: ToolVariant[];
   Icon: ComponentType;
+}
+
+/**
+ * Whether an Arrow armed this way carries writing: captions, readings, tables,
+ * buttons and labels. Armed for one kind of geometry it passes over all of them,
+ * so this is asked both where the sheet decides what the pointer reaches and
+ * where the window decides what it can still be holding.
+ */
+export function armedForWriting(arrowKind: string): boolean {
+  return arrowKind === "all" || arrowKind === "text";
 }
 
 /** The toolbox rail, top to bottom. */
@@ -87,7 +98,20 @@ export const TOOLS: Tool[] = [
     ],
     Icon: PolygonIcon,
   },
-  { id: "text", name: "Text", key: "T", flyout: false, Icon: TextIcon },
+  {
+    id: "text",
+    name: "Text",
+    key: "T",
+    flyout: true,
+    // Captions and labels are both writing on the sheet, so the one tool does
+    // both: dragging out something to say, and handing out the letters a
+    // figure's vertices are named by.
+    variants: [
+      { id: "caption", name: "Text", Icon: TextIcon },
+      { id: "relabel", name: "Relabel", Icon: RelabelIcon },
+    ],
+    Icon: TextIcon,
+  },
   {
     id: "measure",
     name: "Measure",

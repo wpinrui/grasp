@@ -94,7 +94,10 @@ function cornerArms(corner: string, measuring: Measuring): [string, string, stri
 }
 
 /** The point under the pointer, which is what an angle is marked at. */
-export function pointUnder(at: Position, measuring: Measuring): SketchPoint | null {
+export function pointUnder(
+  at: Position,
+  measuring: Pick<Measuring, "objects" | "scale">,
+): SketchPoint | null {
   const { objects, scale } = measuring;
   for (let index = objects.length - 1; index >= 0; index -= 1) {
     const point = objects[index];

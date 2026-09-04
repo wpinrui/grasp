@@ -12,7 +12,6 @@ import { useRef, useState } from "react";
 import type { ButtonForm } from "../components/ButtonDialog";
 import type { ExportTo } from "../components/ExportDialog";
 import { NEW_PAGE, type ScriptWay } from "../components/ScriptDialog";
-import type { Clash } from "./labels";
 
 /** What the Calculator is doing: a new number, or one it is changing. */
 export interface CalculatorState {
@@ -59,8 +58,6 @@ export function useDialogs() {
   const [exportTo, setExportTo] = useState<ExportTo | null>(null);
   /** Whether the About box is up. */
   const [about, setAbout] = useState(false);
-  /** A rename waiting on what to do about the name already being in use. */
-  const [clash, setClash] = useState<Clash | null>(null);
   /**
    * A run of automatic collection: the table filling up, how many rows are
    * still wanted, how fast they may be taken, and when the last one was. It
@@ -110,8 +107,6 @@ export function useDialogs() {
     setExportTo,
     about,
     setAbout,
-    clash,
-    setClash,
     collecting,
     scriptWay,
     setScriptWay,

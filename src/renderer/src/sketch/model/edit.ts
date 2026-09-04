@@ -35,17 +35,6 @@ export function withFamily(objects: SketchObject[], ids: string[]): SketchObject
 }
 
 /**
- * The same objects again as a copy: new ids, no pinned names, and stepped off
- * where they came from so the copy is not hiding under the original. The step
- * grows with each paste of the same copy, so pasting twice gives two.
- *
- * The ids are swapped over the serialised text rather than field by field. An
- * object points at another in a dozen different shapes and a caption's links
- * are buried in its markup, while an id is unique enough that no other text in
- * a sketch can collide with one.
- */
-
-/**
  * The same objects again with fresh ids, for a page being copied. Unlike a
  * paste nothing moves and nothing is renamed: a duplicate page is meant to be
  * the same page, and two pages never share a sheet for their names to clash on.
@@ -57,6 +46,16 @@ export function asDuplicated(taken: SketchObject[]): SketchObject[] {
   return JSON.parse(text) as SketchObject[];
 }
 
+/**
+ * The same objects again as a copy: new ids, no names of their own, and stepped off
+ * where they came from so the copy is not hiding under the original. The step
+ * grows with each paste of the same copy, so pasting twice gives two.
+ *
+ * The ids are swapped over the serialised text rather than field by field. An
+ * object points at another in a dozen different shapes and a caption's links
+ * are buried in its markup, while an id is unique enough that no other text in
+ * a sketch can collide with one.
+ */
 export function asPasted(taken: SketchObject[], step: number): SketchObject[] {
   if (taken.length === 0) return [];
   let text = JSON.stringify(taken);
@@ -65,9 +64,11 @@ export function asPasted(taken: SketchObject[], step: number): SketchObject[] {
   const off = PASTE_STEP * step;
   for (const object of made) {
     // A copy takes the next free name of its run rather than the one it came
-    // with, since two points called A can never both be on the sheet.
+    // with: a name is allowed to be shared, but not by accident, and a pasted
+    // figure landing on top of the one it came from is exactly that. Only the
+    // name goes; how the label is set and where it sits are the copy's too.
     if (object.label?.name !== undefined) {
-      object.label = { shown: object.label.shown, off: object.label.off };
+      object.label = { ...object.label, name: undefined };
     }
     // Only what is placed by hand moves. Everything derived follows its
     // parents, and a mark rides whatever it marks.

@@ -10,6 +10,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import type { HiddenKinds } from "../components/HiddenPanel";
+import { armedForWriting } from "../components/tools";
 import type { Armed } from "../sketch/armed";
 import { DEFAULT_POINT_SIZE, type PointSize } from "../sketch/model";
 
@@ -24,12 +25,9 @@ export function useTooling() {
     measure: "length",
     arrow: "all",
     marker: "equal",
+    text: "caption",
   });
 
-  /** Arm a tool's flyout with one of what it offers. */
-  const pickVariant = useCallback((tool: string, variant: string) => {
-    setVariants((armed) => ({ ...armed, [tool]: variant }));
-  }, []);
   /**
    * The labels picked on the sheet, held as the objects they name, since a
    * label belongs to what it names rather than standing on its own. Picking one
@@ -38,6 +36,15 @@ export function useTooling() {
    * they let go on a tool switch the way the rest of what a tool was doing does.
    */
   const [labelPick, setLabelPick] = useState<string[]>([]);
+
+  /** Arm a tool's flyout with one of what it offers. */
+  const pickVariant = useCallback((tool: string, variant: string) => {
+    setVariants((armed) => ({ ...armed, [tool]: variant }));
+    // An Arrow armed for points, paths or markings cannot reach a label, so it
+    // cannot be left holding one either: the palette would be set on something
+    // the pointer can no longer touch.
+    if (tool === "arrow" && !armedForWriting(variant)) setLabelPick([]);
+  }, []);
   /**
    * What the palette has been set to for the tool that is up, which is how the
    * next thing that tool draws comes out. Switching tools puts it back on the

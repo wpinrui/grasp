@@ -2,7 +2,7 @@ import "./HiddenPanel.css";
 
 export interface HiddenRow {
   id: string;
-  /** What it is called, whether that name was typed or handed out. */
+  /** What it is called, and empty where it has never been labelled. */
   name: string;
   /** What kind of thing it is, for the row to sit under. */
   kind: string;
@@ -99,7 +99,7 @@ export function HiddenPanel({ rows, onShow, onSpot, kinds, onKinds }: HiddenPane
 
             {group.rows.map((row) => (
               <div key={row.id} className="hidden-panel__row" onPointerEnter={() => onSpot(row.id)}>
-                <span className="hidden-panel__name">{row.name}</span>
+                <span className="hidden-panel__name">{row.name || "—"}</span>
                 <button
                   type="button"
                   className="hidden-panel__action hidden-panel__action--small"

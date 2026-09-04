@@ -1,6 +1,11 @@
 import { useCallback, useRef } from "react";
 import { type Arming, armedOnto } from "./armed";
+import { spelledOutBy } from "./measure";
 import {
+  isMeasurement,
+  nameable,
+  namedWhereShown,
+  namesFor,
   type PointSize,
   resolve,
   type SketchObject,
@@ -77,15 +82,46 @@ export function useSketch() {
   }, []);
 
   /**
+   * A measurement reads out the names of what it measures, so taking one shows
+   * those labels. Without it a new reading says "?? = 5 cm": the points it is
+   * between have never been labelled, so nothing on the sheet says which is
+   * which.
+   */
+  const spelledOut = useCallback(
+    (objects: SketchObject[]): SketchObject[] => {
+      const already = alreadyThere();
+      const fresh = objects.filter((object) => isMeasurement(object) && !already.has(object.id));
+      if (fresh.length === 0) return objects;
+      const names = namesFor(objects);
+      const wanted = new Set(
+        fresh.flatMap((one) => (isMeasurement(one) ? spelledOutBy(one, { objects, names }) : [])),
+      );
+      return objects.map((object) =>
+        wanted.has(object.id) && object.label?.shown !== true && nameable(object, objects)
+          ? { ...object, label: { ...object.label, shown: true } }
+          : object,
+      );
+    },
+    [alreadyThere],
+  );
+
+  /**
    * Every change goes through here, so an image is never left behind by the
    * point it came from: `resolve` settles them all before anything is shown.
    */
   const apply = useCallback(
     (next: SketchState, arm = true) => {
-      const objects = arm ? armed(namedIfWanted(next.objects)) : next.objects;
+      // Three passes, and their order is the point: a new point may want its
+      // label shown, a new reading may want the labels of what it names shown,
+      // and only after both can anything left shown but nameless be given a
+      // name. Undo and redo go round all three, since what they hand back was
+      // arrived at once already.
+      const objects = arm
+        ? armed(namedWhereShown(spelledOut(namedIfWanted(next.objects))))
+        : next.objects;
       write({ ...next, objects: resolve(objects) });
     },
-    [write, armed, namedIfWanted],
+    [write, armed, spelledOut, namedIfWanted],
   );
 
   const select = useCallback(

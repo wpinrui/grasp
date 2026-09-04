@@ -443,6 +443,12 @@
   outline-offset: 1px;
 }
 
+/* What a relabel run is about to write, before the click that writes it. */
+.canvas__label--ghost {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /*
   A touch screen. Two fingers pan the sheet, so the scrollbars have nothing left
   to do and a finger could not use a 14px one anyway. Zooming is not offered at

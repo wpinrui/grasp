@@ -14,6 +14,7 @@ import {
   type LineSpan,
   MEASURES,
   type MeasureKind,
+  namesAsBuilt,
   PARAMETER_UNITS,
   type ParameterUnit,
   POINT_SIZES,
@@ -25,8 +26,11 @@ import { ANGLE_UNITS, DISTANCE_UNITS, type Prefs } from "./prefs";
 
 const FORMAT = "grasp-sketch";
 
-/** Bumped when a sketch started carrying action buttons. */
-const VERSION = 10;
+/** Bumped when a label started keeping the name it was given. */
+const VERSION = 11;
+
+/** The version from which a label carries its own name, and older files are lettered on read. */
+const KEPT_NAMES = 11;
 
 interface SketchFile {
   /** Absent on a sketch saved before preferences were in the file. */
@@ -417,6 +421,26 @@ function readPrefs(value: unknown): Prefs | undefined {
   return held as Prefs;
 }
 
+/**
+ * A sketch written before a label kept its name carries its letters only in the
+ * order it was built, so they are written down as it is opened, exactly as that
+ * version lettered them.
+ *
+ * Every object is written down, not only the ones showing a label: that version
+ * lettered the whole page and printed those letters in readings, table headings
+ * and captions as well, and a file has to open saying what it said when it was
+ * saved. Only sketches made from here on letter what is labelled and nothing
+ * else.
+ */
+function letterAsBuilt(page: PageContent): void {
+  const names = namesAsBuilt(page.objects);
+  for (const object of page.objects) {
+    if (object.label?.name !== undefined) continue;
+    const name = names.get(object.id);
+    if (name) object.label = { ...object.label, name };
+  }
+}
+
 export function parse(text: string): Opened {
   let file: SketchFile;
   try {
@@ -425,6 +449,11 @@ export function parse(text: string): Opened {
     throw new Error("That file is not a GRASP sketch.");
   }
   if (file?.format !== FORMAT) throw new Error("That file is not a GRASP sketch.");
+  // Every sketch GRASP has written carries one, so a file without a version is
+  // damaged rather than old, and reading it as either would letter it wrongly.
+  if (typeof file.version !== "number") {
+    throw new Error("That sketch is damaged and cannot be opened.");
+  }
   if (file.version > VERSION) {
     throw new Error("That sketch was saved by a newer version of GRASP.");
   }
@@ -432,5 +461,6 @@ export function parse(text: string): Opened {
   if (!Array.isArray(pages) || pages.length === 0 || !pages.every(isPage)) {
     throw new Error("That sketch is damaged and cannot be opened.");
   }
+  if (file.version < KEPT_NAMES) for (const page of pages) letterAsBuilt(page);
   return { pages, prefs: readPrefs(file.prefs) };
 }

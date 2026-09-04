@@ -54,6 +54,7 @@ export {
   PolygonFillIcon,
   PolygonIcon,
   RayIcon,
+  RelabelIcon,
   SegmentIcon,
   StatusArrowIcon,
   StraightedgeIcon,

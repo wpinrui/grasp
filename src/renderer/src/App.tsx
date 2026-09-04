@@ -11,6 +11,7 @@ import { scriptActions } from "./app/scripting";
 import { useCollecting } from "./app/useCollecting";
 import { useDialogs } from "./app/useDialogs";
 import { useKeys } from "./app/useKeys";
+import { useRelabel } from "./app/useRelabel";
 import { prefsFrom, useSettings } from "./app/useSettings";
 import { useTooling } from "./app/useTooling";
 import { useTransforms } from "./app/useTransforms";
@@ -146,7 +147,14 @@ export function App() {
     collecting: dialogs.collecting,
   });
   /** Names, labels, and what is out of view. */
-  const naming = labelActions({ sketch, objects, selection, geometry, setClash: dialogs.setClash });
+  const naming = labelActions({ sketch, objects, selection, geometry });
+  /** The relabel run in hand: the letters the Text tool is handing out. */
+  const relabel = useRelabel({
+    armed: tools.activeTool === "text" && tools.variants.text === "relabel",
+    naming,
+    names,
+    page: sketch.activeId,
+  });
   /** The buttons on the sheet, and what pressing one does. */
   const buttons = buttonActions({
     sketch,
@@ -317,7 +325,9 @@ export function App() {
   }, [tools.editing]);
 
   useKeys({
-    dialogOpen: moves.dialog !== null || dialogs.anyOpen,
+    // The letter a relabel run starts at is asked for in a dialog like any
+    // other, so it owns the keyboard while it is up.
+    dialogOpen: moves.dialog !== null || dialogs.anyOpen || relabel.asked !== null,
     pickTool: tools.setActiveTool,
     newSketch: doc.newSketch,
     openSketch: () => void doc.open(),
@@ -403,6 +413,7 @@ export function App() {
         moves={moves}
         dialogs={dialogs}
         naming={naming}
+        relabel={relabel}
         numbers={numbers}
         buttons={buttons}
         palette={palette}
@@ -441,13 +452,12 @@ export function App() {
       <Dialogs
         dialogs={dialogs}
         numbers={numbers}
-        naming={naming}
+        relabel={relabel}
         buttons={buttons}
         custom={custom}
         settings={settings}
         moves={moves}
         sketch={sketch}
-        objects={objects}
         names={names}
         readable={readable}
         buildPrompt={promptForRequest}

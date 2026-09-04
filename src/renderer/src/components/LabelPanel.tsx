@@ -3,13 +3,14 @@ import "./LabelPanel.css";
 
 export interface LabelRow {
   id: string;
-  /** What it is called now, whether that name was typed or handed out. */
+  /**
+   * What it is called now, whether that name was typed or handed out, and
+   * empty where it has never been labelled and so has no name at all.
+   */
   name: string;
   /** What kind of thing it is, for the row to say. */
   kind: string;
   shown: boolean;
-  /** Set when the name was typed rather than taken from the automatic run. */
-  pinned: boolean;
   selected: boolean;
 }
 
@@ -38,8 +39,10 @@ const KINDS: [string, string][] = [
 
 /**
  * Every object that can carry a name, gathered by kind in the order they were
- * built: what each one is called, whether it is showing, and whether the name
- * was typed or handed out by the automatic run.
+ * built: what each one is called, and whether it is showing. Where a name came
+ * from is not said, because it makes no difference to anything: a label keeps
+ * whatever name it was given, typed or handed out. Clearing the box puts it
+ * back on the run, which hands it the next name going.
  *
  * Showing labels happens in bulk here, by kind, by what is selected on the
  * sheet, or for the whole page, so a figure can be labelled without hunting
@@ -185,29 +188,14 @@ export function LabelPanel({
                   ) : (
                     <button
                       type="button"
-                      className="labels__name"
+                      className={`labels__name${row.name ? "" : " labels__name--none"}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         setTyping({ id: row.id, text: row.name });
                       }}
                     >
-                      {row.name}
+                      {row.name || "—"}
                     </button>
-                  )}
-                  {row.pinned ? (
-                    <button
-                      type="button"
-                      className="labels__pin"
-                      title="Typed by hand. Put it back on the automatic run."
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onRename(row.id, "");
-                      }}
-                    >
-                      pinned
-                    </button>
-                  ) : (
-                    <span className="labels__auto">auto</span>
                   )}
                 </div>
               ))}
