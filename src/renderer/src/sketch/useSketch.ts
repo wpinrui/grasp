@@ -1,11 +1,12 @@
 import { useCallback, useRef } from "react";
 import { type Arming, armedOnto } from "./armed";
+import { readingsPlaced } from "./linked";
 import {
   namedWhereShown,
   type PointSize,
-  resolve,
   type SketchObject,
   type SketchState,
+  settle,
   withDependents,
 } from "./model";
 import { demotedUnder } from "./overlaps";
@@ -85,8 +86,9 @@ export function useSketch() {
   );
 
   /**
-   * Every change goes through here, so an image is never left behind by the
-   * point it came from: `resolve` settles them all before anything is shown.
+   * Every change goes through here, so nothing is ever left behind by what it
+   * hangs off: settling puts every image where its point has got to, and a
+   * linked reading where its figure has got to, before anything is shown.
    */
   const apply = useCallback(
     (next: SketchState, arm = true) => {
@@ -98,7 +100,10 @@ export function useSketch() {
       const objects = arm
         ? armed(namedWhereShown(spelledOut(namedIfWanted(next.objects))))
         : next.objects;
-      write({ ...next, objects: resolve(objects) });
+      // The readings are placed off the settled geometry, so they come after
+      // it. Moving a number moves no geometry, so nothing has to settle again.
+      const page = settle(objects);
+      write({ ...next, objects: readingsPlaced(page.objects, page.settled) });
     },
     [write, armed, spelledOut, namedIfWanted],
   );

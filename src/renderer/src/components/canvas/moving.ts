@@ -7,10 +7,11 @@
  * where it was put and what it quotes is not what holds it there.
  */
 
-import { endsOf } from "../../sketch/measure";
+import { endsOf, frameOf, spotOf } from "../../sketch/measure";
 import {
   alongPath,
   familyOf,
+  isMeasurement,
   isPoint,
   isWriting,
   movedBy,
@@ -211,6 +212,15 @@ export function placedBy(objects: SketchObject[], held: Held, by: Position): Ske
       const path = pathIn(geometry, from.path);
       if (!path || movesWith(objects, held, from.path)) return object;
       return { ...object, from: { ...from, at: alongPath(path, to) } };
+    }
+    if (isMeasurement(object) && object.linked) {
+      // A linked number rides its figure. Where the drag is moving that figure
+      // too the number is already being carried by it, and moving it again
+      // would count the drag twice; dragged on its own, where it is dropped is
+      // where it hangs from then on.
+      if (object.of.some((id) => movesWith(objects, held, id))) return object;
+      const frame = frameOf(object, objects, geometry);
+      if (frame) return { ...object, linked: spotOf(frame, to) };
     }
     return { ...object, x: to.x, y: to.y };
   });
