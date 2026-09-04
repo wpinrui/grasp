@@ -66,9 +66,9 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
           const label = { ...object.label, name: name || undefined };
           return { ...object, label: options?.show ? { ...label, shown: true } : label };
         }
-        // A measurement, parameter, calculation or table letters itself, so
-        // the one that was called this is given that name in writing before it
-        // loses it: without that the run would move it along on the next pass.
+        // The kinds that letter themselves are given that name in writing
+        // before they lose it: without that the run would move the one that was
+        // called this along to another name on the next pass.
         if (object.id === keep) {
           return { ...object, label: { ...object.label, name: names.get(object.id) } };
         }

@@ -64,4 +64,14 @@ describe("opening a sketch older than kept names", () => {
   it("refuses a sketch from a newer version rather than half-reading it", () => {
     expect(() => parse(file(99, [stored("p1", 0)]))).toThrow(/newer version/);
   });
+
+  it("refuses one with no version at all, rather than reading it as either", () => {
+    // Neither old nor new: without this it would fall through both branches and
+    // open with its labels lettered as nothing.
+    const versionless = JSON.stringify({
+      format: "grasp-sketch",
+      pages: [{ name: "Page 1", objects: [stored("p1", 0, { shown: true })] }],
+    });
+    expect(() => parse(versionless)).toThrow(/damaged/);
+  });
 });

@@ -35,17 +35,6 @@ export function withFamily(objects: SketchObject[], ids: string[]): SketchObject
 }
 
 /**
- * The same objects again as a copy: new ids, no names of their own, and stepped off
- * where they came from so the copy is not hiding under the original. The step
- * grows with each paste of the same copy, so pasting twice gives two.
- *
- * The ids are swapped over the serialised text rather than field by field. An
- * object points at another in a dozen different shapes and a caption's links
- * are buried in its markup, while an id is unique enough that no other text in
- * a sketch can collide with one.
- */
-
-/**
  * The same objects again with fresh ids, for a page being copied. Unlike a
  * paste nothing moves and nothing is renamed: a duplicate page is meant to be
  * the same page, and two pages never share a sheet for their names to clash on.
@@ -57,6 +46,16 @@ export function asDuplicated(taken: SketchObject[]): SketchObject[] {
   return JSON.parse(text) as SketchObject[];
 }
 
+/**
+ * The same objects again as a copy: new ids, no names of their own, and stepped off
+ * where they came from so the copy is not hiding under the original. The step
+ * grows with each paste of the same copy, so pasting twice gives two.
+ *
+ * The ids are swapped over the serialised text rather than field by field. An
+ * object points at another in a dozen different shapes and a caption's links
+ * are buried in its markup, while an id is unique enough that no other text in
+ * a sketch can collide with one.
+ */
 export function asPasted(taken: SketchObject[], step: number): SketchObject[] {
   if (taken.length === 0) return [];
   let text = JSON.stringify(taken);

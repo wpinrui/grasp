@@ -42,7 +42,8 @@ export function RelabelDialog({ at, onStart, onCancel }: RelabelDialogProps) {
         />
       </label>
       <p className="dialog__about">
-        Then click the vertices in the order you want them named. Switching tool ends it.
+        Then click the vertices in the order you want them named. Switching tool or turning to
+        another page ends it.
       </p>
     </DialogFrame>
   );

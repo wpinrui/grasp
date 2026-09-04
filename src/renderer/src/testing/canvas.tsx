@@ -7,7 +7,7 @@
  * about.
  */
 
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { useEffect, useRef } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
 import { Canvas } from "../components/Canvas";
@@ -23,7 +23,11 @@ const CAPTION_LOOK = {
   align: "left",
 } as const;
 
-/** Snapping off, so a gesture lands where it was aimed rather than where it was drawn to. */
+/**
+ * Snapping as the app ships it: on to objects, which always wins over the rest,
+ * and off for length, angle and moving. A gesture aimed near a point does land
+ * on the point.
+ */
 const SNAPPING = {
   objects: true,
   length: false,
@@ -58,7 +62,7 @@ export interface HarnessProps {
  * The canvas as the window puts it up, with the props that do not matter to
  * what is drawn tied off.
  */
-export function Harness({
+function Harness({
   objects,
   tool,
   selection = [],
@@ -149,7 +153,6 @@ export function watched(objects: SketchObject[], tool: string) {
   const seen: SketchState[] = [];
   const { container } = put(objects, tool, { report: (read) => seen.push(read) });
   return {
-    container,
     sheet: sheetOf(container),
     page: () => seen[seen.length - 1] ?? { objects: [], selection: [] },
   };
@@ -188,9 +191,9 @@ export function stubTheSheet(): void {
     Element.prototype.hasPointerCapture = () => false;
   });
 
+  // Unmounting is not one of jsdom's gaps, so it is left to the suite.
   afterEach(() => {
     unstub();
-    cleanup();
     vi.unstubAllGlobals();
   });
 }

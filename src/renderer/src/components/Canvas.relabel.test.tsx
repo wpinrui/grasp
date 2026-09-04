@@ -85,6 +85,22 @@ describe("a relabel run", () => {
     expect(given).toEqual([]);
   });
 
+  it("names nothing when the press was a drag rather than a click", () => {
+    const given: string[] = [];
+    const { container } = put(FIGURE, "text", {
+      labelKind: "relabel",
+      relabelName: "Z",
+      onRelabelGive: (id) => given.push(id),
+    });
+    const sheet = sheetOf(container);
+    act(() => {
+      fireEvent.pointerDown(sheet, { clientX: 120, clientY: 420, button: 0, pointerId: 1 });
+      fireEvent.pointerMove(sheet, { clientX: 300, clientY: 300, button: 0, pointerId: 1 });
+      fireEvent.pointerUp(sheet, { clientX: 300, clientY: 300, button: 0, pointerId: 1 });
+    });
+    expect(given).toEqual([]);
+  });
+
   it("leaves bare sheet alone, having no vertex to name", () => {
     const asked: string[] = [];
     const { container } = put(FIGURE, "text", {

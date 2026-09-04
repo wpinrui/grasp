@@ -24,8 +24,7 @@ import {
   lineThrough,
   type SketchObject,
 } from "../sketch/model";
-import { press, put, stubTheSheet, watched } from "../testing/canvas";
-import "./Canvas";
+import { press, put, sheetOf, stubTheSheet, watched } from "../testing/canvas";
 
 stubTheSheet();
 afterEach(cleanup);
@@ -233,7 +232,7 @@ describe("the gestures the sheet is drawn with", () => {
    */
   it("says what a half-drawn line comes to, until it lands", () => {
     const { container } = put([], "straightedge");
-    const sheet = container.querySelector(".canvas__sheet") as HTMLElement;
+    const sheet = sheetOf(container);
     act(() => press(sheet, { x: 100, y: 100 }));
     act(() => {
       fireEvent.pointerMove(sheet, { clientX: 300, clientY: 200, pointerId: 1 });

@@ -120,9 +120,11 @@ describe("a run and the tool it belongs to", () => {
         useRelabel({ armed, naming: stubNaming(given), names: given, page: "one" }),
       { initialProps: true },
     );
-    // Caught with the box still up, which is the state that has to be let go of
-    // as well as the run itself.
+    // Caught mid-run with the box up again over another vertex, so there is
+    // both a run and a box to let go of.
     act(() => result.current.ask("one", { x: 0, y: 0 }));
+    act(() => result.current.startFrom("A"));
+    act(() => result.current.ask("two", { x: 50, y: 0 }));
     rerender(false);
     expect(result.current.asked).toBeNull();
     expect(result.current.nextName).toBeNull();
