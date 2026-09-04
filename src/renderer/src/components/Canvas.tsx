@@ -113,6 +113,7 @@ import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
 import { guideOf } from "./canvas/guides";
 import { Dimensions } from "./canvas/layers/Dimensions";
+import { Drawing } from "./canvas/layers/Drawing";
 import { Fills } from "./canvas/layers/Fills";
 import { Guides } from "./canvas/layers/Guides";
 import { Holding } from "./canvas/layers/Holding";
@@ -2541,72 +2542,7 @@ export function Canvas({
                 />
               ))}
               <Paths />
-              {tracing && (
-                <g>
-                  {/* What the polygon would be if it closed here: the fill once
-                    there are three corners, the edges laid down so far, and a
-                    band from the last corner to the pointer. */}
-                  {tracing.spots.length >= 2 && (
-                    <polygon
-                      className="canvas__interior canvas__interior--preview"
-                      points={[...tracing.spots, tracing.at]
-                        .map((spot) => `${spot.x},${spot.y}`)
-                        .join(" ")}
-                    />
-                  )}
-                  <polyline
-                    className="canvas__rubber canvas__rubber--laid"
-                    points={tracing.spots.map((spot) => `${spot.x},${spot.y}`).join(" ")}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  <line
-                    className="canvas__rubber"
-                    x1={tracing.spots[tracing.spots.length - 1].x}
-                    y1={tracing.spots[tracing.spots.length - 1].y}
-                    x2={tracing.at.x}
-                    y2={tracing.at.y}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  {tracing.spots.length >= 2 && (
-                    <line
-                      className="canvas__rubber"
-                      x1={tracing.at.x}
-                      y1={tracing.at.y}
-                      x2={tracing.spots[0].x}
-                      y2={tracing.spots[0].y}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  )}
-                </g>
-              )}
-              {pending &&
-                (pending.tool === "compass" ? (
-                  <circle
-                    className="canvas__rubber"
-                    cx={pending.start.x}
-                    cy={pending.start.y}
-                    r={distance(pending.start, pending.at)}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ) : (
-                  <line
-                    className="canvas__rubber"
-                    x1={pending.start.x}
-                    y1={pending.start.y}
-                    x2={pending.at.x}
-                    y2={pending.at.y}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ))}
-              {middle && (
-                <circle
-                  className="canvas__snap"
-                  cx={middle.x}
-                  cy={middle.y}
-                  r={7 / scale}
-                  vectorEffect="non-scaling-stroke"
-                />
-              )}
+              <Drawing tracing={tracing} pending={pending} middle={middle} />
               {objects.map((object) => {
                 if (!isMark(object)) return null;
                 const shape = markShape(object, { settled, objects, scale });
