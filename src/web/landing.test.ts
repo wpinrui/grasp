@@ -1,21 +1,24 @@
 /**
- * The landing page is the one file in the repo that every other gate is blind
- * to: Biome excludes it, nothing under `src` imports it, and `build:web`
- * publishes it with a plain `copyFileSync`. It is also the one file that is
- * edited as an encoded payload rather than as source, so a slip that would be
- * a syntax error anywhere else silently ships a blank site instead.
+ * The landing page as it is authored: Biome excludes it and nothing under
+ * `src` imports it, so it is the one file in the repo the ordinary gates are
+ * blind to. It is also the one file edited as an encoded payload rather than
+ * as source, so a slip that would be a syntax error anywhere else silently
+ * ships a blank site instead.
  *
  * These are the checks that make such an edit safe to land: that the payload
  * still decodes, that nothing in it can close the script carrying it, that
  * every responsive handle is joined up at both ends, and that the embeds are
  * given the src and the reload the page means them to have.
+ *
+ * What `build:web` publishes is a different thing, since the payload is
+ * unpacked on the way out: `unpack-landing.test.ts` covers that shape.
  */
 
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { islandText } from "../../scripts/unpack-landing";
 
 const BUNDLE = "grasp-landing.html";
-const OPENS_TEMPLATE = '<script type="__bundler/template">';
 
 /** Elements HTML closes for you, so an unmatched one is not a defect. */
 const VOID = new Set([
@@ -36,18 +39,14 @@ const VOID = new Set([
 ]);
 
 /**
- * The payload: one JSON string on the line after the tag that opens it. Found
- * by the tag rather than by a line number, which would rot the first time the
- * bundler emitted a line more or less. Read once; the file cannot change
- * under a run, and it is 7.7MB.
+ * The payload, read the same way the build reads it, so the two cannot come
+ * to disagree about where an island begins. Read once; the file cannot change
+ * under a run, and it is 7.5MB.
  */
 let read: { encoded: string; html: string } | null = null;
 function payload(): { encoded: string; html: string } {
   if (read) return read;
-  const lines = readFileSync(BUNDLE, "utf8").split("\n");
-  const opened = lines.findIndex((line) => line.includes(OPENS_TEMPLATE));
-  if (opened < 0) throw new Error(`${BUNDLE}: no ${OPENS_TEMPLATE} in the file`);
-  const encoded = lines[opened + 1];
+  const encoded = islandText(readFileSync(BUNDLE, "utf8"), "template");
   read = { encoded, html: JSON.parse(encoded) as string };
   return read;
 }
@@ -101,6 +100,10 @@ describe("landing page bundle", () => {
    * tag in it. One literal `</` written back by a hand edit ends that element
    * early, truncates the JSON, and publishes a blank page with every other
    * gate still green.
+   *
+   * A literal `</script>` is caught a step earlier, since reading the island
+   * stops at the first one and the truncated JSON throws on the way in. Every
+   * other `</` reaches this.
    */
   it("carries nothing that would close the script holding it", () => {
     expect(payload().encoded).not.toContain("</");
