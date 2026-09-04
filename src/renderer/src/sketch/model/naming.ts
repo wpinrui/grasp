@@ -260,8 +260,6 @@ export function namedAmong(objects: SketchObject[], ids: string[]): SketchObject
 export function namedWhereShown(objects: SketchObject[]): SketchObject[] {
   return namedAmong(
     objects,
-    objects
-      .filter((object) => object.label?.shown === true && !object.label.name)
-      .map((object) => object.id),
+    objects.filter((object) => object.label?.shown === true).map((object) => object.id),
   );
 }

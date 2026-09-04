@@ -13,16 +13,15 @@ import { isMeasurement, namedAmong, namesFor, type SketchObject } from "./model"
 
 /** The page with a name on everything a reading that has just landed spells out. */
 export function spelledOutNamed(objects: SketchObject[], already: Set<string>): SketchObject[] {
-  const fresh = objects.filter((object) => isMeasurement(object) && !already.has(object.id));
+  const fresh = objects.filter(isMeasurement).filter((one) => !already.has(one.id));
   if (fresh.length === 0) return objects;
   const names = namesFor(objects);
-  const spelled = new Set(
-    fresh.flatMap((one) => (isMeasurement(one) ? spelledOutBy(one, { objects, names }) : [])),
-  );
+  const spelled = new Set(fresh.flatMap((one) => spelledOutBy(one, { objects, names })));
+  // Handed the lot, named or not: `namesToGive` keeps a name that is there
+  // already, so the pass says what the reading needs and nothing about who has
+  // one.
   return namedAmong(
     objects,
-    objects
-      .filter((object) => spelled.has(object.id) && !object.label?.name)
-      .map((object) => object.id),
+    objects.filter((object) => spelled.has(object.id)).map((object) => object.id),
   );
 }
