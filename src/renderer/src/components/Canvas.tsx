@@ -23,11 +23,7 @@ import {
   quantitiesOf,
   readingOf,
   readingOfValue,
-  sayAngle,
-  sayArea,
-  sayLength,
   sayQuantity,
-  shoelace,
 } from "../sketch/measure";
 import {
   ANGLE_RADIUS,
@@ -45,14 +41,12 @@ import {
   createPoint,
   createTick,
   crossings,
-  degreesOf,
   distance,
   distanceToPath,
   endsById,
   familyOf,
   filledPath,
   fillLook,
-  HALF_TURN,
   isArc,
   isButton,
   isCaption,
@@ -83,7 +77,6 @@ import {
   markSweep,
   movedBy,
   namesFor,
-  nearMark,
   objectAt,
   objectsTouching,
   type PanFrom,
@@ -96,7 +89,6 @@ import {
   pathIn,
   pointOnPath,
   pointsOf,
-  QUARTER_TURN,
   type Rect,
   radiansOf,
   radiusOf,
@@ -129,6 +121,7 @@ import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
+import { guideOf, markUnder } from "./canvas/guides";
 import {
   ANGLE_AIM,
   ANGLE_READING_OFF,
@@ -144,12 +137,8 @@ import {
   DRAG_THRESHOLD,
   DRAW_HOLD,
   DRAW_REACH,
-  GUIDE_LIFT,
   GUIDE_OFF,
   GUIDE_RADIUS,
-  type Guide,
-  type GuideAngle,
-  type GuideText,
   type Handle,
   hasPanel,
   LEADER_PAST,
@@ -1192,7 +1181,7 @@ export function Canvas({
     // slides it along and a click opens its panel. On a bare side, the Angle
     // tool is dragged from one side of the angle to the other.
     if (marking) {
-      const found = markUnder(at);
+      const found = markUnder(at, { objects, settled, scale });
       // A tool only takes hold of the marks it deals in. Anything else under
       // the pointer is left alone and the press goes to the figure beneath.
       const caught =
@@ -1280,155 +1269,6 @@ export function Canvas({
   }
 
   /** The mark under the pointer, the topmost first, or null. */
-  function markUnder(at: Position): SketchMark | null {
-    for (let index = objects.length - 1; index >= 0; index -= 1) {
-      const object = objects[index];
-      if (isMark(object) && nearMark(object, at, { scale, settled, objects })) return object;
-    }
-    return null;
-  }
-
-  /**
-   * What a half-drawn object says about itself while it is being placed, all of
-   * it drawn on the sheet rather than beside the pointer: how long it is so
-   * far, written along it; every angle it makes, written at an arc drawn in
-   * that angle; and for a polygon the area it would close at, written where the
-   * shape is. It is gone the moment the object lands, since a measurement is
-   * the way to keep a number.
-   */
-  function guideOf(): Guide | null {
-    // A move says how far it has gone and which way, read off the horizontal
-    // the way a straight object drawn from a bare point is, so what the steps
-    // are holding it to is there to be read rather than merely felt.
-    // With nothing holding the move there is no step for the run, the length and
-    // the angle to read out, so a free drag says nothing and simply moves.
-    if (travel && snapping.moving) {
-      const corner = wedgeOfArms(travel.from, travel.to, [0]);
-      return {
-        length: alongText(travel.from, travel.to),
-        corners: corner ? [corner] : [],
-        datum: travel.from,
-        travel,
-      };
-    }
-    // A circle being drawn out says how far its rim is from its centre, which
-    // is the number the length steps are holding while it is drawn. The radius
-    // itself is not part of the circle, so the line the number sits on is drawn
-    // faintly, the way a move's run is.
-    if (pending && pending.tool === "compass") {
-      return {
-        length: alongText(pending.start, pending.at),
-        corners: [],
-        travel: { from: pending.start, to: pending.at },
-      };
-    }
-    if (pending && pending.tool === "straightedge") {
-      // The angle is against whatever already runs out of the point it started
-      // from, and the nearest of those is the wedge it is being drawn inside.
-      // From a point with nothing at it, it is against the horizontal, which is
-      // what the angle snapping counts from as well.
-      const arms = armsAt(pending.startId, objects, settled).map((arm) => arm.angle);
-      const corner = wedgeOfArms(pending.start, pending.at, arms.length > 0 ? arms : [0]);
-      return {
-        length: alongText(pending.start, pending.at),
-        corners: corner ? [corner] : [],
-        datum: arms.length === 0 ? pending.start : undefined,
-      };
-    }
-    if (tracing && tracing.spots.length > 0) {
-      const last = tracing.spots[tracing.spots.length - 1];
-      const ring = [...tracing.spots, tracing.at];
-      // The first edge has no corner behind it, so it reads off the horizontal
-      // the way a straight object drawn from a bare point does.
-      const first = ring.length < 3 ? wedgeOfArms(last, tracing.at, [0]) : null;
-      return {
-        length: alongText(last, tracing.at),
-        datum: first ? last : undefined,
-        // Every corner of the shape as it stands, so the whole figure can be
-        // read while it is being laid rather than one angle at a time.
-        corners: first
-          ? [first]
-          : ring.flatMap((corner, nth) => {
-              const before = ring[(nth + ring.length - 1) % ring.length];
-              const after = ring[(nth + 1) % ring.length];
-              const wedge = cornerArc(
-                corner,
-                angleBetween(corner, before),
-                angleBetween(corner, after),
-              );
-              return wedge ? [wedge] : [];
-            }),
-        area:
-          tracing.spots.length >= 2
-            ? { at: middleOf(ring), turn: 0, dy: 5, text: sayArea(shoelace(ring)) }
-            : undefined,
-      };
-    }
-    return null;
-  }
-
-  /** How long the line is so far, written along it and never upside down. */
-  function alongText(from: Position, to: Position): GuideText {
-    const turn = degreesOf(angleBetween(from, to));
-    return {
-      at: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
-      turn: turn > QUARTER_TURN || turn <= -QUARTER_TURN ? turn + HALF_TURN : turn,
-      dy: -GUIDE_LIFT,
-      text: sayLength(distance(from, to)),
-    };
-  }
-
-  /** The way one spot lies from another. */
-  function angleBetween(from: Position, to: Position): number {
-    return Math.atan2(to.y - from.y, to.x - from.x);
-  }
-
-  /** The angle a line being drawn makes with the nearest arm at its corner. */
-  function wedgeOfArms(corner: Position, to: Position, arms: number[]): GuideAngle | null {
-    if (arms.length === 0 || (corner.x === to.x && corner.y === to.y)) return null;
-    const bearing = angleBetween(corner, to);
-    let nearest = arms[0];
-    for (const arm of arms) {
-      if (Math.abs(markSweep(arm, bearing, false)) < Math.abs(markSweep(nearest, bearing, false))) {
-        nearest = arm;
-      }
-    }
-    return cornerArc(corner, nearest, bearing);
-  }
-
-  /** One angle: the arc drawn in it, and its size written just outside that. */
-  function cornerArc(corner: Position, from: number, to: number): GuideAngle | null {
-    const sweep = markSweep(from, to, false);
-    if (!Number.isFinite(sweep) || Math.abs(sweep) < 1e-6) return null;
-    const radius = GUIDE_RADIUS / scale;
-    const middle = from + sweep / 2;
-    const out = radius + GUIDE_OFF / scale;
-    const spot = (angle: number, reach: number) => ({
-      x: corner.x + Math.cos(angle) * reach,
-      y: corner.y + Math.sin(angle) * reach,
-    });
-    const start = spot(from, radius);
-    const end = spot(from + sweep, radius);
-    return {
-      arc: `M ${start.x} ${start.y} A ${radius} ${radius} 0 0 ${sweep < 0 ? 0 : 1} ${end.x} ${end.y}`,
-      text: {
-        at: spot(middle, out),
-        turn: 0,
-        dy: 5,
-        text: sayAngle(degreesOf(Math.abs(sweep))),
-      },
-    };
-  }
-
-  /** The middle of a ring of corners, which is where its area is written. */
-  function middleOf(corners: Position[]): Position {
-    const sum = corners.reduce((held, corner) => ({ x: held.x + corner.x, y: held.y + corner.y }), {
-      x: 0,
-      y: 0,
-    });
-    return { x: sum.x / corners.length, y: sum.y / corners.length };
-  }
-
   /**
    * Where the number on an angle hangs: along the bisector of the angle it is
    * about, far enough out to clear the marking on it. The reflex angle is on
@@ -2717,7 +2557,7 @@ export function Canvas({
     if (picking) return;
     const at = positionOf(event);
     if (!at) return;
-    const found = markUnder(at);
+    const found = markUnder(at, { objects, settled, scale });
     if (found) {
       setPanel(found.id);
       return;
@@ -3456,7 +3296,7 @@ export function Canvas({
     return (point ? radiusOf(point) + 5.5 : SNAP_RING) / scale;
   }
 
-  const guide = guideOf();
+  const guide = guideOf({ objects, settled, scale, snapping, travel, pending, tracing });
 
   // A panel with nothing left to be about closes itself.
   const onPanel = panel ? objects.find((object) => object.id === panel) : undefined;
