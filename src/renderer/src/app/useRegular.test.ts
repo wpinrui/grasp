@@ -18,12 +18,13 @@ const SPOT = { spot: { x: 200, y: 200 }, at: { x: 40, y: 40 } };
 
 function held(page: SketchState = { objects: [], selection: [] }) {
   const { sketch, committed } = stubSketch(page);
+  const drawn: true[] = [];
   const shown = renderHook(
     (props: { armed: boolean; page: string }) =>
-      useRegular({ sketch, pointSize: "medium", ...props }),
+      useRegular({ sketch, pointSize: "medium", onDrawn: () => drawn.push(true), ...props }),
     { initialProps: { armed: true, page: "one" } },
   );
-  return { ...shown, committed };
+  return { ...shown, committed, drawn };
 }
 
 /**
@@ -59,12 +60,22 @@ describe("a regular polygon waiting to be drawn", () => {
     expect(middle.y).toBeCloseTo(SPOT.spot.y, 6);
   });
 
+  it("hands the sheet back once the shape is drawn", () => {
+    // It lands picked with nothing left to click out, so the Arrow is next.
+    const { result, drawn } = held();
+    act(() => result.current.ask(SPOT));
+    expect(drawn).toEqual([]);
+    act(() => result.current.draw({ sides: 6, locked: true }));
+    expect(drawn).toEqual([true]);
+  });
+
   it("commits nothing for a count no polygon has", () => {
-    const { result, committed } = held();
+    const { result, committed, drawn } = held();
     act(() => result.current.ask(SPOT));
     act(() => result.current.draw({ sides: 2, locked: false }));
-    // Nothing changed, so there is no step to undo either.
+    // Nothing changed, so there is no step to undo and no sheet to hand back.
     expect(committed).toEqual([]);
+    expect(drawn).toEqual([]);
     expect(result.current.asked).toBeNull();
   });
 
