@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
+import { sayLength } from "../../sketch/measure";
 import { createPoint, lineThrough, type SketchObject, settle } from "../../sketch/model";
 import type { Snapping } from "../SnapPanel";
 import { guideOf, type Placing } from "./guides";
@@ -47,7 +48,7 @@ describe("what a half-drawn object says", () => {
     const guide = guideOf(
       placing({ pending: { start: A, startId: "A", at: { x: 60, y: 0 }, tool: "compass" } }),
     );
-    expect(guide?.length.text).toContain("cm");
+    expect(guide?.length.text).toBe(sayLength(60));
     expect(guide?.corners).toEqual([]);
     expect(guide?.travel).toEqual({ from: A, to: { x: 60, y: 0 } });
   });

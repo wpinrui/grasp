@@ -324,9 +324,7 @@ export function Canvas({
   /** Screen pixels per sheet pixel. */
   const scale = view.scale;
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
-  /** A tool waiting for its second click, and where it is aiming. */
   const [pending, setPending] = useState<Pending | null>(null);
-  /** The polygon being traced out, its corners in the order they were clicked. */
   const [tracing, setTracing] = useState<Tracing | null>(null);
   /**
    * Escape: drops a half-drawn line and the end its first click plotted, or
@@ -1502,9 +1500,14 @@ export function Canvas({
     });
   }
 
-  /** The figure a mark is drawn against, and what a new one is set to. */
+  /** How big a reading came out, or how big it is going to come out. */
+  function boxOf(reading: SketchMeasurement): { width: number; height: number } {
+    return boxes.current.get(reading.id) ?? readingBox(reading, measuringNow());
+  }
+
+  /** Where the figure settled, the zoom, and what a new mark is set to. */
   function markingNow(): Marking {
-    return { objects, settled, scale, lastMark: lastMark.current };
+    return { settled, scale, lastMark: lastMark.current };
   }
 
   /**
@@ -2748,11 +2751,7 @@ export function Canvas({
   const readingOpen = onReading && isMeasurement(onReading) ? onReading : null;
   const readingSpot = readingOpen
     ? {
-        x:
-          (readingOpen.x - view.x) * scale +
-          (boxes.current.get(readingOpen.id)?.width ??
-            readingBox(readingOpen, measuringNow()).width) /
-            2,
+        x: (readingOpen.x - view.x) * scale + boxOf(readingOpen).width / 2,
         y: (readingOpen.y - view.y) * scale - 10,
       }
     : null;
@@ -3275,11 +3274,7 @@ export function Canvas({
               />
             ))}
             {readings.filter(isMeasurement).map((reading) => {
-              const drawn = dimensionOf(
-                reading,
-                boxes.current.get(reading.id) ?? readingBox(reading, measuringNow()),
-                { settled, scale },
-              );
+              const drawn = dimensionOf(reading, boxOf(reading), { settled, scale });
               if (!drawn) return null;
               return (
                 <g key={`dimension-${reading.id}`} data-id={reading.id}>

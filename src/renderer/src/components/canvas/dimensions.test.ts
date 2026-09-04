@@ -34,6 +34,15 @@ function runs(path: string): number {
   return path.split("M").length - 1;
 }
 
+/** Where a one-run path starts and ends along the page. */
+function startX(path: string): number {
+  return Number(path.split(" ")[1]);
+}
+
+function endX(path: string): number {
+  return Number(path.split(" L ")[1].split(" ")[0]);
+}
+
 describe("drawing a length out", () => {
   it("draws nothing at all until it is asked to be drawn out", () => {
     expect(dimensionOf(reading(), BOX, DRAWING)).toBe(null);
@@ -53,12 +62,18 @@ describe("drawing a length out", () => {
 
   /**
    * Broken by the number: the run stops either side of the room the number
-   * takes along the dimension, so nothing is drawn under it.
+   * takes along the dimension, so nothing is drawn under it. The reading sits
+   * off the segment's midpoint so that where the gap falls is read off the
+   * number rather than being the middle either way.
    */
   it("breaks the run either side of the number in the broken form", () => {
-    const drawn = dimensionOf(reading({ bounds: "broken" }), BOX, DRAWING);
+    const drawn = dimensionOf(reading({ bounds: "broken", x: 10 }), BOX, DRAWING);
     expect(drawn?.lines).toHaveLength(2);
     expect(drawn?.heads).toHaveLength(2);
+    // The number's middle, which is where the run has to be broken about.
+    const middle = 10 + BOX.width / 2;
+    expect(endX(drawn?.lines[0] ?? "")).toBeLessThan(middle);
+    expect(startX(drawn?.lines[1] ?? "")).toBeGreaterThan(middle);
   });
 
   it("draws the dotted lines only when it carries them", () => {

@@ -5,6 +5,8 @@ import {
   createPoint,
   distance,
   lineThrough,
+  markReach,
+  type SketchMark,
   type SketchMeasurement,
   type SketchObject,
   settle,
@@ -12,9 +14,10 @@ import {
 import { type Measuring, pointUnder, readingAlready, readingFrom, sameAngle } from "./readings";
 
 /**
- * What the Measure tool would write, and where it hangs. Nothing here is in the
- * sheet's own snapshot: every entry point is gated on the Measure tool being
- * up, and the figure that snapshot lays out is drawn with the Arrow.
+ * What the Measure tool would write, and where it hangs. Nothing here is pinned
+ * by the sheet's own snapshot: the tool is never up in it, and the one entry
+ * point it does reach has its answer thrown away by the first guard in the
+ * dimension drawing.
  */
 
 const A = { ...createPoint({ x: 0, y: 0 }, "medium"), id: "A" };
@@ -86,10 +89,17 @@ describe("what a click would read", () => {
     expect(written?.mark).not.toBe(null);
   });
 
-  it("stands the number clear of the corner it is about", () => {
-    const written = readingFrom({ x: 0, y: 0 }, measuring("angle"));
-    const hung = { x: written?.reading.x ?? 0, y: written?.reading.y ?? 0 };
-    expect(distance(hung, A)).toBeGreaterThan(24);
+  /**
+   * The number goes outside the marking on the angle, so a corner whose marks
+   * stand further out pushes the number further out with them.
+   */
+  it("stands the number clear of the marking on the corner", () => {
+    const near = readingFrom({ x: 0, y: 0 }, { ...measuring("angle"), clearOf: () => 24 });
+    const far = readingFrom({ x: 0, y: 0 }, { ...measuring("angle"), clearOf: () => 120 });
+    const outOf = (written: typeof near) =>
+      distance({ x: written?.reading.x ?? 0, y: written?.reading.y ?? 0 }, A);
+    expect(outOf(near)).toBeGreaterThan(markReach(near?.mark as SketchMark));
+    expect(outOf(far)).toBeGreaterThan(outOf(near) + 90);
   });
 });
 

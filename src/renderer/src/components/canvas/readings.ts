@@ -36,6 +36,7 @@ import {
   ANGLE_READING_OFF,
   type Figure,
   type LastMark,
+  middleOf,
   READING_CHAR,
   READING_HEIGHT,
   READING_OFF,
@@ -286,10 +287,7 @@ function outwardOf(along: LineGeometry, ends: [string, string], measuring: Measu
   const up = across.y > 0 ? { x: -across.x, y: -across.y } : across;
   const ring = joinedTo(ends, measuring);
   if (ring.length < 3) return up;
-  const middle = {
-    x: ring.reduce((sum, spot) => sum + spot.x, 0) / ring.length,
-    y: ring.reduce((sum, spot) => sum + spot.y, 0) / ring.length,
-  };
+  const middle = middleOf(ring);
   const mid = { x: (along.a.x + along.b.x) / 2, y: (along.a.y + along.b.y) / 2 };
   const outward = (mid.x - middle.x) * across.x + (mid.y - middle.y) * across.y;
   if (Math.abs(outward) < 1e-9) return up;
@@ -321,12 +319,7 @@ function areaFrom(hit: SketchObject, measuring: Measuring): Written | null {
     const corners = settled.shapes.get(hit.id);
     const inside = filledPath(hit);
     const round = inside ? settled.circles.get(inside) : undefined;
-    const middle = corners
-      ? {
-          x: corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length,
-          y: corners.reduce((sum, corner) => sum + corner.y, 0) / corners.length,
-        }
-      : round?.at;
+    const middle = corners ? middleOf(corners) : round?.at;
     if (!middle) return null;
     return {
       reading: newReading({ measure: "area", of: [hit.id], at: middle }, measuring),

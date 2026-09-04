@@ -13,13 +13,16 @@ import {
   markSweep,
   nearMark,
   type Position,
+  type Settled,
   type SketchMark,
   type SketchPoint,
 } from "../../sketch/model";
 import type { Figure, LastMark } from "./sheet";
 
-/** The figure a mark is drawn against, and what a new one is set to. */
-export interface Marking extends Figure {
+/** Where the figure settled, the zoom, and what a new mark is set to. */
+export interface Marking {
+  settled: Settled;
+  scale: number;
   lastMark: LastMark;
 }
 

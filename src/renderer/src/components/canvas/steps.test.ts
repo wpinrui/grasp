@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
+  createLocus,
+  createMeasurement,
   createPoint,
   degreesOf,
   distance,
@@ -11,7 +13,7 @@ import {
   settle,
 } from "../../sketch/model";
 import type { Snapping } from "../SnapPanel";
-import { type Aiming, aimAt, handleAt, snapAt, spanOfLocus } from "./steps";
+import { type Aiming, aimAt, handleAt, heldMove, snapAt, spanOfLocus, travelOf } from "./steps";
 
 /**
  * Where a click lands is the one thing on the sheet with no second opinion: it
@@ -139,18 +141,82 @@ describe("the steps a click is held to", () => {
   });
 
   it("holds to Shift's own step instead, while Shift is down", () => {
-    const aim = aimAt({ x: 100, y: 12 }, aiming({ objects: true }, { pending, shiftHeld: true }));
+    // Within slack of the segment, so there is a snap for Shift to override.
+    const at = { x: 298, y: 4 };
+    expect(aimAt(at, aiming({ objects: true }, { pending })).found).not.toBe(null);
+    const aim = aimAt(at, aiming({ objects: true }, { pending, shiftHeld: true }));
     expect(aim.found).toBe(null);
     expect(degreesOf(Math.atan2(aim.spot.y, aim.spot.x))).toBeCloseTo(0);
   });
 });
 
 describe("what a drag takes hold of", () => {
+  const handles = [
+    { locus: "one", end: 0 as const, at: { x: 0, y: 0 }, way: { x: 1, y: 0 }, step: 0.01 },
+    { locus: "two", end: 1 as const, at: { x: 200, y: 0 }, way: { x: 1, y: 0 }, step: 0.01 },
+  ];
+
+  it("takes the arrowhead the pointer is on, and none from across the sheet", () => {
+    expect(handleAt({ x: 202, y: 1 }, aiming({}, { handles }))?.locus).toBe("two");
+    expect(handleAt({ x: 100, y: 0 }, aiming({}, { handles }))).toBe(null);
+  });
+
   it("finds no arrowhead where the sheet carries none", () => {
     expect(handleAt({ x: 0, y: 0 }, aiming({}))).toBe(null);
   });
 
+  it("reads the span a locus is drawn over", () => {
+    const locus = {
+      ...createLocus({ driver: "A", domain: "seg", driven: "B", span: [0.2, 0.8], samples: 8 }),
+      id: "loc",
+    };
+    expect(spanOfLocus("loc", aiming({}, { objects: [...FIGURE, locus] }))).toEqual([0.2, 0.8]);
+  });
+
   it("reads a whole domain off anything that is not a locus", () => {
     expect(spanOfLocus("seg", aiming({}))).toEqual([0, 1]);
+  });
+});
+
+/**
+ * A move can come to nothing, so unlike a line being drawn it is not held to at
+ * least one step. The steps hold geometry: writing dragged on its own goes
+ * exactly where it is put.
+ */
+describe("the steps a move is held to", () => {
+  const held = { length: true, lengthCm: 1, moving: true };
+  const note = { ...createMeasurement("length", ["seg"], { x: 0, y: 0 }), id: "num" };
+  const withNote = { objects: [...FIGURE, note] };
+
+  it("holds the run to whole steps", () => {
+    const went = heldMove(["A"], { x: 2.4 * PX_PER_CM, y: 0 }, aiming(held));
+    expect(went.x / PX_PER_CM).toBeCloseTo(2);
+  });
+
+  it("lets a move come to nothing, unlike a line being drawn", () => {
+    expect(heldMove(["A"], { x: 0.2 * PX_PER_CM, y: 0 }, aiming(held)).x).toBeCloseTo(0);
+  });
+
+  it("leaves a move free while the steps are not asked to hold one", () => {
+    const by = { x: 0.2 * PX_PER_CM, y: 0 };
+    expect(heldMove(["A"], by, aiming({ ...held, moving: false }))).toEqual(by);
+  });
+
+  it("leaves writing dragged on its own exactly where it is put", () => {
+    const by = { x: 0.2 * PX_PER_CM, y: 0 };
+    expect(heldMove(["num"], by, aiming(held, withNote))).toEqual(by);
+  });
+
+  it("says how far a move carrying geometry has gone", () => {
+    const move = { ids: ["A"], from: [{ x: 0, y: 0 }], went: { x: 30, y: 40 } };
+    expect(travelOf(move, aiming(held))).toEqual({
+      from: { x: 0, y: 0 },
+      to: { x: 30, y: 40 },
+    });
+  });
+
+  it("says nothing about a move carrying no geometry", () => {
+    const move = { ids: ["num"], from: [{ x: 0, y: 0 }], went: { x: 30, y: 40 } };
+    expect(travelOf(move, aiming(held, withNote))).toBe(null);
   });
 });
