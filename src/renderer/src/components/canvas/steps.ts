@@ -11,7 +11,7 @@
  * the same figure lands in the same place wherever it is asked from.
  */
 
-import { armsAt } from "../../sketch/measure";
+import { armsAt, endsOf } from "../../sketch/measure";
 import {
   alongPath,
   crossings,
@@ -29,6 +29,7 @@ import {
   pathIn,
   radiansOf,
   type SketchObject,
+  slackAt,
   spotOnPath,
 } from "../../sketch/model";
 import type { Snapping } from "../SnapPanel";
@@ -286,4 +287,49 @@ export function travelOf(
   if (!carriesGeometry(ids, aiming)) return null;
   const start = from[0];
   return { from: start, to: { x: start.x + went.x, y: start.y + went.y } };
+}
+
+/**
+ * The path under the pointer, which is what a tick rides and what a point put
+ * on it slides along. The topmost first, the way picking has them.
+ */
+export function pathUnder(
+  at: Position,
+  where: Pick<Aiming, "objects" | "settled" | "scale">,
+  straightOnly = false,
+): SketchObject | null {
+  const { objects, settled, scale } = where;
+  for (let index = objects.length - 1; index >= 0; index -= 1) {
+    const object = objects[index];
+    if (straightOnly ? !isLine(object) : !isLine(object) && !isCircle(object) && !isArc(object)) {
+      continue;
+    }
+    const along = pathIn(settled, object.id);
+    if (along && distanceToPath(along, at) <= slackAt(scale)) return object;
+  }
+  return null;
+}
+
+/**
+ * The point two straight objects meet at, and the far end of each. Null where
+ * they do not meet, or meet twice, since neither says an angle.
+ */
+export function cornerBetween(
+  one: string,
+  other: string,
+  objects: SketchObject[],
+): { corner: string; arms: [string, string] } | null {
+  const first = objects.find((object) => object.id === one);
+  const second = objects.find((object) => object.id === other);
+  if (!first || !second) return null;
+  const a = endsOf(first);
+  const b = endsOf(second);
+  if (!a || !b) return null;
+  const shared = a.filter((end) => b.includes(end));
+  if (shared.length !== 1) return null;
+  const corner = shared[0];
+  return {
+    corner,
+    arms: [a[0] === corner ? a[1] : a[0], b[0] === corner ? b[1] : b[0]] as [string, string],
+  };
 }

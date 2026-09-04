@@ -14,7 +14,6 @@ import {
   anglesAt,
   angleWanted,
   armsAt,
-  endsOf,
   fromSheetTerms,
   placesFor,
   quantitiesOf,
@@ -33,7 +32,6 @@ import {
   createInterior,
   createPoint,
   distance,
-  distanceToPath,
   endsById,
   familyOf,
   isArc,
@@ -146,8 +144,10 @@ import {
 import {
   type Aiming,
   aimAt,
+  cornerBetween,
   handleAt,
   heldMove,
+  pathUnder,
   snapAt,
   spanOfLocus,
   travelOf,
@@ -927,7 +927,7 @@ export function Canvas({
         if (corner) setArming({ corner: corner.id, start: at, at });
         // Off the vertex, the press is on one side of an angle and the drag
         // goes to the other.
-        else armFrom.current = pathUnder(at, true)?.id ?? null;
+        else armFrom.current = pathUnder(at, { objects, settled, scale }, true)?.id ?? null;
       }
       return;
     }
@@ -968,7 +968,8 @@ export function Canvas({
     if (tool === "arrow" && !hit && !held) sketch.select([]);
     // The protractor is dragged from one side of an angle to the other, the
     // way the Angle marker is.
-    if (measuring === "angle") armFrom.current = pathUnder(at, true)?.id ?? null;
+    if (measuring === "angle")
+      armFrom.current = pathUnder(at, { objects, settled, scale }, true)?.id ?? null;
     grab.current = {
       origin: at,
       pressed: Date.now(),
@@ -1021,40 +1022,6 @@ export function Canvas({
     if (!spot) return null;
     const bearing = Math.atan2(at.y - spot.y, at.x - spot.x);
     return angleWanted(armsAt(corner, objects, settled), bearing);
-  }
-
-  /** The path under the pointer, which is what a tick rides. */
-  function pathUnder(at: Position, straightOnly = false): SketchObject | null {
-    for (let index = objects.length - 1; index >= 0; index -= 1) {
-      const object = objects[index];
-      if (straightOnly ? !isLine(object) : !isLine(object) && !isCircle(object) && !isArc(object)) {
-        continue;
-      }
-      const along = pathIn(settled, object.id);
-      if (along && distanceToPath(along, at) <= slackAt(scale)) return object;
-    }
-    return null;
-  }
-
-  /** A new mark lands on the page without disturbing what is selected. */
-  /**
-   * The point two straight objects meet at, and the far end of each. Null where
-   * they do not meet, or meet twice, since neither says an angle.
-   */
-  function cornerBetween(one: string, other: string) {
-    const first = objects.find((object) => object.id === one);
-    const second = objects.find((object) => object.id === other);
-    if (!first || !second) return null;
-    const a = endsOf(first);
-    const b = endsOf(second);
-    if (!a || !b) return null;
-    const shared = a.filter((end) => b.includes(end));
-    if (shared.length !== 1) return null;
-    const corner = shared[0];
-    return {
-      corner,
-      arms: [a[0] === corner ? a[1] : a[0], b[0] === corner ? b[1] : b[0]] as [string, string],
-    };
   }
 
   /** Write the number for one angle, by the two arms it runs between. */
@@ -1128,7 +1095,8 @@ export function Canvas({
     // A marking tool lights the midpoint of a segment it would snap to.
     if (marking && !picking && !grab.current) {
       const over = positionOf(event);
-      const path = over && marking !== "angle" ? pathUnder(over) : null;
+      const path =
+        over && marking !== "angle" ? pathUnder(over, { objects, settled, scale }) : null;
       const along = path ? pathIn(settled, path.id) : null;
       const snapped =
         along && over && markAlong(along, over, scale) === 0.5 ? spotOnPath(along, 0.5) : null;
@@ -1326,8 +1294,9 @@ export function Canvas({
     const fromSide = armFrom.current;
     armFrom.current = null;
     if (fromSide && state.moved && (marking === "angle" || measuring === "angle")) {
-      const landed = pathUnder(at, true);
-      const pair = landed && landed.id !== fromSide ? cornerBetween(fromSide, landed.id) : null;
+      const landed = pathUnder(at, { objects, settled, scale }, true);
+      const pair =
+        landed && landed.id !== fromSide ? cornerBetween(fromSide, landed.id, objects) : null;
       if (pair) {
         setArming(null);
         if (marking === "angle") markAngle({ corner: pair.corner, arms: pair.arms });
@@ -1465,7 +1434,7 @@ export function Canvas({
       }
       // A click on a path puts a tick where the pointer landed on it, and a
       // click on nothing puts the panel away.
-      const path = pathUnder(at);
+      const path = pathUnder(at, { objects, settled, scale });
       const along = path ? pathIn(settled, path.id) : null;
       if (!path || !along) {
         setPanel(null);
