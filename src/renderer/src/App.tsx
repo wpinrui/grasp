@@ -146,7 +146,7 @@ export function App() {
     collecting: dialogs.collecting,
   });
   /** Names, labels, and what is out of view. */
-  const naming = labelActions({ sketch, objects, selection, geometry, setClash: dialogs.setClash });
+  const naming = labelActions({ sketch, objects, selection, geometry });
   /** The buttons on the sheet, and what pressing one does. */
   const buttons = buttonActions({
     sketch,
@@ -441,13 +441,11 @@ export function App() {
       <Dialogs
         dialogs={dialogs}
         numbers={numbers}
-        naming={naming}
         buttons={buttons}
         custom={custom}
         settings={settings}
         moves={moves}
         sketch={sketch}
-        objects={objects}
         names={names}
         readable={readable}
         buildPrompt={promptForRequest}

@@ -3,9 +3,9 @@
  * hidden panel act on, and the renaming a label typed into asks for.
  *
  * A name is either pinned to an object or handed out automatically, so several
- * of these read the whole page back before they write: handing a name over has
- * to pin what the old holder was called, or the automatic run would move it off
- * that name on the next pass.
+ * of these read the whole page back before they write: a name landing on one
+ * already in use has to pin what that one was called, or the automatic run
+ * would move it off that name on the next pass.
  */
 
 import type { HiddenRow } from "../components/HiddenPanel";
@@ -26,20 +26,12 @@ import {
 } from "../sketch/model";
 import type { Sketch } from "../sketch/useSketch";
 
-/** A name typed into a label that something else already answers to. */
-export interface Clash {
-  id: string;
-  name: string;
-  holder: string;
-}
-
 export interface LabelContext {
   sketch: Sketch;
   objects: SketchObject[];
   selection: string[];
   /** Where everything sits, for reading a measurement out by its number. */
   geometry: Settled;
-  setClash: (clash: Clash | null) => void;
 }
 
 /** What to call an object in a sentence. */
@@ -54,29 +46,26 @@ export function kindOf(object: SketchObject): string {
   return "a locus";
 }
 
-export function labelActions({ sketch, objects, selection, geometry, setClash }: LabelContext) {
+export function labelActions({ sketch, objects, selection, geometry }: LabelContext) {
   /**
-   * Give one object a name, and optionally hand it over from whatever held it,
-   * which puts that one back on the automatic run. An empty name unpins.
+   * Give one object a name. Whatever already answers to it keeps it, by pinning
+   * what it is called now, so the name lands without moving a single other name
+   * on the page. An empty name unpins, putting the object back on the run.
    */
-  function pinName(id: string, name: string, swap?: { freed?: string; kept?: string }) {
-    const freed = swap?.freed;
-    const kept = swap?.kept;
+  function pinName(id: string, name: string, options?: { keep?: string; show?: boolean }) {
+    const keep = options?.keep;
     const before = sketch.read();
     const names = namesFor(before.objects);
     sketch.commit({
       ...before,
       objects: before.objects.map((object) => {
         if (object.id === id) {
-          return { ...object, label: { ...object.label, name: name || undefined } };
+          const label = { ...object.label, name: name || undefined };
+          return { ...object, label: options?.show ? { ...label, shown: true } : label };
         }
-        // Handing the name over: the old holder goes back to automatic.
-        if (object.id === freed) {
-          return { ...object, label: { ...object.label, name: undefined } };
-        }
-        // Keeping both: the old holder has to pin what it was called, or the
+        // The one that was called this pins the name it has now, or the
         // automatic run would move it off the name on the next pass.
-        if (object.id === kept) {
+        if (object.id === keep) {
           return { ...object, label: { ...object.label, name: names.get(object.id) } };
         }
         return object;
@@ -152,19 +141,32 @@ export function labelActions({ sketch, objects, selection, geometry, setClash }:
     });
   }
 
-  /** A label was typed into. An empty name puts the object back on the run. */
+  /** Whatever else on the page answers to a name already, if anything does. */
+  function holderOf(id: string, name: string): SketchObject | undefined {
+    const names = namesFor(objects);
+    return objects.find((object) => object.id !== id && names.get(object.id) === name);
+  }
+
+  /**
+   * A label was typed into, in the panel or on the sheet. The name lands as it
+   * was typed, with nothing asked about one already in use: two objects sharing
+   * a name is allowed, and the one that had it keeps it. An empty name puts the
+   * object back on the run.
+   */
   function rename(id: string, name: string) {
     if (!name) {
       pinName(id, "");
       return;
     }
-    const names = namesFor(objects);
-    const holder = objects.find((object) => object.id !== id && names.get(object.id) === name);
-    if (!holder) {
-      pinName(id, name);
-      return;
-    }
-    setClash({ id, name, holder: kindOf(holder) });
+    pinName(id, name, { keep: holderOf(id, name)?.id });
+  }
+
+  /**
+   * Name an object and show the label, which is what a relabel run does to each
+   * vertex it is pointed at: there is no sense naming what cannot be read.
+   */
+  function labelAs(id: string, name: string) {
+    pinName(id, name, { keep: holderOf(id, name)?.id, show: true });
   }
 
   /**
@@ -200,7 +202,7 @@ export function labelActions({ sketch, objects, selection, geometry, setClash }:
   }
 
   return {
-    pinName,
+    labelAs,
     showAllHidden,
     showLabels,
     hideObjects,

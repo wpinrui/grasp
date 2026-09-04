@@ -14,7 +14,6 @@ import { DefineTransformDialog, EditTransformsDialog } from "../components/Custo
 import { DocumentOptionsDialog } from "../components/DocumentOptionsDialog";
 import { ExportDialog, type ExportTo } from "../components/ExportDialog";
 import { IterateDialog } from "../components/IterateDialog";
-import { LabelClashDialog } from "../components/LabelClashDialog";
 import { PageSetupDialog } from "../components/PageSetupDialog";
 import { ParameterDialog } from "../components/ParameterDialog";
 import { PreferencesDialog } from "../components/PreferencesDialog";
@@ -23,11 +22,9 @@ import { ScriptDialog } from "../components/ScriptDialog";
 import { AddTableDataDialog, RemoveTableDataDialog } from "../components/TableDataDialog";
 import { TransformDialog } from "../components/TransformDialog";
 import type { Sheet } from "../sketch/expression";
-import { namesFor, type SketchObject } from "../sketch/model";
 import type { Sketch } from "../sketch/useSketch";
 import type { Buttons } from "./buttons";
 import type { Custom } from "./customs";
-import type { Naming } from "./labels";
 import { pagePicture, printPage } from "./printing";
 import type { Dialogs as DialogState } from "./useDialogs";
 import type { Settings } from "./useSettings";
@@ -37,13 +34,11 @@ import type { Numbers } from "./values";
 interface DialogsProps {
   dialogs: DialogState;
   numbers: Numbers;
-  naming: Naming;
   buttons: Buttons;
   custom: Custom;
   settings: Settings;
   moves: Moves;
   sketch: Sketch;
-  objects: SketchObject[];
   /** What everything on the page is called. */
   names: Map<string, string>;
   /** The page as an expression reads it, for the Calculator's preview. */
@@ -57,13 +52,11 @@ interface DialogsProps {
 export function Dialogs({
   dialogs,
   numbers,
-  naming,
   buttons,
   custom,
   settings,
   moves,
   sketch,
-  objects,
   names,
   readable,
   buildPrompt,
@@ -71,7 +64,7 @@ export function Dialogs({
   onExport,
 }: DialogsProps) {
   // Read out of the bundle so what is open narrows inside the callbacks below.
-  const { clash, exportTo } = dialogs;
+  const { exportTo } = dialogs;
   return (
     <>
       {dialogs.calculator && (
@@ -191,27 +184,6 @@ export function Dialogs({
         />
       )}
 
-      {clash && (
-        <LabelClashDialog
-          name={clash.name}
-          holder={clash.holder}
-          onFree={() => {
-            const holder = objects.find(
-              (object) => namesFor(objects).get(object.id) === clash.name,
-            );
-            naming.pinName(clash.id, clash.name, { freed: holder?.id });
-            dialogs.setClash(null);
-          }}
-          onBoth={() => {
-            const holder = objects.find(
-              (object) => namesFor(objects).get(object.id) === clash.name,
-            );
-            naming.pinName(clash.id, clash.name, { kept: holder?.id });
-            dialogs.setClash(null);
-          }}
-          onCancel={() => dialogs.setClash(null)}
-        />
-      )}
       {dialogs.about && <AboutDialog onClose={() => dialogs.setAbout(false)} />}
       {settings.drafted && (
         <PreferencesDialog
