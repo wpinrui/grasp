@@ -111,6 +111,7 @@ import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
 import { guideOf } from "./canvas/guides";
+import { Arms, Resting, Showing } from "./canvas/layers/Angles";
 import { Dimensions } from "./canvas/layers/Dimensions";
 import { Drawing } from "./canvas/layers/Drawing";
 import { Fills } from "./canvas/layers/Fills";
@@ -123,7 +124,7 @@ import { MarkGhost, Marks } from "./canvas/layers/Marks";
 import { Paths } from "./canvas/layers/Paths";
 import { Points } from "./canvas/layers/Points";
 import { litWith } from "./canvas/lighting";
-import { arcsBetween, type Marking, markUnder } from "./canvas/marks";
+import { type Marking, markUnder } from "./canvas/marks";
 import {
   angleMarkOn,
   angleReadingSpot,
@@ -2545,102 +2546,14 @@ export function Canvas({
               <Drawing tracing={tracing} pending={pending} middle={middle} />
               <Marks />
               <MarkGhost mark={previewReading?.mark ?? null} />
-              {arming && (
-                <g>
-                  <line
-                    className="canvas__rubber"
-                    x1={arming.start.x}
-                    y1={arming.start.y}
-                    x2={arming.at.x}
-                    y2={arming.at.y}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  {/* The angle the drag is asking for, drawn as it will land. */}
-                  {armingArcs().map((stroke) => (
-                    <path
-                      key={stroke}
-                      className="canvas__mark-stroke"
-                      d={stroke}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ))}
-                </g>
-              )}
-              {/* Resting on a corner with an angle tool up. One angle there is
-                drawn as itself; more than one is drawn as the whole turn, which
-                says a corner is there without claiming which angle is meant. */}
-              {overCorner &&
-                !choosing &&
-                (() => {
-                  const spot = settled.points.get(overCorner);
-                  if (!spot) return null;
-                  const there = anglesAt(overCorner, objects, settled);
-                  if (there.length === 1) {
-                    // The protractor already ghosts the marking it would lay, so
-                    // this is only the Marker's business.
-                    if (marking !== "angle") return null;
-                    return arcsBetween(
-                      { corner: overCorner, arms: there[0].arms, reflex: false },
-                      markingNow(),
-                    ).map((stroke) => (
-                      <path
-                        key={stroke}
-                        className="canvas__mark-stroke canvas__mark-stroke--preview"
-                        d={stroke}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ));
-                  }
-                  return (
-                    <circle
-                      className="canvas__mark-stroke canvas__mark-stroke--preview"
-                      cx={spot.x}
-                      cy={spot.y}
-                      r={clearOfCorner(overCorner) / scale}
-                      fill="none"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  );
-                })()}
-              {/* The angle a row of the which-angle dialog is pointing at: its two
-                arms lit up, so which angle is meant is plain at a glance, and
-                the arcs it would land as drawn over them. */}
-              {choosing &&
-                showingArms &&
-                (() => {
-                  const spot = settled.points.get(choosing.corner);
-                  if (!spot) return null;
-                  return (
-                    <g>
-                      {showingArms.map((arm) => {
-                        const end = settled.points.get(arm);
-                        if (!end) return null;
-                        return (
-                          <line
-                            key={arm}
-                            className="canvas__mark-halo"
-                            x1={spot.x}
-                            y1={spot.y}
-                            x2={end.x}
-                            y2={end.y}
-                            vectorEffect="non-scaling-stroke"
-                          />
-                        );
-                      })}
-                      {arcsBetween(
-                        { corner: choosing.corner, arms: showingArms, reflex: false },
-                        markingNow(),
-                      ).map((stroke) => (
-                        <path
-                          key={stroke}
-                          className="canvas__mark-stroke"
-                          d={stroke}
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      ))}
-                    </g>
-                  );
-                })()}
+              <Arms arming={arming} arcs={arming ? armingArcs() : []} />
+              <Resting
+                corner={choosing ? null : overCorner}
+                marking={marking === "angle"}
+                clearOf={clearOfCorner}
+                marks={markingNow()}
+              />
+              <Showing corner={choosing?.corner ?? null} arms={showingArms} marks={markingNow()} />
               <Points />
               {spotlight && <Lit ids={litWith(spotlight, everything)} />}
               {lit && lit !== spotlight && <Lit ids={litWith(lit, everything)} />}
