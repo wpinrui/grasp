@@ -32,7 +32,12 @@ interface LabelsProps {
   scale: number;
   /** Which labels the palette is set on, drawn as picked. */
   picked: string[];
-  /** Whether a label is the pointer's to take, which only two tools make it. */
+  /**
+   * Whether a label is the pointer's to take. The Text tool always makes it so,
+   * and the Arrow only while it is armed for everything or for writing: an
+   * Arrow armed for points or paths passes over a label the way it passes over
+   * a caption.
+   */
   reachable: boolean;
   naming: LabelEdit | null;
   onNaming: (naming: LabelEdit | null) => void;

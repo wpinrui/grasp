@@ -1773,7 +1773,7 @@ export function Canvas({
             view={view}
             scale={scale}
             picked={labelPick}
-            reachable={(tool === "arrow" || tool === "text") && !picking}
+            reachable={(tool === "arrow" ? takesWriting : tool === "text") && !picking}
             naming={naming}
             onNaming={setNaming}
             onRename={onRename}
