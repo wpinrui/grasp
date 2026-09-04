@@ -1,6 +1,17 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { clampScale, overlaps, snapKey, stepped, stopAbove, stopBelow } from "./sheet";
+import { createPoint } from "../../sketch/model";
+import {
+  clampScale,
+  overlaps,
+  SNAP_RING,
+  type Snap,
+  snapKey,
+  snapRadius,
+  stepped,
+  stopAbove,
+  stopBelow,
+} from "./sheet";
 
 /**
  * The zoom buttons step to round numbers rather than multiplying from wherever
@@ -53,5 +64,36 @@ describe("the rest of what the sheet is drawn by", () => {
       snapKey({ kind: "line", ids: ["a"], at }),
     );
     expect(snapKey(null)).toBe("");
+  });
+});
+
+/**
+ * The ring drawn where a click would land. On a dot it is that dot's own size
+ * with a little room round it, so the ring reads as being about the dot; on a
+ * path there is no dot to be about, so it is a fixed size instead. Either way
+ * it keeps its size on screen.
+ */
+describe("the ring at a snap", () => {
+  const A = { ...createPoint({ x: 0, y: 0 }, "large"), id: "A" };
+  const ends = new Map([["A", A]]);
+
+  it("takes its size from the dot it found", () => {
+    const round = snapRadius({ kind: "point", ids: ["A"], at: A }, { scale: 1, ends });
+    expect(round).toBeGreaterThan(SNAP_RING);
+  });
+
+  it("is a fixed size on a path, there being no dot to be about", () => {
+    const on: Snap = { kind: "line", ids: ["seg"], at: { x: 5, y: 5 } };
+    expect(snapRadius(on, { scale: 1, ends })).toBe(SNAP_RING);
+  });
+
+  it("halves on the sheet as the sheet doubles on screen", () => {
+    const on: Snap = { kind: "line", ids: ["seg"], at: { x: 5, y: 5 } };
+    expect(snapRadius(on, { scale: 2, ends })).toBe(SNAP_RING / 2);
+  });
+
+  it("falls back to the fixed size where the dot is not on the page", () => {
+    const gone: Snap = { kind: "point", ids: ["gone"], at: { x: 0, y: 0 } };
+    expect(snapRadius(gone, { scale: 1, ends })).toBe(SNAP_RING);
   });
 });

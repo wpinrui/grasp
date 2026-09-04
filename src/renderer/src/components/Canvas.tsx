@@ -11,7 +11,7 @@ import {
   useState,
   type WheelEvent,
 } from "react";
-import { insertAtCaret, linkHtml, plainText, withNames } from "../sketch/captions";
+import { insertAtCaret, linkHtml, plainText } from "../sketch/captions";
 import { LABEL_REACH, type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
 import {
   anglesAt,
@@ -101,27 +101,27 @@ import {
 } from "../sketch/model";
 import { demotedUnder } from "../sketch/overlaps";
 import { togglePick } from "../sketch/picking";
-import { drawnAs } from "../sketch/text";
 import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
 import { guideOf } from "./canvas/guides";
-import { handlesOn, snapRadius } from "./canvas/handles";
-import { Arms, Resting, Showing } from "./canvas/layers/Angles";
-import { Boxing, MarkCaptions } from "./canvas/layers/Captions";
+import { handlesOn } from "./canvas/handles";
+import { type AngleDrag, Arms, Resting, Showing } from "./canvas/layers/Angles";
 import { Dimensions } from "./canvas/layers/Dimensions";
-import { Drawing } from "./canvas/layers/Drawing";
+import { Boxing, Drawing } from "./canvas/layers/Drawing";
 import { Fills } from "./canvas/layers/Fills";
+import { GhostCaption } from "./canvas/layers/Ghosts";
 import { Guides } from "./canvas/layers/Guides";
-import { Holding } from "./canvas/layers/Holding";
-import { Labels } from "./canvas/layers/Labels";
+import { Holding, MarkCaptions } from "./canvas/layers/Holding";
+import { type LabelEdit, Labels } from "./canvas/layers/Labels";
 import { Lit } from "./canvas/layers/Lit";
 import { Loci } from "./canvas/layers/Locus";
 import { MarkGhost, Marks } from "./canvas/layers/Marks";
 import { Paths } from "./canvas/layers/Paths";
 import { Points } from "./canvas/layers/Points";
 import { Preview } from "./canvas/layers/Preview";
+import { Handles, Marquee, Snapped } from "./canvas/layers/Snapping";
 import { litWith } from "./canvas/lighting";
 import { type Marking, markUnder } from "./canvas/marks";
 import {
@@ -136,7 +136,6 @@ import {
   sameAngle,
 } from "./canvas/readings";
 import { SheetProvider } from "./canvas/SheetContext";
-import { arrowPoints } from "./canvas/shapes";
 import {
   ANGLE_AIM,
   ANGLE_ROOM,
@@ -382,7 +381,7 @@ export function Canvas({
   /** What a plotting tool would land on, lit up while the pointer is over it. */
   const [snap, setSnap] = useState<Snap | null>(null);
   /** The label being typed into, and what has been typed so far. */
-  const [naming, setNaming] = useState<{ id: string; text: string } | null>(null);
+  const [naming, setNaming] = useState<LabelEdit | null>(null);
   /** A label being dragged: where it started, and where the pointer did. */
   const dragged = useRef<{ id: string; off: Position; from: Position } | null>(null);
   /** What a drag that began inside a caption or a measurement has hold of. */
@@ -394,9 +393,7 @@ export function Canvas({
    * the drag has reached. The way it points out of the corner is which of the
    * angles there is being asked for, the reflex one included.
    */
-  const [arming, setArming] = useState<{ corner: string; start: Position; at: Position } | null>(
-    null,
-  );
+  const [arming, setArming] = useState<AngleDrag | null>(null);
   /** The mark whose panel is open, or null with no panel showing. */
   const [panel, setPanel] = useState<string | null>(null);
   /** The reading whose panel is open, which only a length ever has. */
@@ -1525,7 +1522,7 @@ export function Canvas({
       scale,
       slack,
       snapping,
-      handles,
+      handles: handlesOn({ objects, settled }),
       pending,
       tracing,
       shiftHeld,
@@ -2299,27 +2296,10 @@ export function Canvas({
    * row. A band round nothing would say nothing, so the caption itself comes
    * back rather than an outline of it.
    */
-  function ghostCaption(id: string | null) {
+  /** The hidden caption the dock is pointing at, if that is what it is. */
+  function ghostAt(id: string | null): SketchCaption | null {
     const found = id ? everything.find((object) => object.id === id) : null;
-    if (!found || !isCaption(found) || found.hidden !== true) return null;
-    return (
-      <div
-        className="caption caption--ghost"
-        style={{
-          left: `${(found.x - view.x) * scale}px`,
-          top: `${(found.y - view.y) * scale}px`,
-          width: `${found.width}px`,
-          textAlign: found.align,
-          ...drawnAs(found),
-        }}
-      >
-        <div
-          className="caption__body"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: the caption's own markup, written here
-          dangerouslySetInnerHTML={{ __html: withNames(found.html, linkNames) }}
-        />
-      </div>
-    );
+    return found && isCaption(found) ? found : null;
   }
 
   /**
@@ -2438,11 +2418,6 @@ export function Canvas({
     return object ? labelAnchor(labelling, object) : null;
   }
 
-  /**
-   * Every arrowhead on the page, and the ring where a click would land.
-   */
-  const handles = handlesOn({ objects, settled });
-
   const guide = guideOf({ objects, settled, scale, snapping, travel, pending, tracing });
 
   // A panel with nothing left to be about closes itself.
@@ -2461,7 +2436,7 @@ export function Canvas({
     : null;
 
   return (
-    <SheetProvider value={{ objects, everything, settled, selection, scale, ends, spanOf }}>
+    <SheetProvider value={{ objects, everything, settled, selection, scale, ends, spanOf, shown }}>
       <div className="canvas">
         {/* biome-ignore lint/a11y/noStaticElementInteractions: the sheet is the drawing surface, where every gesture is a pointer gesture; the keyboard reaches the same work through the menus and their shortcuts */}
         <div
@@ -2481,19 +2456,13 @@ export function Canvas({
           <svg className="canvas__objects" aria-hidden="true">
             <g transform={`scale(${scale}) translate(${-view.x} ${-view.y})`}>
               <Fills />
-              <Loci shown={shown} />
-              {handles.map((handle) => (
-                <polygon
-                  key={`${handle.locus}-${handle.end}`}
-                  className="canvas__locus-arrow"
-                  points={arrowPoints(handle, scale)}
-                />
-              ))}
+              <Loci />
+              <Handles />
               <Paths />
               <Drawing tracing={tracing} pending={pending} middle={middle} />
               <Marks />
               <MarkGhost mark={previewReading?.mark ?? null} />
-              <Arms arming={arming} arcs={arming ? armingArcs() : []} />
+              <Arms arming={arming} arcs={armingArcs()} />
               <Resting
                 corner={choosing ? null : overCorner}
                 marking={marking === "angle"}
@@ -2508,49 +2477,20 @@ export function Canvas({
                 <Lit ids={litWith(under, everything)} />
               )}
               <Lit ids={litReading} />
-              {snap && (
-                <g>
-                  {/* The paths a click would attach to, or whose crossing it
-                    would build, lit the whole way along. */}
-                  {snap.kind !== "point" && <Lit ids={snap.ids} />}
-                  <circle
-                    className="canvas__snap"
-                    cx={snap.at.x}
-                    cy={snap.at.y}
-                    r={snapRadius(snap, { scale, ends })}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </g>
-              )}
+              <Snapped snap={snap} />
               <Holding marks={marks} />
               <Preview
                 objects={preview}
                 points={previewPoints}
                 settled={previewSettled}
                 spanOf={spanOf}
-                shown={shown}
               />
               <Dimensions boxOf={boxOf} />
               <Guides guide={guide} />
-              {marquee && (
-                <rect
-                  className="canvas__marquee"
-                  x={marquee.x}
-                  y={marquee.y}
-                  width={marquee.width}
-                  height={marquee.height}
-                  rx={2 / scale}
-                  vectorEffect="non-scaling-stroke"
-                />
-              )}
+              <Marquee rect={marquee} />
             </g>
           </svg>
 
-          {/*
-          The press stops here. Letting it reach the sheet would capture the
-          pointer there, and the click that follows would be retargeted to the
-          sheet with it, never reaching the button.
-        */}
           <Labels
             labels={labels}
             view={view}
@@ -2760,7 +2700,7 @@ export function Canvas({
 
           {/* Hidden writing pointed at in the dock. Nothing else says where it
             sits, since a hidden object is not drawn at all. */}
-          {ghostCaption(spotlight)}
+          <GhostCaption caption={ghostAt(spotlight)} names={linkNames} view={view} scale={scale} />
           {ghostReading(spotlight)}
 
           <Boxing boxing={boxing} view={view} scale={scale} />

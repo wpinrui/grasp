@@ -13,19 +13,14 @@ import { arcsBetween, type Marking } from "../marks";
 import { useSheet } from "../SheetContext";
 
 /** The corner a drag out of it is asking about, and where it has got to. */
-export interface Arming {
+export interface AngleDrag {
   corner: string;
   start: Position;
   at: Position;
 }
 
-/** Which corner the which-angle dialog is open on. */
-export interface Choosing {
-  corner: string;
-}
-
 /** The wedge a drag is asking for, drawn as it will land. */
-export function Arms({ arming, arcs }: { arming: Arming | null; arcs: string[] }) {
+export function Arms({ arming, arcs }: { arming: AngleDrag | null; arcs: string[] }) {
   if (!arming) return null;
   return (
     <g>

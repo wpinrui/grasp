@@ -12,8 +12,9 @@
  * two are looked up in different places.
  */
 
-import { isLine, radiusOf } from "../../../sketch/model";
+import { isLine, type Position, radiusOf, type View } from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
+import { onScreen } from "../sheet";
 
 interface HoldingProps {
   /** The ids a dialog has taken, each with the caption drawn by it. */
@@ -51,6 +52,37 @@ export function Holding({ marks }: HoldingProps) {
             vectorEffect="non-scaling-stroke"
           />
         ) : null;
+      })}
+    </>
+  );
+}
+
+/**
+ * The small caption a dialog puts beside each point it is holding. It rides
+ * above the sheet as HTML, so it keeps its size at any zoom.
+ */
+export function MarkCaptions({
+  marks,
+  spotOf,
+  view,
+  scale,
+}: {
+  marks: { id: string; label: string }[];
+  /** Where a mark's caption sits, or nothing where the thing is not there. */
+  spotOf: (id: string) => Position | null;
+  view: View;
+  scale: number;
+}) {
+  return (
+    <>
+      {marks.map((mark) => {
+        const at = spotOf(mark.id);
+        if (!at) return null;
+        return (
+          <span key={mark.id} className="canvas__caption" style={onScreen(at, view, scale)}>
+            {mark.label}
+          </span>
+        );
       })}
     </>
   );

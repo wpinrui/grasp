@@ -1,32 +1,19 @@
 /**
- * The arrowheads a locus is dragged by, and the ring drawn where a click would
- * land.
+ * The arrowheads a locus is dragged by.
  *
  * A segment fixes both ends of the domain, a ray fixes only the end it starts
  * from, and a line fixes neither, so how many arrowheads a locus carries is
  * settled by what it runs along rather than by the locus itself.
  */
 
-import {
-  distance,
-  isLine,
-  isLocus,
-  type LocusShape,
-  radiusOf,
-  type Settled,
-  type SketchLocus,
-  type SketchObject,
-  type SketchPoint,
-} from "../../sketch/model";
-import { type Figure, type Handle, SNAP_RING, type Snap } from "./sheet";
+import { distance, isLine, isLocus, type LocusShape, type SketchLocus } from "../../sketch/model";
+import type { Figure, Handle } from "./sheet";
+
+/** The figure a locus is drawn against, which is where its ends are read from. */
+type Drawn = Pick<Figure, "objects" | "settled">;
 
 /** Where an end of a locus is, and which way it carries on from there. */
-function handleFor(
-  locus: SketchLocus,
-  shape: LocusShape,
-  end: 0 | 1,
-  where: { objects: SketchObject[]; settled: Settled },
-): Handle | null {
+function handleFor(locus: SketchLocus, shape: LocusShape, end: 0 | 1, where: Drawn): Handle | null {
   const { objects, settled } = where;
   const domain = objects.find((object) => object.id === locus.domain);
   const along = settled.lines.get(locus.domain);
@@ -61,7 +48,7 @@ function handleFor(
 }
 
 /** Every arrowhead on the page. */
-export function handlesOn(where: { objects: SketchObject[]; settled: Settled }): Handle[] {
+export function handlesOn(where: Drawn): Handle[] {
   const { objects, settled } = where;
   return objects.flatMap((object) => {
     if (!isLocus(object)) return [];
@@ -74,13 +61,4 @@ export function handlesOn(where: { objects: SketchObject[]; settled: Settled }):
       return handle ? [handle] : [];
     });
   });
-}
-
-/** The ring at a snap: around the dot it found, or a fixed one on a path. */
-export function snapRadius(
-  found: Snap,
-  where: Pick<Figure, "scale"> & { ends: Map<string, SketchPoint> },
-): number {
-  const point = found.kind === "point" ? where.ends.get(found.ids[0]) : undefined;
-  return (point ? radiusOf(point) + 5.5 : SNAP_RING) / where.scale;
 }

@@ -13,7 +13,6 @@ import {
   isLine,
   isLocus,
   type Position,
-  type Rect,
   radiusOf,
   type Settled,
   type SketchLine,
@@ -34,11 +33,9 @@ interface PreviewProps {
   settled: Settled;
   /** Where a straight ghost is cut off, against that same page. */
   spanOf: (line: SketchLine, within: Settled) => [Position, Position] | null;
-  /** The sheet on screen, which a locus drawn as lines is cut off by. */
-  shown: Rect;
 }
 
-export function Preview({ objects, points, settled, spanOf, shown }: PreviewProps) {
+export function Preview({ objects, points, settled, spanOf }: PreviewProps) {
   const { scale } = useSheet();
   return (
     <>
@@ -69,9 +66,7 @@ export function Preview({ objects, points, settled, spanOf, shown }: PreviewProp
         }
         if (isLocus(object)) {
           const shape = settled.loci.get(object.id);
-          return shape ? (
-            <Locus key={object.id} id={object.id} shape={shape} ghost shown={shown} />
-          ) : null;
+          return shape ? <Locus key={object.id} id={object.id} shape={shape} ghost /> : null;
         }
         if (isInterior(object)) {
           const shape = interiorShape(object, settled);

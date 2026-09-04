@@ -16,7 +16,14 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { useEffect, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SketchObject, SketchState } from "../sketch/model";
+import {
+  createCircle,
+  createInterior,
+  createPoint,
+  lineThrough,
+  type SketchObject,
+  type SketchState,
+} from "../sketch/model";
 import { useSketch } from "../sketch/useSketch";
 import { SHEET, stubSheetBox } from "../testing/sheet";
 import { Canvas } from "./Canvas";
@@ -108,6 +115,8 @@ interface HarnessProps {
   spotlight?: string | null;
   /** What a dialog is holding, so the rings and bands it draws are covered. */
   marks?: { id: string; label: string }[];
+  /** The ghosts of what a dialog would make, which are drawn as a preview. */
+  preview?: SketchObject[];
 }
 
 /**
@@ -121,6 +130,7 @@ function Harness({
   report,
   spotlight = null,
   marks = [],
+  preview = [],
 }: HarnessProps) {
   const sketch = useSketch();
   const laid = useRef(false);
@@ -142,7 +152,7 @@ function Harness({
       onPick={() => {}}
       lineForm="segment"
       polygonKind="interior"
-      preview={[]}
+      preview={preview}
       marks={marks}
       onRename={() => {}}
       spotlight={spotlight}
@@ -272,6 +282,30 @@ describe("the figure on the sheet", () => {
    * A lit fill is drawn as the shape it is, which is the one way an interior is
    * drawn that carries a stroke to keep at any zoom and no id to pick by.
    */
+  /**
+   * The ghosts of what an open dialog would make. They settle against a page
+   * that has them on it, which is not the page that is drawn, so nothing in the
+   * figures above reaches them.
+   */
+  it("draws the ghosts of what a dialog would make", () => {
+    const P = { ...createPoint({ x: 600, y: 500 }, "medium"), id: "P" };
+    const Q = { ...createPoint({ x: 700, y: 560 }, "medium"), id: "Q" };
+    const { container } = put(FIGURE, "arrow", {
+      preview: [
+        P,
+        Q,
+        { ...lineThrough("segment", ["P", "Q"]), id: "ghost-line" },
+        { ...createCircle({ kind: "through", centre: "P", edge: "Q" }), id: "ghost-round" },
+        { ...createInterior(["P", "Q", "A"]), id: "ghost-fill" },
+      ],
+    });
+    expect(container.querySelector("line.canvas__line--preview")).not.toBe(null);
+    expect(container.querySelector("circle.canvas__circle--preview")).not.toBe(null);
+    expect(container.querySelector("polygon.canvas__interior--preview")).not.toBe(null);
+    expect(container.querySelectorAll("circle.canvas__point--preview")).toHaveLength(2);
+    expect(drawn(container)).toMatchSnapshot();
+  });
+
   it("lights a fill as the shape it is", () => {
     const { container } = put(FIGURE, "arrow", { spotlight: "fill" });
     const band = container.querySelector("polygon.canvas__snap-band--round");

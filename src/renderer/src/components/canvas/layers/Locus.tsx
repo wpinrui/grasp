@@ -4,31 +4,23 @@
  * It is one object however many pieces it is drawn in, so what it says about
  * how it is drawn goes on every one of them, and the samples have no identity
  * of their own to key by. A ghost is the same shape drawn as the preview of one
- * a dialog would make, and takes the object's colours off it rather than its own.
+ * a dialog would make: it carries no colours of its own at all, and is left to
+ * the preview class to style.
  */
 
-import {
-  clipToRect,
-  fillLook,
-  isLocus,
-  type LocusShape,
-  type Rect,
-  strokeLook,
-} from "../../../sketch/model";
+import { clipToRect, fillLook, isLocus, type LocusShape, strokeLook } from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
 import { arcPath } from "../shapes";
 
 interface LocusProps {
   id: string;
   shape: LocusShape;
-  /** The preview of one a dialog would make, which takes no colours of its own. */
+  /** The preview of one a dialog would make, drawn with no colours of its own. */
   ghost?: boolean;
-  /** The sheet on screen, which a locus drawn as lines is cut off by. */
-  shown: Rect;
 }
 
-export function Locus({ id, shape, ghost = false, shown }: LocusProps) {
-  const { everything, selection } = useSheet();
+export function Locus({ id, shape, ghost = false }: LocusProps) {
+  const { everything, selection, shown } = useSheet();
   const kind = `canvas__locus${ghost ? " canvas__locus--preview" : ""}${
     !ghost && selection.includes(id) ? " canvas__locus--selected" : ""
   }`;
@@ -119,14 +111,14 @@ export function Locus({ id, shape, ghost = false, shown }: LocusProps) {
 }
 
 /** Every locus on the sheet, drawn from where each of them settled. */
-export function Loci({ shown }: { shown: Rect }) {
+export function Loci() {
   const { objects, settled } = useSheet();
   return (
     <>
       {objects.map((object) => {
         if (!isLocus(object)) return null;
         const shape = settled.loci.get(object.id);
-        return shape ? <Locus key={object.id} id={object.id} shape={shape} shown={shown} /> : null;
+        return shape ? <Locus key={object.id} id={object.id} shape={shape} /> : null;
       })}
     </>
   );

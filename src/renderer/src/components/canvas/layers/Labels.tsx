@@ -2,9 +2,9 @@
  * The names beside the things they name. They ride above the sheet as HTML
  * rather than as SVG, so they keep their size on screen and can be typed into.
  *
- * A label is dragged and typed into by the two tools that deal in labels, and
- * is out of the way of every other tool. Double-clicking one turns it into the
- * box its name is typed in.
+ * Whether a label is the pointer's to take is the sheet's call, not this one's,
+ * and is handed in. Double-clicking one turns it into the box its name is typed
+ * in.
  */
 
 import type { CSSProperties, PointerEvent } from "react";
@@ -21,7 +21,7 @@ export interface DrawnLabel {
 }
 
 /** The name being typed into, and what has been typed so far. */
-export interface Naming {
+export interface LabelEdit {
   id: string;
   text: string;
 }
@@ -34,8 +34,8 @@ interface LabelsProps {
   picked: string[];
   /** Whether a label is the pointer's to take, which only two tools make it. */
   reachable: boolean;
-  naming: Naming | null;
-  onNaming: (naming: Naming | null) => void;
+  naming: LabelEdit | null;
+  onNaming: (naming: LabelEdit | null) => void;
   onRename: (id: string, name: string) => void;
   onGrab: (event: PointerEvent<HTMLElement>, id: string, off: Position) => void;
   onDrag: (event: PointerEvent<HTMLElement>) => void;

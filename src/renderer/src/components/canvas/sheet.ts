@@ -12,10 +12,13 @@ import {
   markSweep,
   type Position,
   type Rect,
+  radiusOf,
   type Settled,
   type SketchMark,
   type SketchMeasurement,
   type SketchObject,
+  type SketchPoint,
+  type View,
 } from "../../sketch/model";
 
 /**
@@ -225,6 +228,23 @@ export const CROSS_REACH = 9;
 
 /** The ring drawn where a click would land on a straight object. */
 export const SNAP_RING = 8;
+
+/** How big that ring is: around the dot it found, or fixed on a path. */
+export function snapRadius(
+  found: Snap,
+  where: { scale: number; ends: Map<string, SketchPoint> },
+): number {
+  const point = found.kind === "point" ? where.ends.get(found.ids[0]) : undefined;
+  return (point ? radiusOf(point) + 5.5 : SNAP_RING) / where.scale;
+}
+
+/**
+ * Where a spot on the page sits on screen, which is what places anything drawn
+ * above the sheet rather than in it.
+ */
+export function onScreen(at: Position, view: View, scale: number) {
+  return { left: `${(at.x - view.x) * scale}px`, top: `${(at.y - view.y) * scale}px` };
+}
 
 /** How wide a caption comes out when it was asked for rather than dragged. */
 export const CAPTION_WIDTH = 220;

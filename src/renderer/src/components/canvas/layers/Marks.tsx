@@ -3,7 +3,7 @@
  * angles, each drawn as the strokes it comes to.
  *
  * A mark is a fixed-length list of stateless paths, redrawn whole every time,
- * so the strokes are keyed by their place in it. Selection reads as a band
+ * so the strokes are keyed by their place in it. Selection reads as a halo
  * behind the strokes rather than a change to them, the way it does everywhere
  * else on the sheet.
  */
