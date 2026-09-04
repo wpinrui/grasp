@@ -11,6 +11,7 @@ import {
   isPoint,
   lineThrough,
   type SketchObject,
+  settle,
 } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
 import { useSketch } from "../../sketch/useSketch";
@@ -36,6 +37,18 @@ const CAPTION = {
 };
 
 const FIGURE: SketchObject[] = [A, B, SEGMENT, ON, CAPTION];
+
+/** A free point, and a segment from the point on the first one out to it. */
+const Q = { ...createPoint({ x: 150, y: 200 }, "medium"), id: "Q" };
+const HANGING = { ...lineThrough("segment", ["P", "Q"]), id: "hang" };
+
+/** A point halfway along that second segment, so it is two paths deep. */
+const ON_HANGING = {
+  ...createPoint({ x: 150, y: 100 }, "medium", { kind: "on", path: "hang", at: 0.5 }),
+  id: "R",
+};
+
+const DEEPER: SketchObject[] = [A, B, SEGMENT, ON, Q, HANGING, ON_HANGING];
 
 /** Where an object has got to, by id. */
 function spot(objects: SketchObject[], id: string) {
@@ -188,5 +201,75 @@ describe("where a drag puts things", () => {
     act(() => moveBy(held, { x: 60, y: 0 }, sketch.current));
     expect(spot(sketch.current.state.objects, "A")).toEqual({ x: 60, y: 0 });
     expect(spot(sketch.current.state.objects, "P")).toEqual({ x: 210, y: 0 });
+  });
+});
+
+/** Where everything has got to once the page has worked itself out. */
+function spots(objects: SketchObject[]) {
+  return settle(objects).settled.points;
+}
+
+/** What a drag on those objects has hold of, two paths deep. */
+function deeperHold(carried: string[]) {
+  const held = whatMoves(carried, DEEPER);
+  if (!held) throw new Error(`${carried.join(", ")} can move.`);
+  return held;
+}
+
+describe("where a drag pulls a path", () => {
+  /**
+   * P is on the first segment and R is on the segment hanging off P. Dragging
+   * both moves the segment under R, so R keeps how far along it sits and Q, the
+   * end of that segment nothing else is holding, goes wherever that needs.
+   */
+  it("moves the loose end of a path so the point dragged on it follows the pointer", () => {
+    const moved = spots(placedBy(DEEPER, deeperHold(["P", "R"]), { x: 60, y: 60 }));
+    expect(moved.get("R")).toMatchObject({ x: 210, y: 160 });
+    expect(moved.get("Q")).toMatchObject({ x: 210, y: 320 });
+  });
+
+  /** P slides along its own segment, which stays where it is throughout. */
+  it("leaves the path that is not moving, and the point on it slides", () => {
+    const moved = spots(placedBy(DEEPER, deeperHold(["P", "R"]), { x: 60, y: 60 }));
+    expect(moved.get("P")).toMatchObject({ x: 210, y: 0 });
+    expect(moved.get("A")).toMatchObject({ x: 0, y: 0 });
+    expect(moved.get("B")).toMatchObject({ x: 300, y: 0 });
+  });
+
+  /** How far along it sits is the thing that holds while the path swings. */
+  it("keeps how far along the pulled point sits", () => {
+    const moved = placedBy(DEEPER, deeperHold(["P", "R"]), { x: 60, y: 60 }).find(
+      (object) => object.id === "R",
+    );
+    if (!moved || !isPoint(moved)) throw new Error("R is still on the sheet.");
+    expect(moved.from?.kind === "on" ? moved.from.at : null).toBe(0.5);
+  });
+
+  /**
+   * The same, with the segment drawn the other way about, so the end that has
+   * to give is the one how far along is counted from.
+   */
+  it("moves whichever end of the path the drag is not already holding", () => {
+    const backwards = { ...lineThrough("segment", ["Q", "P"]), id: "hang" };
+    const near = {
+      ...createPoint({ x: 150, y: 150 }, "medium", { kind: "on", path: "hang", at: 0.25 }),
+      id: "R",
+    };
+    const figure: SketchObject[] = [A, B, SEGMENT, ON, Q, backwards, near];
+    const held = whatMoves(["P", "R"], figure);
+    if (!held) throw new Error("P and R can move.");
+    const moved = spots(placedBy(figure, held, { x: 60, y: 60 }));
+    expect(moved.get("R")).toMatchObject({ x: 210, y: 210 });
+    expect(moved.get("Q")).toMatchObject({ x: 210, y: 280 });
+  });
+
+  /**
+   * Dragged on its own, a point on a path still only slides along it. Nothing
+   * else in the drag moves that path, so nothing has to give for it.
+   */
+  it("slides a point dragged on its own, and leaves the path alone", () => {
+    const moved = spots(placedBy(DEEPER, deeperHold(["R"]), { x: 60, y: 60 }));
+    expect(moved.get("R")).toMatchObject({ x: 150, y: 160 });
+    expect(moved.get("Q")).toMatchObject({ x: 150, y: 200 });
   });
 });
