@@ -85,6 +85,7 @@ import {
 } from "../sketch/model";
 import { demotedUnder } from "../sketch/overlaps";
 import { togglePick } from "../sketch/picking";
+import { edgesRound } from "../sketch/regular";
 import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
@@ -241,8 +242,12 @@ interface CanvasProps {
   relabelName: string | null;
   onRelabelAsk: (id: string, at: { x: number; y: number }) => void;
   onRelabelGive: (id: string) => void;
-  /** A regular polygon was asked for: where its middle goes, and where to ask. */
-  onRegularAsk: (spot: Position, at: { x: number; y: number }) => void;
+  /**
+   * A regular polygon was asked for: where its middle goes on the sheet, and
+   * where on the screen the box asking should stand. The two are different
+   * coordinate spaces, so they are named rather than ordered.
+   */
+  onRegularAsk: (asked: { spot: Position; at: { x: number; y: number } }) => void;
   /** What the Marker is armed with: equal sides, parallel sides, or an angle. */
   markForm: string;
   /** The whole kinds being kept out of the way, from the Hidden panel. */
@@ -615,7 +620,10 @@ export function Canvas({
     );
   }, [captionWanted]);
 
-  // Switching tools drops whatever the straightedge was halfway through.
+  // Switching tools drops whatever the straightedge was halfway through, and so
+  // does arming the polygon differently: the regular one is not clicked out
+  // corner by corner, so a trace left in flight would strand its open gesture
+  // and the next thing to cancel would roll the page back over what came after.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the tool changing is the whole point
   useEffect(() => {
     sketch.cancelGesture();
@@ -628,7 +636,7 @@ export function Canvas({
     setPanel(null);
     setReadingPanel(null);
     setMiddle(null);
-  }, [activeTool, sketch.cancelGesture]);
+  }, [activeTool, polygonKind, sketch.cancelGesture]);
 
   /** Put down the first of the two points a drawing tool needs. */
   function startDrawing(found: Snap | null, spot: Position) {
@@ -700,8 +708,8 @@ export function Canvas({
   }
 
   /**
-   * Close the polygon and build it: the fill, its edges, or both, whichever
-   * the tool is armed with. The edges close back to the first corner, so a
+   * Close the polygon and build it: the fill, and its edges too unless the tool
+   * is armed for the fill alone. The edges close back to the first corner, so a
    * polygon is a ring however it was clicked out.
    */
   function closePolygon() {
@@ -711,11 +719,7 @@ export function Canvas({
     const made: SketchObject[] = [];
     made.push(createInterior(corners));
     if (polygonKind !== "interior") {
-      made.push(
-        ...corners.map((corner, index) =>
-          lineThrough("segment", [corner, corners[(index + 1) % corners.length]]),
-        ),
-      );
+      made.push(...edgesRound(corners));
     }
     sketch.updateGesture({
       objects: [...before.objects, ...made],
@@ -858,8 +862,9 @@ export function Canvas({
       const aim = aimAt(at, aimingNow());
       // The regular one is not clicked out corner by corner. One click says
       // where the middle goes, and the box that opens says what shape.
-      if (polygonKind === "regular") onRegularAsk(aim.spot, { x: event.clientX, y: event.clientY });
-      else polygonClick(aim.found, aim.spot);
+      if (polygonKind === "regular") {
+        onRegularAsk({ spot: aim.spot, at: { x: event.clientX, y: event.clientY } });
+      } else polygonClick(aim.found, aim.spot);
       return;
     }
     // A drawing tool puts its first point down on the press, so it can be

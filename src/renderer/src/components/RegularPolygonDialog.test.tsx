@@ -62,6 +62,8 @@ describe("what regular polygon to draw", () => {
     fireEvent.change(sides(), { target: { value: "9" } });
     // The keys are out of the running, and the number is what is drawn.
     expect(key("Square").disabled).toBe(true);
+    // And it stops looking pressed, since the number is the answer now.
+    expect(key("Square").getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(draw());
     expect(asked).toEqual([{ sides: 9, locked: true }]);
   });
@@ -78,9 +80,13 @@ describe("what regular polygon to draw", () => {
 
   it("will not draw a number that is not a polygon", () => {
     const { asked, sides, draw } = box();
-    fireEvent.change(sides(), { target: { value: "2" } });
-    expect(draw().disabled).toBe(true);
-    fireEvent.click(draw());
+    for (const typed of ["2", "3.5", "abc", "-4", "0x10", "1e1"]) {
+      fireEvent.change(sides(), { target: { value: typed } });
+      // "0x10" and "1e1" are numbers to `Number` but not to anyone typing a
+      // count of sides, so neither draws a 16-gon nor a 10-gon by surprise.
+      expect(draw().disabled).toBe(true);
+      fireEvent.click(draw());
+    }
     expect(asked).toEqual([]);
   });
 

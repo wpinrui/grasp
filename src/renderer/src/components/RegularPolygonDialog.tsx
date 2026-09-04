@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { canBuildSides, cornersAt, FEWEST_SIDES, MOST_SIDES } from "../sketch/regular";
 import { DialogFrame } from "./DialogFrame";
+import { Switch } from "./Switch";
 import "./RegularPolygonDialog.css";
 
 /** The shapes worth a key of their own, in the order a class meets them. */
@@ -50,7 +51,10 @@ export function RegularPolygonDialog({ at, onApply, onCancel }: RegularPolygonDi
   const [typed, setTyped] = useState("");
   const [locked, setLocked] = useState(true);
   const typing = typed.trim() !== "";
-  const sides = typing ? Number(typed) : picked;
+  // Whole decimal digits and nothing else: `Number` would read "0x10" as a
+  // 16-gon and "1e1" as a 10-gon, which is not what either of them says.
+  const counted = /^\d+$/.test(typed.trim()) ? Number(typed.trim()) : Number.NaN;
+  const sides = typing ? counted : picked;
   const ready = canBuildSides(sides);
 
   return (
@@ -96,19 +100,10 @@ export function RegularPolygonDialog({ at, onApply, onCancel }: RegularPolygonDi
 
       <div className="ngon__row">
         <span className="ngon__of">Hold it</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={locked}
-          aria-label="Hold it regular"
-          className={`ngon__switch${locked ? " ngon__switch--on" : ""}`}
-          onClick={() => setLocked(!locked)}
-        >
-          <span className="ngon__switch-knob" />
-        </button>
+        <Switch name="Hold it regular" on={locked} onChange={setLocked} />
         <span className="ngon__note">
           {locked
-            ? "Held regular. Drag a corner to turn and resize the whole shape."
+            ? "Held regular. It cannot stop being regular however it is dragged."
             : "Loose. Every corner moves on its own."}
         </span>
       </div>

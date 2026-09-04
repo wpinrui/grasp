@@ -1,7 +1,15 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { distance, isInterior, isLine, isPoint, resolve, type SketchObject } from "./model";
-import { canBuildSides, regularPolygon } from "./regular";
+import {
+  createPoint,
+  distance,
+  isInterior,
+  isLine,
+  isPoint,
+  resolve,
+  type SketchObject,
+} from "./model";
+import { canBuildSides, MOST_SIDES, regularPolygon, withRegular } from "./regular";
 
 const AT = { x: 400, y: 300 };
 
@@ -11,11 +19,19 @@ function built(sides: number, locked: boolean): SketchObject[] {
 
 const cornersOf = (made: SketchObject[]) => made.filter(isPoint);
 
+/** The corners the fill was built from, in the order they go round. */
+function ringOf(made: SketchObject[]): string[] {
+  const fill = made.find(isInterior);
+  if (!fill || !("vertices" in fill) || fill.vertices === undefined) {
+    throw new Error("The polygon was built with no ring of corners.");
+  }
+  return fill.vertices;
+}
+
 /** How long each side is, going round the ring the edges were made in. */
 function sides(made: SketchObject[]): number[] {
   const points = cornersOf(made);
-  const ring = (isInterior(made.find(isInterior) as SketchObject) &&
-    (made.find(isInterior) as { vertices?: string[] }).vertices) as string[];
+  const ring = ringOf(made);
   return ring.map((id, at) => {
     const one = points.find((point) => point.id === id);
     const next = points.find((point) => point.id === ring[(at + 1) % ring.length]);
@@ -29,11 +45,16 @@ function sides(made: SketchObject[]): number[] {
  * it is held, corners that are turned about the middle rather than placed.
  */
 describe("a regular polygon", () => {
-  it("comes out with every side the same length", () => {
+  it("comes out with every side the same length, about one middle", () => {
     for (const count of [3, 4, 5, 6, 7, 8, 12]) {
-      const lengths = sides(built(count, false));
+      const made = built(count, false);
+      const lengths = sides(made);
       expect(lengths).toHaveLength(count);
       for (const length of lengths) expect(length).toBeCloseTo(lengths[0], 6);
+      // Equal sides alone would let a rhombus through, so the corners are also
+      // all the same distance from where the click was, which is regularity.
+      const reaches = cornersOf(made).map((corner) => distance(corner, AT));
+      for (const reach of reaches) expect(reach).toBeCloseTo(reaches[0], 6);
     }
   });
 
@@ -85,13 +106,24 @@ describe("a regular polygon", () => {
       ),
     );
     const lengths = sides(moved);
+    expect(lengths).toHaveLength(5);
     for (const length of lengths) expect(length).toBeCloseTo(lengths[0], 6);
   });
 
-  it("comes with its fill and one edge per side", () => {
+  it("comes with its fill and an edge between each pair of corners, closing round", () => {
     const made = built(7, false);
     expect(made.filter(isInterior)).toHaveLength(1);
-    expect(made.filter(isLine)).toHaveLength(7);
+    const ring = ringOf(made);
+    const drawn = made.filter(isLine).map((edge) => {
+      const ends = edge.span.kind === "through" ? edge.span.ends : [];
+      return [...ends].sort().join("-");
+    });
+    // Every consecutive pair, the last one back to the first: a ring, not a
+    // line of six edges with a gap where the seventh should close it.
+    const wanted = ring.map((corner, at) =>
+      [corner, ring[(at + 1) % ring.length]].sort().join("-"),
+    );
+    expect(drawn.sort()).toEqual(wanted.sort());
   });
 
   it("builds nothing where the number of sides is not one a polygon has", () => {
@@ -99,6 +131,28 @@ describe("a regular polygon", () => {
     expect(canBuildSides(3.5)).toBe(false);
     expect(canBuildSides(1000)).toBe(false);
     expect(canBuildSides(3)).toBe(true);
+    expect(canBuildSides(MOST_SIDES)).toBe(true);
+    expect(canBuildSides(MOST_SIDES + 1)).toBe(false);
     expect(regularPolygon({ at: AT, sides: 2, size: "medium", locked: false })).toEqual([]);
+  });
+});
+
+/**
+ * What lands on the page, which is the whole of the answer the box gives: the
+ * shape added to what was there, and it alone left picked.
+ */
+describe("a regular polygon landing on the page", () => {
+  const before = { objects: [createPoint({ x: 10, y: 10 }, "medium")], selection: [] };
+
+  it("adds the shape and leaves nothing but it picked", () => {
+    const after = withRegular(before, { at: AT, sides: 5, size: "medium", locked: false });
+    // What was there is still there, ahead of what was built.
+    expect(after.objects.slice(0, 1)).toEqual(before.objects);
+    expect(after.objects).toHaveLength(1 + 5 + 1 + 5);
+    expect(after.selection).toEqual(after.objects.slice(1).map((object) => object.id));
+  });
+
+  it("leaves the page alone where the number of sides is not one a polygon has", () => {
+    expect(withRegular(before, { at: AT, sides: 2, size: "medium", locked: false })).toBe(before);
   });
 });

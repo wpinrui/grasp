@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Switch } from "./Switch";
 import "./SnapPanel.css";
 
 /** What the sheet is snapping to, and how far apart the steps are. */
@@ -26,29 +27,6 @@ interface SnapPanelProps {
 
 /** The only thing a step cannot be: nothing, since nothing has no steps in it. */
 const LEAST = 0;
-
-function Switch({
-  name,
-  on,
-  onChange,
-}: {
-  name: string;
-  on: boolean;
-  onChange: (on: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={name}
-      className={`snap__switch${on ? " snap__switch--on" : ""}`}
-      onClick={() => onChange(!on)}
-    >
-      <span className="snap__switch-knob" />
-    </button>
-  );
-}
 
 /**
  * A step to hold something to. What is being typed is held here as it is typed,

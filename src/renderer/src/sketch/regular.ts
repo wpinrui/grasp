@@ -10,6 +10,10 @@
  *
  * Either way it sits flat: the bottom edge is level, so a triangle points up
  * and a square is square rather than a diamond.
+ *
+ * A held shape dragged down to no size at all is undone rather than dragged
+ * back out of: with every corner on one spot there is nothing left to take hold
+ * of that is not the pile itself.
  */
 
 import {
@@ -20,13 +24,18 @@ import {
   type Position,
   radiansOf,
   type SketchObject,
+  type SketchState,
 } from "./model";
 
 /** The fewest corners a polygon can have, and the most this will build. */
 export const FEWEST_SIDES = 3;
 export const MOST_SIDES = 100;
 
-/** How far a corner sits from the middle, in sheet units, before it is dragged. */
+/**
+ * How far a corner sits from the middle, in sheet units, before it is dragged.
+ * One click cannot say how big a shape is, so it comes out this big and is
+ * dragged from there.
+ */
 const REACH = 100;
 
 /** A whole turn in degrees, shared between however many corners there are. */
@@ -87,11 +96,29 @@ export function regularPolygon({ at, sides, size, locked }: RegularWanted): Sket
       : createPoint(spot, size),
   );
   const ring = [first, ...rest].map((corner) => corner.id);
-  return [
-    ...(centre ? [centre] : []),
-    first,
-    ...rest,
-    createInterior(ring),
-    ...ring.map((corner, index) => lineThrough("segment", [corner, ring[(index + 1) % sides]])),
-  ];
+  return [...(centre ? [centre] : []), first, ...rest, createInterior(ring), ...edgesRound(ring)];
+}
+
+/**
+ * The edges round a ring of corners, closing back to the first, so a polygon is
+ * a ring however it was made: clicked out corner by corner, or built.
+ */
+export function edgesRound(ring: string[]): SketchObject[] {
+  return ring.map((corner, index) =>
+    lineThrough("segment", [corner, ring[(index + 1) % ring.length]]),
+  );
+}
+
+/**
+ * The page with a regular polygon added and nothing but it selected, or the
+ * page as it was where the number of sides is not one a polygon has.
+ */
+export function withRegular(before: SketchState, wanted: RegularWanted): SketchState {
+  const made = regularPolygon(wanted);
+  if (made.length === 0) return before;
+  return {
+    ...before,
+    objects: [...before.objects, ...made],
+    selection: made.map((object) => object.id),
+  };
 }

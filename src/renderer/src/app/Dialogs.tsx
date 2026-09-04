@@ -24,13 +24,12 @@ import { ScriptDialog } from "../components/ScriptDialog";
 import { AddTableDataDialog, RemoveTableDataDialog } from "../components/TableDataDialog";
 import { TransformDialog } from "../components/TransformDialog";
 import type { Sheet } from "../sketch/expression";
-import type { PointSize } from "../sketch/model";
-import { regularPolygon } from "../sketch/regular";
 import type { Sketch } from "../sketch/useSketch";
 import type { Buttons } from "./buttons";
 import type { Custom } from "./customs";
 import { pagePicture, printPage } from "./printing";
 import type { Dialogs as DialogState } from "./useDialogs";
+import type { Regular } from "./useRegular";
 import type { Relabelling } from "./useRelabel";
 import type { Settings } from "./useSettings";
 import type { Moves } from "./useTransforms";
@@ -40,8 +39,7 @@ interface DialogsProps {
   dialogs: DialogState;
   numbers: Numbers;
   relabel: Relabelling;
-  /** How big a point comes out, which a regular polygon lays its corners at. */
-  pointSize: PointSize;
+  regular: Regular;
   buttons: Buttons;
   custom: Custom;
   settings: Settings;
@@ -61,7 +59,7 @@ export function Dialogs({
   dialogs,
   numbers,
   relabel,
-  pointSize,
+  regular,
   buttons,
   custom,
   settings,
@@ -194,21 +192,11 @@ export function Dialogs({
         />
       )}
 
-      {dialogs.regular && (
+      {regular.asked && (
         <RegularPolygonDialog
-          at={dialogs.regular.at}
-          onApply={({ sides, locked }) => {
-            const spot = dialogs.regular?.spot;
-            dialogs.setRegular(null);
-            if (!spot) return;
-            const before = sketch.read();
-            const made = regularPolygon({ at: spot, sides, size: pointSize, locked });
-            sketch.commit({
-              objects: [...before.objects, ...made],
-              selection: made.map((object) => object.id),
-            });
-          }}
-          onCancel={() => dialogs.setRegular(null)}
+          at={regular.asked.at}
+          onApply={regular.draw}
+          onCancel={regular.drop}
         />
       )}
       {relabel.asked && (

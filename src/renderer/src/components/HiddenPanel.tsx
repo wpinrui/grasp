@@ -1,3 +1,4 @@
+import { Switch } from "./Switch";
 import "./HiddenPanel.css";
 
 export interface HiddenRow {
@@ -69,16 +70,11 @@ export function HiddenPanel({ rows, onShow, onSpot, kinds, onKinds }: HiddenPane
       ).map(([kind, name]) => (
         <div className="hidden-panel__all" key={kind}>
           <span className="hidden-panel__all-of">Hide all {name.toLowerCase()}</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={kinds[kind]}
-            aria-label={`Hide all ${name.toLowerCase()}`}
-            className={`hidden-panel__switch${kinds[kind] ? " hidden-panel__switch--on" : ""}`}
-            onClick={() => onKinds({ [kind]: !kinds[kind] })}
-          >
-            <span className="hidden-panel__switch-knob" />
-          </button>
+          <Switch
+            name={`Hide all ${name.toLowerCase()}`}
+            on={kinds[kind]}
+            onChange={(on) => onKinds({ [kind]: on })}
+          />
         </div>
       ))}
 
