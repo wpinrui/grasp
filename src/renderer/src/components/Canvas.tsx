@@ -42,7 +42,6 @@ import {
   distanceToPath,
   endsById,
   familyOf,
-  fillLook,
   isArc,
   isButton,
   isCaption,
@@ -119,6 +118,7 @@ import { Guides } from "./canvas/layers/Guides";
 import { Holding } from "./canvas/layers/Holding";
 import { InteriorGlyph } from "./canvas/layers/Interior";
 import { Lit } from "./canvas/layers/Lit";
+import { Loci, Locus } from "./canvas/layers/Locus";
 import { Paths } from "./canvas/layers/Paths";
 import { Points } from "./canvas/layers/Points";
 import { litWith } from "./canvas/lighting";
@@ -2488,99 +2488,6 @@ export function Canvas({
     });
   });
 
-  /** A locus, drawn as the samples it was worked out to. */
-  function drawLocus(id: string, shape: LocusShape, ghost: boolean) {
-    const kind = `canvas__locus${ghost ? " canvas__locus--preview" : ""}${
-      !ghost && selection.includes(id) ? " canvas__locus--selected" : ""
-    }`;
-    // A locus is one object however many pieces it is drawn in, so what it says
-    // about how it is drawn goes on every one of them.
-    const drawn = everything.find((candidate) => candidate.id === id);
-    const look = ghost || !drawn ? undefined : strokeLook(drawn);
-    const wash = ghost || !drawn ? undefined : fillLook(drawn, true);
-    if (shape.kind === "points") {
-      return (
-        <polyline
-          key={id}
-          data-id={id}
-          className={kind}
-          style={look}
-          points={shape.at.map((spot) => `${spot.x},${spot.y}`).join(" ")}
-          vectorEffect="non-scaling-stroke"
-        />
-      );
-    }
-    if (shape.kind === "arcs") {
-      return (
-        <g key={id} data-id={id}>
-          {shape.at.map((arc, index) => (
-            <path
-              // biome-ignore lint/suspicious/noArrayIndexKey: samples have no identity of their own
-              key={index}
-              className={kind}
-              style={look}
-              d={arcPath(arc)}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-        </g>
-      );
-    }
-    if (shape.kind === "circles") {
-      return (
-        <g key={id} data-id={id}>
-          {shape.at.map((round, index) => (
-            <circle
-              // biome-ignore lint/suspicious/noArrayIndexKey: samples have no identity of their own
-              key={index}
-              className={kind}
-              style={look}
-              cx={round.at.x}
-              cy={round.at.y}
-              r={round.radius}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-        </g>
-      );
-    }
-    if (shape.kind === "lines") {
-      return (
-        <g key={id} data-id={id}>
-          {shape.at.map((line, index) => {
-            const span = clipToRect(line, shown);
-            return span ? (
-              <line
-                // biome-ignore lint/suspicious/noArrayIndexKey: samples have no identity of their own
-                key={index}
-                className={kind}
-                style={look}
-                x1={span[0].x}
-                y1={span[0].y}
-                x2={span[1].x}
-                y2={span[1].y}
-                vectorEffect="non-scaling-stroke"
-              />
-            ) : null;
-          })}
-        </g>
-      );
-    }
-    return (
-      <g key={id} data-id={id}>
-        {shape.at.map((corners, index) => (
-          <polygon
-            // biome-ignore lint/suspicious/noArrayIndexKey: samples have no identity of their own
-            key={index}
-            className={`${kind} canvas__locus-fill`}
-            style={wash}
-            points={corners.map((corner) => `${corner.x},${corner.y}`).join(" ")}
-          />
-        ))}
-      </g>
-    );
-  }
-
   /** The ring at a snap: around the dot it found, or a fixed one on a path. */
   function snapRadius(found: Snap): number {
     const point = found.kind === "point" ? ends.get(found.ids[0]) : undefined;
@@ -2625,11 +2532,7 @@ export function Canvas({
           <svg className="canvas__objects" aria-hidden="true">
             <g transform={`scale(${scale}) translate(${-view.x} ${-view.y})`}>
               <Fills />
-              {objects.map((object) => {
-                if (!isLocus(object)) return null;
-                const shape = settled.loci.get(object.id);
-                return shape ? drawLocus(object.id, shape, false) : null;
-              })}
+              <Loci shown={shown} />
               {handles.map((handle) => (
                 <polygon
                   key={`${handle.locus}-${handle.end}`}
@@ -2894,7 +2797,9 @@ export function Canvas({
                 }
                 if (isLocus(object)) {
                   const shape = previewSettled.loci.get(object.id);
-                  return shape ? drawLocus(object.id, shape, true) : null;
+                  return shape ? (
+                    <Locus key={object.id} id={object.id} shape={shape} ghost shown={shown} />
+                  ) : null;
                 }
                 if (isInterior(object)) {
                   const shape = interiorShape(object, previewSettled);
