@@ -113,7 +113,6 @@ import { Handles, Marquee, Snapped } from "./canvas/layers/Snapping";
 import { litWith } from "./canvas/lighting";
 import { type Marking, markUnder } from "./canvas/marks";
 import {
-  angleMarkOn,
   angleWritten,
   type Measuring,
   pointUnder,
@@ -496,6 +495,7 @@ export function Canvas({
     flipMark,
     flipReflex,
     layTick,
+    markAngle,
     ownMark,
     panelSpotOf,
     rememberRadius,
@@ -1057,25 +1057,6 @@ export function Canvas({
     };
   }
 
-  /** Mark one angle by the two arms it runs between, or open the mark already on it. */
-  function markAngle(corner: string, arms: [string, string], reflex = false) {
-    const already = objects.find(
-      (object) =>
-        isMark(object) &&
-        !("path" in object) &&
-        object.corner === corner &&
-        object.arms.every((arm) => arms.includes(arm)) &&
-        (object.reflex === true) === reflex,
-    );
-    if (already) {
-      setPanel(already.id);
-      return;
-    }
-    const mark = angleMarkOn({ corner, arms, reflex }, null, measuringNow());
-    addMark(mark);
-    setPanel(mark.id);
-  }
-
   /** Write the number for one angle, by the two arms it runs between. */
   function readAngle(corner: string, arms: [string, string]) {
     const written = angleWritten({ corner, arms, hit: null, named: true }, measuringNow());
@@ -1349,7 +1330,8 @@ export function Canvas({
       const pair = landed && landed.id !== fromSide ? cornerBetween(fromSide, landed.id) : null;
       if (pair) {
         setArming(null);
-        if (marking === "angle") markAngle(pair.corner, pair.arms);
+        if (marking === "angle")
+          markAngle({ corner: pair.corner, arms: pair.arms }, measuringNow());
         else readAngle(pair.corner, pair.arms);
         return;
       }
@@ -1437,7 +1419,7 @@ export function Canvas({
             return;
           }
           if (there.length === 1) {
-            markAngle(armed.corner, there[0].arms);
+            markAngle({ corner: armed.corner, arms: there[0].arms }, measuringNow());
             return;
           }
           setChoosing({
@@ -2182,7 +2164,7 @@ export function Canvas({
               const { corner, way } = choosing;
               setChoosing(null);
               setShowingArms(null);
-              if (way === "mark") markAngle(corner, arms);
+              if (way === "mark") markAngle({ corner, arms }, measuringNow());
               else readAngle(corner, arms);
             }}
             onShow={setShowingArms}

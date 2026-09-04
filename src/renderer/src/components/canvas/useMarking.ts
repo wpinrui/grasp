@@ -1,7 +1,7 @@
 /**
  * The marking, and everything asked about it or done to it: laying a tick,
- * dragging one along, turning an angle round, whatever its panel sets, and the
- * questions the sheet asks before it does any of that.
+ * marking an angle, dragging one along, turning an angle round, whatever a
+ * panel sets, and the questions the sheet asks before it does any of that.
  *
  * The last mark of each kind is remembered here rather than on the page, since
  * it is a thing about the tool rather than about the figure: a new tick comes
@@ -33,7 +33,15 @@ import {
   type View,
 } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
-import { angleReadingSpot, type Measuring } from "./readings";
+import { angleMarkOn, angleReadingSpot, type Measuring } from "./readings";
+
+/**
+ * What working out where a number hangs takes: where the figure settled, the
+ * zoom, and what the number comes out as. A narrow view of the readings, so
+ * nothing this hook owns travels back in through its own front door.
+ */
+export type Reading = Pick<Measuring, "settled" | "scale" | "saying">;
+
 import { ANGLE_ROOM, type LastMark } from "./sheet";
 
 /**
@@ -174,11 +182,11 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
   /**
    * What the panel does: the strokes, the direction, the form and the bin.
    *
-   * Each commits through `reshape`, which reads the live page, and then reads
-   * the mark back out of this render's own list to remember what it was left
-   * at. That list is a render behind a mark laid in the same turn, which is
-   * harmless here: a panel only ever opens on a mark the sheet has already
-   * drawn once.
+   * The three that remember what a mark was left at, `setStrokes`, `flipMark`
+   * and `setForm`, commit through `reshape`, which reads the live page, and
+   * then read the mark back out of this render's own list. That list is a
+   * render behind a mark laid in the same turn, which is harmless here: a panel
+   * only ever opens on a mark the sheet has already drawn once.
    */
   function setStrokes(id: string, strokes: number) {
     reshape(id, (mark) => ({ ...mark, strokes }));
@@ -201,7 +209,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
    * An angle marked the other way round. The number on it goes round too where
    * that number is the only one, which is why the readings are handed in.
    */
-  function flipReflex(id: string, measuring: Measuring) {
+  function flipReflex(id: string, reading: Reading) {
     const mark = objects.find((object) => object.id === id);
     if (!mark || !isMark(mark) || "path" in mark) return;
     // Turning it round would make it the mark the other side of these arms
@@ -239,7 +247,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
     );
     const alone = readings.length === 1 && marked.length === 1 ? readings[0] : null;
     const hangs = alone
-      ? angleReadingSpot({ reading: alone, mark: turned, reflex }, measuring)
+      ? angleReadingSpot({ reading: alone, mark: turned, reflex }, reading)
       : null;
     const before = sketch.read();
     sketch.commit({
@@ -327,6 +335,33 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
   }
 
   /**
+   * Mark one angle by the two arms it runs between, or open the panel on the
+   * mark already there. One angle at a corner is marked once, the same way one
+   * path says a thing once.
+   */
+  function markAngle(
+    angle: { corner: string; arms: [string, string]; reflex?: boolean },
+    measuring: Measuring,
+  ) {
+    const { corner, arms, reflex = false } = angle;
+    const already = objects.find(
+      (object) =>
+        isMark(object) &&
+        !("path" in object) &&
+        object.corner === corner &&
+        object.arms.every((arm) => arms.includes(arm)) &&
+        (object.reflex === true) === reflex,
+    );
+    if (already) {
+      setPanel(already.id);
+      return;
+    }
+    const mark = angleMarkOn({ corner, arms, reflex }, null, measuring);
+    addMark(mark);
+    setPanel(mark.id);
+  }
+
+  /**
    * How far a new angle mark stands off a corner: past everything already
    * marked there, so each angle at a corner gets a ring of its own. Two sets of
    * arcs drawn at the same radius sit on top of one another, and then the
@@ -358,6 +393,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
     flipMark,
     flipReflex,
     layTick,
+    markAngle,
     ownMark,
     panelSpotOf,
     rememberRadius,

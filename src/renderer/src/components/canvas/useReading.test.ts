@@ -1,3 +1,8 @@
+/**
+ * What a reading's panel sets. None of it is reached by the sheet's own tests:
+ * a panel is open only once a reading has been clicked, and no test clicks one.
+ */
+
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
@@ -11,11 +16,6 @@ import {
 } from "../../sketch/model";
 import { useSketch } from "../../sketch/useSketch";
 import { useReading } from "./useReading";
-
-/**
- * What a reading's panel sets. None of it is reached by the sheet's own tests:
- * a panel is open only once a reading has been clicked, and no test clicks one.
- */
 
 const A = { ...createPoint({ x: 0, y: 0 }, "medium"), id: "A" };
 const B = { ...createPoint({ x: 100, y: 0 }, "medium"), id: "B" };
@@ -83,6 +83,9 @@ describe("what a reading's panel sets", () => {
     act(() => reading.current.setLeaders("read", true));
     const led = at("read");
     expect(led && isMeasurement(led) ? led.leaders : null).toBe(true);
+    act(() => reading.current.setLeaders("read", false));
+    const bare = at("read");
+    expect(bare && isMeasurement(bare) ? bare.leaders : null).toBe(false);
   });
 });
 
@@ -137,12 +140,24 @@ describe("what the Measure tool is offering", () => {
     expect(reading.current.offering).toEqual({ ghost: null, held: null });
   });
 
-  /** Held still over the same spot, the same offer is the offer already made. */
+  /**
+   * A reading is minted fresh on every move of the pointer, so what makes two
+   * offers the same is what they say and where, not which object they are.
+   */
   it("keeps the same offer rather than making it again", () => {
     const { reading } = open(FIGURE);
     act(() => reading.current.offer(ghost, null));
     const was = reading.current.offering;
-    act(() => reading.current.offer({ reading: READING, mark: null }, null));
+    const minted = { ...READING, id: "minted-again" };
+    act(() => reading.current.offer({ reading: minted, mark: null }, null));
+    expect(reading.current.offering).toBe(was);
+  });
+
+  it("stops offering nothing over and over while the pointer is on bare sheet", () => {
+    const { reading } = open(FIGURE);
+    act(() => reading.current.offerNothing());
+    const was = reading.current.offering;
+    act(() => reading.current.offerNothing());
     expect(reading.current.offering).toBe(was);
   });
 });

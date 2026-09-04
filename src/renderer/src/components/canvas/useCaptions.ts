@@ -87,8 +87,7 @@ export function useCaptions({
   /** Put the open caption away, or open another, keeping whatever was written. */
   function closeCaption(next: string | null) {
     const element = editor.current;
-    const open = editing ? sketch.read().objects.find((one) => one.id === editing) : null;
-    if (open && element) settleCaption(open.id, element.innerHTML);
+    if (editing && element) settleCaption(editing, element.innerHTML);
     // A caption being written into is the one thing the palette is set on, so
     // opening one lets go of the selection and of any picked label rather than
     // setting the bar on two things at once. Putting one away hands it back to
@@ -99,8 +98,8 @@ export function useCaptions({
     if (next) {
       sketch.select([]);
       onLabelPick(null);
-    } else if (open && sketch.read().objects.some((one) => one.id === open.id)) {
-      sketch.select([open.id]);
+    } else if (editing && sketch.read().objects.some((one) => one.id === editing)) {
+      sketch.select([editing]);
     }
     onEditing(next);
   }

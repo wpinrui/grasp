@@ -28,7 +28,10 @@ export interface Offering {
  */
 export function useReading(sketch: Sketch) {
   const [panel, setPanel] = useState<string | null>(null);
-  /** The ghost of a number, or the id of one already there, or neither. */
+  /**
+   * The ghost of a number, or the id of one already there, or neither. The
+   * ghost is drawn so the number can be seen before it is asked for.
+   */
   const [offering, setOffering] = useState<Offering>({ ghost: null, held: null });
 
   /**
