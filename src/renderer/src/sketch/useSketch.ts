@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import { type Arming, armedOnto } from "./armed";
-import { readingsPlaced } from "./linked";
+import { readingsLinked, readingsPlaced } from "./linked";
 import {
   namedWhereShown,
   type PointSize,
@@ -34,6 +34,8 @@ export function useSketch() {
   const naming = useRef(false);
   /** What the palette has armed for the tool that is up, or null under one that draws nothing. */
   const arming = useRef<Arming | null>(null);
+  /** Whether a number the Measure tool writes comes out tied to what it reads. */
+  const linking = useRef(false);
 
   /** The ids already on the page, so a pass can tell what has just landed. */
   const alreadyThere = useCallback(
@@ -79,6 +81,10 @@ export function useSketch() {
     naming.current = on;
   }, []);
 
+  const linkNewReadings = useCallback((on: boolean) => {
+    linking.current = on;
+  }, []);
+
   /** A name on whatever a reading that has just landed has to spell out. */
   const spelledOut = useCallback(
     (objects: SketchObject[]): SketchObject[] => spelledOutNamed(objects, alreadyThere()),
@@ -100,12 +106,18 @@ export function useSketch() {
       const objects = arm
         ? armed(namedWhereShown(spelledOut(namedIfWanted(next.objects))))
         : next.objects;
-      // The readings are placed off the settled geometry, so they come after
-      // it. Moving a number moves no geometry, so nothing has to settle again.
+      // The readings are worked out off the settled geometry, so they come
+      // after it: a new one is tied to its figure where Preferences has asked
+      // for that, and then every tied one is put where its figure has got to.
+      // Moving a number moves no geometry, so nothing has to settle again.
       const page = settle(objects);
-      write({ ...next, objects: readingsPlaced(page.objects, page.settled) });
+      const tied =
+        arm && linking.current
+          ? readingsLinked(page.objects, page.settled, alreadyThere())
+          : page.objects;
+      write({ ...next, objects: readingsPlaced(tied, page.settled) });
     },
-    [write, armed, spelledOut, namedIfWanted],
+    [write, armed, spelledOut, namedIfWanted, alreadyThere],
   );
 
   const select = useCallback(
@@ -231,6 +243,7 @@ export function useSketch() {
     commit,
     beginGesture,
     labelNewPoints,
+    linkNewReadings,
     armStyle,
     updateGesture: apply,
     endGesture,

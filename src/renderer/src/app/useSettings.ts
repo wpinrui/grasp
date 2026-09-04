@@ -38,6 +38,7 @@ export function prefsFrom(held: Held): Prefs {
       sheet: held.colourSheet,
     },
     text: { font: held.captionFont, size: held.captionSize },
+    linkReadings: held.linkReadings,
   };
 }
 
@@ -57,6 +58,7 @@ function settingsFrom(prefs: Prefs): Partial<Held> {
     colourSheet: prefs.colours.sheet,
     captionFont: prefs.text.font,
     captionSize: prefs.text.size,
+    linkReadings: prefs.linkReadings === true,
   };
 }
 
@@ -158,6 +160,9 @@ export function useSettings({ sketch, phone, setSpotlight }: SettingsContext) {
   const showing = drafted ?? prefs;
   // Every reading is written in this sketch's units, so they are set as it draws.
   writeIn(showing.units);
+  // And whether a new one comes out tied to its figure, which the sketch asks
+  // as each reading lands.
+  sketch.linkNewReadings(showing.linkReadings === true);
   // Save reads what the sketch is on now, not what it was on when it rendered.
   const prefsAt = useRef(prefs);
   prefsAt.current = prefs;

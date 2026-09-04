@@ -148,6 +148,19 @@ export function PreferencesDialog({
         </Row>
       </Group>
 
+      <Group label="Measure:">
+        <div className="dialog__row">
+          <label className="dialog__radio">
+            <input
+              type="checkbox"
+              checked={prefs.linkReadings === true}
+              onChange={(event) => onChange({ ...prefs, linkReadings: event.target.checked })}
+            />
+            <span>Move a new reading's number with the figure</span>
+          </label>
+        </div>
+      </Group>
+
       <Group label="View:">
         <div className="dialog__row">
           <label className="dialog__radio">

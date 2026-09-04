@@ -12,7 +12,7 @@
 
 import { useState } from "react";
 import { frameOf, spotOf } from "../../sketch/measure";
-import { isMark, isMeasurement, settle } from "../../sketch/model";
+import { isMark, isMeasurement, type SketchMeasurement, settle } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
 import { sameAngle } from "./readings";
 import { sameReading, type Written } from "./sheet";
@@ -55,15 +55,23 @@ export function useReading(sketch: Sketch) {
     );
   }
 
-  /** How a length is drawn out, and whether it carries its dotted lines. */
-  function setBounds(id: string, bounds: "broken" | "full" | undefined) {
+  /**
+   * One reading changed, committed as one undo step. Everything the panel sets
+   * but the reflex is one field on one reading, so they all come through here.
+   */
+  function change(id: string, part: Partial<SketchMeasurement>) {
     const before = sketch.read();
     sketch.commit({
       ...before,
       objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, bounds } : object,
+        object.id === id && isMeasurement(object) ? { ...object, ...part } : object,
       ),
     });
+  }
+
+  /** How a length is drawn out, and whether it carries its dotted lines. */
+  function setBounds(id: string, bounds: "broken" | "full" | undefined) {
+    change(id, { bounds });
   }
 
   /**
@@ -71,13 +79,7 @@ export function useReading(sketch: Sketch) {
    * keeps what it was given while the rest of the sheet follows Preferences.
    */
   function setPlaces(id: string, places: number) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, places } : object,
-      ),
-    });
+    change(id, { places });
   }
 
   /**
@@ -123,26 +125,18 @@ export function useReading(sketch: Sketch) {
    */
   function setLinked(id: string, on: boolean) {
     const before = sketch.read();
-    const settled = settle(before.objects).settled;
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) => {
-        if (object.id !== id || !isMeasurement(object)) return object;
-        if (!on) return { ...object, linked: undefined };
-        const frame = frameOf(object, before.objects, settled);
-        return frame ? { ...object, linked: spotOf(frame, object) } : object;
-      }),
-    });
+    const reading = before.objects.find((object) => object.id === id);
+    if (!reading || !isMeasurement(reading)) return;
+    if (!on) {
+      change(id, { linked: undefined });
+      return;
+    }
+    const frame = frameOf(reading, before.objects, settle(before.objects).settled);
+    if (frame) change(id, { linked: spotOf(frame, reading) });
   }
 
   function setLeaders(id: string, leaders: boolean) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, leaders } : object,
-      ),
-    });
+    change(id, { leaders });
   }
   return {
     offer,

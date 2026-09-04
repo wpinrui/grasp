@@ -10,8 +10,36 @@
  * `y` and knows nothing about the linking.
  */
 
-import { frameOf, spotIn } from "./measure";
+import { frameOf, spotIn, spotOf } from "./measure";
 import { isMeasurement, type Settled, type SketchObject } from "./model";
+
+/**
+ * The page with a number the Measure tool has just written tied to what it
+ * reads, which is what Preferences asks for by turning the chain on for new
+ * readings. It is tied at the spot the tool chose, so the number comes out
+ * where it was asked for and follows the figure from there.
+ *
+ * Only what the tool wrote: a reading from the Measure menu lands in a row up
+ * in the corner of the view rather than beside a figure, so it has no figure to
+ * be tied to.
+ */
+export function readingsLinked(
+  objects: SketchObject[],
+  settled: Settled,
+  already: Set<string>,
+): SketchObject[] {
+  let tied = false;
+  const next = objects.map((object) => {
+    if (!isMeasurement(object) || !object.bare || object.linked || already.has(object.id)) {
+      return object;
+    }
+    const frame = frameOf(object, objects, settled);
+    if (!frame) return object;
+    tied = true;
+    return { ...object, linked: spotOf(frame, object) };
+  });
+  return tied ? next : objects;
+}
 
 /** The page with every linked reading moved to where its figure now is. */
 export function readingsPlaced(objects: SketchObject[], settled: Settled): SketchObject[] {

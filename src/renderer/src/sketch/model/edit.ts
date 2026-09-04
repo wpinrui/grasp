@@ -62,6 +62,7 @@ export function asPasted(taken: SketchObject[], step: number): SketchObject[] {
   for (const object of taken) text = text.split(object.id).join(nextId(object.kind));
   const made = JSON.parse(text) as SketchObject[];
   const off = PASTE_STEP * step;
+  const copied = new Set(made.map((object) => object.id));
   for (const object of made) {
     // A copy takes the next free name of its run rather than the one it came
     // with: a name is allowed to be shared, but not by accident, and a pasted
@@ -73,6 +74,13 @@ export function asPasted(taken: SketchObject[], step: number): SketchObject[] {
     // Only what is placed by hand moves. Everything derived follows its
     // parents, and a mark rides whatever it marks.
     if (isPoint(object) && object.from) continue;
+    // A reading copied without the figure it reads would be tied to the very
+    // figure the original is tied to, so it would work its way straight back
+    // on top of the original and the step would come to nothing. Copied along
+    // with its figure it stays tied, and the copied figure carries it.
+    if (isMeasurement(object) && object.linked && !object.of.every((id) => copied.has(id))) {
+      object.linked = undefined;
+    }
     if (isPoint(object) || isCaption(object) || isMeasurement(object)) {
       object.x += off;
       object.y += off;
