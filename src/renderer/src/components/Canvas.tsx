@@ -11,7 +11,7 @@ import {
   useState,
   type WheelEvent,
 } from "react";
-import { insertAtCaret, linkHtml, plainText, withNames } from "../sketch/captions";
+import { insertAtCaret, linkHtml, plainText } from "../sketch/captions";
 import { LABEL_REACH, type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
 import {
   anglesAt,
@@ -42,13 +42,11 @@ import {
   distanceToPath,
   endsById,
   familyOf,
-  fillLook,
   isArc,
   isButton,
   isCaption,
   isCircle,
   isFunction,
-  isInterior,
   isLine,
   isLocus,
   isMark,
@@ -61,7 +59,6 @@ import {
   type LabelState,
   LEAST_ANGLE_RADIUS,
   type LineForm,
-  type LocusShape,
   lineThrough,
   type MarkForm,
   markAlong,
@@ -83,13 +80,11 @@ import {
   pointOnPath,
   pointsOf,
   type Rect,
-  radiusOf,
   rectBetween,
   type SketchCalculation,
   type SketchCaption,
   type SketchFunction,
   type SketchLine,
-  type SketchLocus,
   type SketchMark,
   type SketchMeasurement,
   type SketchObject,
@@ -99,7 +94,6 @@ import {
   settle,
   slackAt,
   spotOnPath,
-  strokeLook,
   tangentOnPath,
   toSheet,
   union,
@@ -107,22 +101,29 @@ import {
 } from "../sketch/model";
 import { demotedUnder } from "../sketch/overlaps";
 import { togglePick } from "../sketch/picking";
-import { drawnAs } from "../sketch/text";
 import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
 import { guideOf } from "./canvas/guides";
+import { handlesOn } from "./canvas/handles";
+import { type AngleDrag, Arms, Resting, Showing } from "./canvas/layers/Angles";
 import { Dimensions } from "./canvas/layers/Dimensions";
+import { Boxing, Drawing } from "./canvas/layers/Drawing";
 import { Fills } from "./canvas/layers/Fills";
+import { GhostCaption, GhostReading } from "./canvas/layers/Ghosts";
 import { Guides } from "./canvas/layers/Guides";
-import { Holding } from "./canvas/layers/Holding";
-import { InteriorGlyph } from "./canvas/layers/Interior";
+import { Holding, MarkCaptions } from "./canvas/layers/Holding";
+import { type LabelEdit, Labels } from "./canvas/layers/Labels";
 import { Lit } from "./canvas/layers/Lit";
+import { Loci } from "./canvas/layers/Locus";
+import { MarkGhost, Marks } from "./canvas/layers/Marks";
 import { Paths } from "./canvas/layers/Paths";
 import { Points } from "./canvas/layers/Points";
+import { Preview } from "./canvas/layers/Preview";
+import { Handles, Marquee, Snapped } from "./canvas/layers/Snapping";
 import { litWith } from "./canvas/lighting";
-import { arcsBetween, type Marking, markUnder } from "./canvas/marks";
+import { type Marking, markUnder } from "./canvas/marks";
 import {
   angleMarkOn,
   angleReadingSpot,
@@ -135,7 +136,6 @@ import {
   sameAngle,
 } from "./canvas/readings";
 import { SheetProvider } from "./canvas/SheetContext";
-import { arcPath, arrowPoints, interiorShape } from "./canvas/shapes";
 import {
   ANGLE_AIM,
   ANGLE_ROOM,
@@ -153,7 +153,6 @@ import {
   overlaps,
   PAN_FINGERS,
   type Pending,
-  SNAP_RING,
   type Snap,
   sameReading,
   snapKey,
@@ -382,7 +381,7 @@ export function Canvas({
   /** What a plotting tool would land on, lit up while the pointer is over it. */
   const [snap, setSnap] = useState<Snap | null>(null);
   /** The label being typed into, and what has been typed so far. */
-  const [naming, setNaming] = useState<{ id: string; text: string } | null>(null);
+  const [naming, setNaming] = useState<LabelEdit | null>(null);
   /** A label being dragged: where it started, and where the pointer did. */
   const dragged = useRef<{ id: string; off: Position; from: Position } | null>(null);
   /** What a drag that began inside a caption or a measurement has hold of. */
@@ -394,9 +393,7 @@ export function Canvas({
    * the drag has reached. The way it points out of the corner is which of the
    * angles there is being asked for, the reflex one included.
    */
-  const [arming, setArming] = useState<{ corner: string; start: Position; at: Position } | null>(
-    null,
-  );
+  const [arming, setArming] = useState<AngleDrag | null>(null);
   /** The mark whose panel is open, or null with no panel showing. */
   const [panel, setPanel] = useState<string | null>(null);
   /** The reading whose panel is open, which only a length ever has. */
@@ -1525,7 +1522,7 @@ export function Canvas({
       scale,
       slack,
       snapping,
-      handles,
+      handles: handlesOn({ objects, settled }),
       pending,
       tracing,
       shiftHeld,
@@ -2294,60 +2291,17 @@ export function Canvas({
     onEditing(next);
   }
 
-  /**
-   * A hidden caption, drawn faintly where it sits while the dock points at its
-   * row. A band round nothing would say nothing, so the caption itself comes
-   * back rather than an outline of it.
-   */
-  function ghostCaption(id: string | null) {
+  /** The hidden caption the dock is pointing at, if that is what it is. */
+  function ghostAt(id: string | null): SketchCaption | null {
     const found = id ? everything.find((object) => object.id === id) : null;
-    if (!found || !isCaption(found) || found.hidden !== true) return null;
-    return (
-      <div
-        className="caption caption--ghost"
-        style={{
-          left: `${(found.x - view.x) * scale}px`,
-          top: `${(found.y - view.y) * scale}px`,
-          width: `${found.width}px`,
-          textAlign: found.align,
-          ...drawnAs(found),
-        }}
-      >
-        <div
-          className="caption__body"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: the caption's own markup, written here
-          dangerouslySetInnerHTML={{ __html: withNames(found.html, linkNames) }}
-        />
-      </div>
-    );
+    return found && isCaption(found) && found.hidden === true ? found : null;
   }
 
-  /**
-   * A hidden measurement, drawn faintly where it sits while the dock points at
-   * its row, the way a hidden caption is.
-   */
-  function ghostReading(id: string | null) {
+  /** The hidden measurement the dock is pointing at, if that is what it is. */
+  function ghostReadingAt(id: string | null) {
     const found = id ? everything.find((object) => object.id === id) : null;
-    if (!found || !(isValue(found) || isFunction(found)) || found.hidden !== true) return null;
-    return (
-      <MeasurementBox
-        measurement={found}
-        reading={readingFor(found)}
-        view={view}
-        scale={scale}
-        selected={false}
-        tool="none"
-        ghost
-        linking={false}
-        onLink={() => {}}
-        onSelect={() => {}}
-        onGrab={() => {}}
-        onDrag={() => {}}
-        onDrop={() => {}}
-        onToggleLabel={() => {}}
-        onMeasure={() => {}}
-      />
-    );
+    if (!found || found.hidden !== true) return null;
+    return isValue(found) || isFunction(found) ? found : null;
   }
 
   /**
@@ -2438,155 +2392,6 @@ export function Canvas({
     return object ? labelAnchor(labelling, object) : null;
   }
 
-  /** Where an end of a locus is, and which way it carries on from there. */
-  function handleFor(locus: SketchLocus, shape: LocusShape, end: 0 | 1): Handle | null {
-    const domain = objects.find((object) => object.id === locus.domain);
-    const along = settled.lines.get(locus.domain);
-    if (!domain || !isLine(domain) || !along) return null;
-    const length = distance(along.a, along.b);
-    if (length < 1) return null;
-    const path = { x: (along.b.x - along.a.x) / length, y: (along.b.y - along.a.y) / length };
-    const handle = { locus: locus.id, end, step: 1 / length };
-    if (shape.kind === "points" && shape.at.length > 1) {
-      // A point locus carries its arrowhead at the end of the curve, pointing
-      // the way the curve was going.
-      const tip = end === 1 ? shape.at[shape.at.length - 1] : shape.at[0];
-      const back = end === 1 ? shape.at[shape.at.length - 2] : shape.at[1];
-      const reach = distance(back, tip);
-      const way =
-        reach < 0.001
-          ? { x: path.x * (end === 1 ? 1 : -1), y: path.y * (end === 1 ? 1 : -1) }
-          : { x: (tip.x - back.x) / reach, y: (tip.y - back.y) / reach };
-      return { ...handle, at: tip, way };
-    }
-    // Anything else has no one end of its own, so the arrowhead sits on the
-    // domain, at the far end of the stretch the driver runs over.
-    const t = locus.span[end];
-    return {
-      ...handle,
-      at: {
-        x: along.a.x + (along.b.x - along.a.x) * t,
-        y: along.a.y + (along.b.y - along.a.y) * t,
-      },
-      way: { x: path.x * (end === 1 ? 1 : -1), y: path.y * (end === 1 ? 1 : -1) },
-    };
-  }
-
-  /**
-   * Every arrowhead on the page. A segment fixes both ends of the domain, a ray
-   * fixes only the end it starts from, and a line fixes neither.
-   */
-  const handles: Handle[] = objects.flatMap((object) => {
-    if (!isLocus(object)) return [];
-    const shape = settled.loci.get(object.id);
-    const domain = objects.find((candidate) => candidate.id === object.domain);
-    if (!shape || !domain || !isLine(domain) || domain.form === "segment") return [];
-    const ends: (0 | 1)[] = domain.form === "ray" ? [1] : [0, 1];
-    return ends.flatMap((end) => {
-      const handle = handleFor(object, shape, end);
-      return handle ? [handle] : [];
-    });
-  });
-
-  /** A locus, drawn as the samples it was worked out to. */
-  function drawLocus(id: string, shape: LocusShape, ghost: boolean) {
-    const kind = `canvas__locus${ghost ? " canvas__locus--preview" : ""}${
-      !ghost && selection.includes(id) ? " canvas__locus--selected" : ""
-    }`;
-    // A locus is one object however many pieces it is drawn in, so what it says
-    // about how it is drawn goes on every one of them.
-    const drawn = everything.find((candidate) => candidate.id === id);
-    const look = ghost || !drawn ? undefined : strokeLook(drawn);
-    const wash = ghost || !drawn ? undefined : fillLook(drawn, true);
-    if (shape.kind === "points") {
-      return (
-        <polyline
-          key={id}
-          data-id={id}
-          className={kind}
-          style={look}
-          points={shape.at.map((spot) => `${spot.x},${spot.y}`).join(" ")}
-          vectorEffect="non-scaling-stroke"
-        />
-      );
-    }
-    if (shape.kind === "arcs") {
-      return (
-        <g key={id} data-id={id}>
-          {shape.at.map((arc, index) => (
-            <path
-              // biome-ignore lint/suspicious/noArrayIndexKey: samples have no identity of their own
-              key={index}
-              className={kind}
-              style={look}
-              d={arcPath(arc)}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-        </g>
-      );
-    }
-    if (shape.kind === "circles") {
-      return (
-        <g key={id} data-id={id}>
-          {shape.at.map((round, index) => (
-            <circle
-              // biome-ignore lint/suspicious/noArrayIndexKey: samples have no identity of their own
-              key={index}
-              className={kind}
-              style={look}
-              cx={round.at.x}
-              cy={round.at.y}
-              r={round.radius}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-        </g>
-      );
-    }
-    if (shape.kind === "lines") {
-      return (
-        <g key={id} data-id={id}>
-          {shape.at.map((line, index) => {
-            const span = clipToRect(line, shown);
-            return span ? (
-              <line
-                // biome-ignore lint/suspicious/noArrayIndexKey: samples have no identity of their own
-                key={index}
-                className={kind}
-                style={look}
-                x1={span[0].x}
-                y1={span[0].y}
-                x2={span[1].x}
-                y2={span[1].y}
-                vectorEffect="non-scaling-stroke"
-              />
-            ) : null;
-          })}
-        </g>
-      );
-    }
-    return (
-      <g key={id} data-id={id}>
-        {shape.at.map((corners, index) => (
-          <polygon
-            // biome-ignore lint/suspicious/noArrayIndexKey: samples have no identity of their own
-            key={index}
-            className={`${kind} canvas__locus-fill`}
-            style={wash}
-            points={corners.map((corner) => `${corner.x},${corner.y}`).join(" ")}
-          />
-        ))}
-      </g>
-    );
-  }
-
-  /** The ring at a snap: around the dot it found, or a fixed one on a path. */
-  function snapRadius(found: Snap): number {
-    const point = found.kind === "point" ? ends.get(found.ids[0]) : undefined;
-    return (point ? radiusOf(point) + 5.5 : SNAP_RING) / scale;
-  }
-
   const guide = guideOf({ objects, settled, scale, snapping, travel, pending, tracing });
 
   // A panel with nothing left to be about closes itself.
@@ -2605,7 +2410,7 @@ export function Canvas({
     : null;
 
   return (
-    <SheetProvider value={{ objects, everything, settled, selection, scale, ends, spanOf }}>
+    <SheetProvider value={{ objects, everything, settled, selection, scale, ends, spanOf, shown }}>
       <div className="canvas">
         {/* biome-ignore lint/a11y/noStaticElementInteractions: the sheet is the drawing surface, where every gesture is a pointer gesture; the keyboard reaches the same work through the menus and their shortcuts */}
         <div
@@ -2625,226 +2430,20 @@ export function Canvas({
           <svg className="canvas__objects" aria-hidden="true">
             <g transform={`scale(${scale}) translate(${-view.x} ${-view.y})`}>
               <Fills />
-              {objects.map((object) => {
-                if (!isLocus(object)) return null;
-                const shape = settled.loci.get(object.id);
-                return shape ? drawLocus(object.id, shape, false) : null;
-              })}
-              {handles.map((handle) => (
-                <polygon
-                  key={`${handle.locus}-${handle.end}`}
-                  className="canvas__locus-arrow"
-                  points={arrowPoints(handle, scale)}
-                />
-              ))}
+              <Loci />
+              <Handles />
               <Paths />
-              {tracing && (
-                <g>
-                  {/* What the polygon would be if it closed here: the fill once
-                    there are three corners, the edges laid down so far, and a
-                    band from the last corner to the pointer. */}
-                  {tracing.spots.length >= 2 && (
-                    <polygon
-                      className="canvas__interior canvas__interior--preview"
-                      points={[...tracing.spots, tracing.at]
-                        .map((spot) => `${spot.x},${spot.y}`)
-                        .join(" ")}
-                    />
-                  )}
-                  <polyline
-                    className="canvas__rubber canvas__rubber--laid"
-                    points={tracing.spots.map((spot) => `${spot.x},${spot.y}`).join(" ")}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  <line
-                    className="canvas__rubber"
-                    x1={tracing.spots[tracing.spots.length - 1].x}
-                    y1={tracing.spots[tracing.spots.length - 1].y}
-                    x2={tracing.at.x}
-                    y2={tracing.at.y}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  {tracing.spots.length >= 2 && (
-                    <line
-                      className="canvas__rubber"
-                      x1={tracing.at.x}
-                      y1={tracing.at.y}
-                      x2={tracing.spots[0].x}
-                      y2={tracing.spots[0].y}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  )}
-                </g>
-              )}
-              {pending &&
-                (pending.tool === "compass" ? (
-                  <circle
-                    className="canvas__rubber"
-                    cx={pending.start.x}
-                    cy={pending.start.y}
-                    r={distance(pending.start, pending.at)}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ) : (
-                  <line
-                    className="canvas__rubber"
-                    x1={pending.start.x}
-                    y1={pending.start.y}
-                    x2={pending.at.x}
-                    y2={pending.at.y}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ))}
-              {middle && (
-                <circle
-                  className="canvas__snap"
-                  cx={middle.x}
-                  cy={middle.y}
-                  r={7 / scale}
-                  vectorEffect="non-scaling-stroke"
-                />
-              )}
-              {objects.map((object) => {
-                if (!isMark(object)) return null;
-                const shape = markShape(object, { settled, objects, scale });
-                if (!shape) return null;
-                const strokes = markStrokes(shape, scale);
-                return (
-                  <g key={object.id} data-id={object.id}>
-                    {selection.includes(object.id) &&
-                      strokes.map((stroke, nth) => (
-                        <path
-                          // biome-ignore lint/suspicious/noArrayIndexKey: stateless paths in a fixed-length list, redrawn whole
-                          key={`halo-${object.id}-${nth}`}
-                          className="canvas__mark-halo"
-                          d={stroke}
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      ))}
-                    {strokes.map((stroke, nth) => (
-                      <path
-                        // biome-ignore lint/suspicious/noArrayIndexKey: stateless paths in a fixed-length list, redrawn whole
-                        key={`${object.id}-${nth}`}
-                        className="canvas__mark-stroke"
-                        style={strokeLook({ ...object, pattern: undefined })}
-                        d={stroke}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ))}
-                  </g>
-                );
-              })}
-              {/* An angle has to be marked before it can be read, so the arcs
-                that click would put on it are part of what it would do. */}
-              {previewReading?.mark &&
-                (() => {
-                  const shape = markShape(previewReading.mark, { settled, objects, scale });
-                  if (!shape) return null;
-                  return markStrokes(shape, scale).map((stroke) => (
-                    <path
-                      key={stroke}
-                      className="canvas__mark-stroke canvas__mark-stroke--preview"
-                      d={stroke}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ));
-                })()}
-              {arming && (
-                <g>
-                  <line
-                    className="canvas__rubber"
-                    x1={arming.start.x}
-                    y1={arming.start.y}
-                    x2={arming.at.x}
-                    y2={arming.at.y}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  {/* The angle the drag is asking for, drawn as it will land. */}
-                  {armingArcs().map((stroke) => (
-                    <path
-                      key={stroke}
-                      className="canvas__mark-stroke"
-                      d={stroke}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ))}
-                </g>
-              )}
-              {/* Resting on a corner with an angle tool up. One angle there is
-                drawn as itself; more than one is drawn as the whole turn, which
-                says a corner is there without claiming which angle is meant. */}
-              {overCorner &&
-                !choosing &&
-                (() => {
-                  const spot = settled.points.get(overCorner);
-                  if (!spot) return null;
-                  const there = anglesAt(overCorner, objects, settled);
-                  if (there.length === 1) {
-                    // The protractor already ghosts the marking it would lay, so
-                    // this is only the Marker's business.
-                    if (marking !== "angle") return null;
-                    return arcsBetween(
-                      { corner: overCorner, arms: there[0].arms, reflex: false },
-                      markingNow(),
-                    ).map((stroke) => (
-                      <path
-                        key={stroke}
-                        className="canvas__mark-stroke canvas__mark-stroke--preview"
-                        d={stroke}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ));
-                  }
-                  return (
-                    <circle
-                      className="canvas__mark-stroke canvas__mark-stroke--preview"
-                      cx={spot.x}
-                      cy={spot.y}
-                      r={clearOfCorner(overCorner) / scale}
-                      fill="none"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  );
-                })()}
-              {/* The angle a row of the which-angle dialog is pointing at: its two
-                arms lit up, so which angle is meant is plain at a glance, and
-                the arcs it would land as drawn over them. */}
-              {choosing &&
-                showingArms &&
-                (() => {
-                  const spot = settled.points.get(choosing.corner);
-                  if (!spot) return null;
-                  return (
-                    <g>
-                      {showingArms.map((arm) => {
-                        const end = settled.points.get(arm);
-                        if (!end) return null;
-                        return (
-                          <line
-                            key={arm}
-                            className="canvas__mark-halo"
-                            x1={spot.x}
-                            y1={spot.y}
-                            x2={end.x}
-                            y2={end.y}
-                            vectorEffect="non-scaling-stroke"
-                          />
-                        );
-                      })}
-                      {arcsBetween(
-                        { corner: choosing.corner, arms: showingArms, reflex: false },
-                        markingNow(),
-                      ).map((stroke) => (
-                        <path
-                          key={stroke}
-                          className="canvas__mark-stroke"
-                          d={stroke}
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      ))}
-                    </g>
-                  );
-                })()}
+              <Drawing tracing={tracing} pending={pending} middle={middle} />
+              <Marks />
+              <MarkGhost mark={previewReading?.mark ?? null} />
+              <Arms arming={arming} arcs={armingArcs()} />
+              <Resting
+                corner={choosing ? null : overCorner}
+                marking={marking === "angle"}
+                clearOf={clearOfCorner}
+                marks={markingNow()}
+              />
+              <Showing corner={choosing?.corner ?? null} arms={showingArms} marks={markingNow()} />
               <Points />
               {spotlight && <Lit ids={litWith(spotlight, everything)} />}
               {lit && lit !== spotlight && <Lit ids={litWith(lit, everything)} />}
@@ -2852,156 +2451,33 @@ export function Canvas({
                 <Lit ids={litWith(under, everything)} />
               )}
               <Lit ids={litReading} />
-              {snap && (
-                <g>
-                  {/* The paths a click would attach to, or whose crossing it
-                    would build, lit the whole way along. */}
-                  {snap.kind !== "point" && <Lit ids={snap.ids} />}
-                  <circle
-                    className="canvas__snap"
-                    cx={snap.at.x}
-                    cy={snap.at.y}
-                    r={snapRadius(snap)}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </g>
-              )}
+              <Snapped snap={snap} />
               <Holding marks={marks} />
-              {preview.map((object) => {
-                if (isArc(object)) {
-                  const arc = previewSettled.arcs.get(object.id);
-                  return arc ? (
-                    <path
-                      key={object.id}
-                      className="canvas__circle canvas__circle--preview"
-                      d={arcPath(arc)}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ) : null;
-                }
-                if (isCircle(object)) {
-                  const round = previewSettled.circles.get(object.id);
-                  return round ? (
-                    <circle
-                      key={object.id}
-                      className="canvas__circle canvas__circle--preview"
-                      cx={round.at.x}
-                      cy={round.at.y}
-                      r={round.radius}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ) : null;
-                }
-                if (isLocus(object)) {
-                  const shape = previewSettled.loci.get(object.id);
-                  return shape ? drawLocus(object.id, shape, true) : null;
-                }
-                if (isInterior(object)) {
-                  const shape = interiorShape(object, previewSettled);
-                  return shape ? (
-                    <InteriorGlyph
-                      key={object.id}
-                      shape={shape}
-                      className="canvas__interior canvas__interior--preview"
-                    />
-                  ) : null;
-                }
-                if (!isLine(object)) return null;
-                const span = spanOf(object, previewSettled);
-                return span ? (
-                  <line
-                    key={object.id}
-                    className="canvas__line canvas__line--preview"
-                    x1={span[0].x}
-                    y1={span[0].y}
-                    x2={span[1].x}
-                    y2={span[1].y}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ) : null;
-              })}
-              {previewPoints.map((point) => (
-                <circle
-                  key={point.id}
-                  className="canvas__point canvas__point--preview"
-                  cx={point.x}
-                  cy={point.y}
-                  r={radiusOf(point) / scale}
-                  vectorEffect="non-scaling-stroke"
-                />
-              ))}
+              <Preview
+                objects={preview}
+                points={previewPoints}
+                settled={previewSettled}
+                spanOf={spanOf}
+              />
               <Dimensions boxOf={boxOf} />
               <Guides guide={guide} />
-              {marquee && (
-                <rect
-                  className="canvas__marquee"
-                  x={marquee.x}
-                  y={marquee.y}
-                  width={marquee.width}
-                  height={marquee.height}
-                  rx={2 / scale}
-                  vectorEffect="non-scaling-stroke"
-                />
-              )}
+              <Marquee rect={marquee} />
             </g>
           </svg>
 
-          {/*
-          The press stops here. Letting it reach the sheet would capture the
-          pointer there, and the click that follows would be retargeted to the
-          sheet with it, never reaching the button.
-        */}
-          {labels.map((label) => {
-            const where = {
-              left: `${(label.at.x - view.x) * scale + label.off.x}px`,
-              top: `${(label.at.y - view.y) * scale + label.off.y}px`,
-            };
-            if (naming?.id === label.id) {
-              return (
-                <input
-                  key={label.id}
-                  className="canvas__label-input"
-                  style={where}
-                  // biome-ignore lint/a11y/noAutofocus: the double-click asked for it
-                  autoFocus
-                  value={naming.text}
-                  onChange={(event) => setNaming({ ...naming, text: event.target.value })}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") event.currentTarget.blur();
-                    if (event.key === "Escape") setNaming(null);
-                  }}
-                  onBlur={() => {
-                    if (naming.text.trim() !== label.name) onRename(label.id, naming.text.trim());
-                    setNaming(null);
-                  }}
-                />
-              );
-            }
-            return (
-              // biome-ignore lint/a11y/noStaticElementInteractions: a label is dragged and typed into, not pressed
-              <span
-                key={label.id}
-                data-id={label.id}
-                className={`canvas__label${
-                  labelPick.includes(label.id) ? " canvas__label--picked" : ""
-                }`}
-                style={{
-                  ...where,
-                  ...label.look,
-                  // A label is dragged and typed into by the two tools that deal
-                  // in labels, and is out of the way of every other tool.
-                  pointerEvents:
-                    (tool === "arrow" || tool === "text") && !picking ? "auto" : "none",
-                }}
-                onPointerDown={(event) => startLabelDrag(event, label.id, label.off)}
-                onPointerMove={dragLabel}
-                onPointerUp={dropLabel}
-                onDoubleClick={() => setNaming({ id: label.id, text: label.name })}
-              >
-                {label.name}
-              </span>
-            );
-          })}
+          <Labels
+            labels={labels}
+            view={view}
+            scale={scale}
+            picked={labelPick}
+            reachable={(tool === "arrow" || tool === "text") && !picking}
+            naming={naming}
+            onNaming={setNaming}
+            onRename={onRename}
+            onGrab={startLabelDrag}
+            onDrag={dragLabel}
+            onDrop={dropLabel}
+          />
 
           {readingOpen && readingSpot && (
             <ReadingPanel
@@ -3155,82 +2631,43 @@ export function Canvas({
           {/* Hovering a Measure entry writes the number it would take, as a
             ghost, where it would land. */}
           {preview.filter(isMeasurement).map((measurement) => (
-            <MeasurementBox
+            <GhostReading
               key={measurement.id}
               measurement={measurement}
               reading={readingFor(measurement)}
               view={view}
               scale={scale}
-              selected={false}
-              tool="none"
-              ghost
-              linking={false}
-              onLink={() => {}}
-              onSelect={() => {}}
-              onGrab={() => {}}
-              onDrag={() => {}}
-              onDrop={() => {}}
-              onToggleLabel={() => {}}
-              onMeasure={() => {}}
             />
           ))}
 
           {/* What the Measure tool would write from where the pointer is. */}
           {previewReading && (
-            <MeasurementBox
+            <GhostReading
               measurement={previewReading.reading}
               reading={readingFor(previewReading.reading)}
               view={view}
               scale={scale}
-              selected={false}
-              tool="none"
-              ghost
-              linking={false}
-              onLink={() => {}}
-              onSelect={() => {}}
-              onGrab={() => {}}
-              onDrag={() => {}}
-              onDrop={() => {}}
-              onToggleLabel={() => {}}
-              onMeasure={() => {}}
             />
           )}
 
           {/* Hidden writing pointed at in the dock. Nothing else says where it
             sits, since a hidden object is not drawn at all. */}
-          {ghostCaption(spotlight)}
-          {ghostReading(spotlight)}
+          <GhostCaption caption={ghostAt(spotlight)} names={linkNames} view={view} scale={scale} />
+          {(() => {
+            const hidden = ghostReadingAt(spotlight);
+            return hidden ? (
+              <GhostReading
+                measurement={hidden}
+                reading={readingFor(hidden)}
+                view={view}
+                scale={scale}
+              />
+            ) : null;
+          })()}
 
-          {/* The box a caption is being dragged out to, before there is one. */}
-          {boxing && (
-            <div
-              className="caption-box"
-              style={{
-                left: `${(boxing.x - view.x) * scale}px`,
-                top: `${(boxing.y - view.y) * scale}px`,
-                width: `${boxing.width * scale}px`,
-                height: `${boxing.height * scale}px`,
-              }}
-            />
-          )}
+          <Boxing boxing={boxing} view={view} scale={scale} />
 
-          {/* A dialog's marks ride above the sheet, keeping their size at any zoom. */}
-          {marks.map((mark) => {
-            const object = markAt(mark.id);
-            if (!object) return null;
-            return (
-              <span
-                key={mark.id}
-                className="canvas__caption"
-                style={{
-                  left: `${(object.x - view.x) * scale}px`,
-                  top: `${(object.y - view.y) * scale}px`,
-                }}
-              >
-                {mark.label}
-              </span>
-            );
-          })}
+          <MarkCaptions marks={marks} spotOf={markAt} view={view} scale={scale} />
 
           {zoomable && (
             <div className="canvas__zoom" onPointerDown={(event) => event.stopPropagation()}>
