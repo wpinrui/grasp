@@ -29,6 +29,7 @@ import {
   pathIn,
   radiansOf,
   type SketchObject,
+  slackAt,
   spotOnPath,
 } from "../../sketch/model";
 import type { Snapping } from "../SnapPanel";
@@ -47,8 +48,6 @@ import {
 
 /** The figure a click is aimed at, and what is half drawn over it. */
 export interface Aiming extends Figure {
-  /** How far off a path still counts as on it, at this zoom. */
-  slack: number;
   snapping: Snapping;
   handles: Handle[];
   pending: Pending | null;
@@ -86,19 +85,12 @@ export function handleAt(at: Position, aiming: Aiming): Handle | null {
  * pointer, which a new point would belong to.
  */
 export function snapAt(at: Position, aiming: Aiming): Snap | null {
-  const { objects, settled, scale, slack } = aiming;
+  const { objects, settled, scale } = aiming;
   const over = objectAt(at, { objects, scale, settled });
   if (over && isPoint(over)) {
     return { kind: "point", ids: [over.id], at: { x: over.x, y: over.y } };
   }
-  // The paths the pointer is on, the newest first, as picking has them.
-  const near: { id: string; along: PathGeometry }[] = [];
-  for (let index = objects.length - 1; index >= 0; index -= 1) {
-    const object = objects[index];
-    if (!isLine(object) && !isCircle(object) && !isArc(object)) continue;
-    const along = pathIn(settled, object.id);
-    if (along && distanceToPath(along, at) <= slack) near.push({ id: object.id, along });
-  }
+  const near = pathsUnder(at, aiming);
   if (near.length === 0) return null;
   for (let one = 0; one < near.length; one += 1) {
     for (let other = one + 1; other < near.length; other += 1) {
@@ -107,14 +99,19 @@ export function snapAt(at: Position, aiming: Aiming): Snap | null {
       const met = crossings(near[one].along, near[other].along);
       const pick = met.findIndex((spot) => distance(spot, at) <= CROSS_REACH / scale);
       if (pick !== -1) {
-        return { kind: "cross", ids: [near[one].id, near[other].id], pick, at: met[pick] };
+        return {
+          kind: "cross",
+          ids: [near[one].object.id, near[other].object.id],
+          pick,
+          at: met[pick],
+        };
       }
     }
   }
   const first = near[0];
   return {
     kind: "line",
-    ids: [first.id],
+    ids: [first.object.id],
     at: spotOnPath(first.along, alongPath(first.along, at)),
   };
 }
@@ -286,4 +283,38 @@ export function travelOf(
   if (!carriesGeometry(ids, aiming)) return null;
   const start = from[0];
   return { from: start, to: { x: start.x + went.x, y: start.y + went.y } };
+}
+
+/** A path the pointer is on, and the shape that path settled to. */
+export interface Under {
+  object: SketchObject;
+  along: PathGeometry;
+}
+
+/** The paths the pointer is on, the newest first, as picking has them. */
+function pathsUnder(at: Position, where: Figure): Under[] {
+  const { objects, settled, scale } = where;
+  const slack = slackAt(scale);
+  const found: Under[] = [];
+  for (let index = objects.length - 1; index >= 0; index -= 1) {
+    const object = objects[index];
+    if (!isLine(object) && !isCircle(object) && !isArc(object)) continue;
+    const along = pathIn(settled, object.id);
+    if (along && distanceToPath(along, at) <= slack) found.push({ object, along });
+  }
+  return found;
+}
+
+/** The topmost path the pointer is on, or none. */
+export function pathUnder(at: Position, where: Figure): Under | null {
+  return pathsUnder(at, where)[0] ?? null;
+}
+
+/**
+ * The topmost straight object the pointer is on, or none. The questions about
+ * the sides of an angle want a straight object and pass over a circle to reach
+ * one, rather than coming back with the circle.
+ */
+export function lineUnder(at: Position, where: Figure): Under | null {
+  return pathsUnder(at, where).find((found) => isLine(found.object)) ?? null;
 }
