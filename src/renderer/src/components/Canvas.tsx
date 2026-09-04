@@ -12,7 +12,7 @@ import {
   type WheelEvent,
 } from "react";
 import { insertAtCaret, linkHtml, plainText } from "../sketch/captions";
-import { LABEL_REACH, type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
+import { type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
 import {
   anglesAt,
   angleWanted,
@@ -161,6 +161,7 @@ import {
   spanOfLocus,
   travelOf,
 } from "./canvas/steps";
+import { useLabelDrag } from "./canvas/useLabelDrag";
 import { useMarking } from "./canvas/useMarking";
 import { useReading } from "./canvas/useReading";
 import type { HiddenKinds } from "./HiddenPanel";
@@ -374,7 +375,7 @@ export function Canvas({
   /** The label being typed into, and what has been typed so far. */
   const [naming, setNaming] = useState<LabelEdit | null>(null);
   /** A label being dragged: where it started, and where the pointer did. */
-  const dragged = useRef<{ id: string; off: Position; from: Position } | null>(null);
+
   /** What a drag that began inside a caption or a measurement has hold of. */
   const written = useRef<Held | null>(null);
   /** The box the Text tool is dragging out for a caption that is not made yet. */
@@ -549,6 +550,14 @@ export function Canvas({
     setPlaces,
     setReflex: setReadingReflex,
   } = useReading(sketch);
+
+  const { dragLabel, dropLabel, startLabelDrag } = useLabelDrag({
+    sketch,
+    tool,
+    editing,
+    onCloseCaption: closeCaption,
+    onLabelPick,
+  });
 
   const onScreen = {
     x: view.x,
@@ -1798,61 +1807,6 @@ export function Canvas({
       }
     }
     return createPoint(at, pointSize);
-  }
-
-  /** Drag a label about within its reach of what it names. */
-  function moveLabel(id: string, off: Position) {
-    const held = Math.hypot(off.x, off.y);
-    const kept =
-      held <= LABEL_REACH
-        ? off
-        : { x: (off.x / held) * LABEL_REACH, y: (off.y / held) * LABEL_REACH };
-    const before = sketch.read();
-    sketch.updateGesture({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id ? { ...object, label: { ...object.label, off: kept } } : object,
-      ),
-    });
-  }
-
-  function startLabelDrag(event: PointerEvent<HTMLSpanElement>, id: string, off: Position) {
-    if (event.button !== 0) return;
-    event.stopPropagation();
-    // A label is picked on its own: what it names is not picked with it, so the
-    // palette is set on the label rather than on the object under it.
-    if (tool === "arrow") {
-      // A caption open to type into is what the bar is set on, so it is settled
-      // and put away before a label takes its place: only one of the two is
-      // ever the thing the palette is working on.
-      if (editing) closeCaption(null);
-      onLabelPick(id, event.shiftKey || event.ctrlKey);
-      sketch.select([]);
-    }
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragged.current = { id, off, from: { x: event.clientX, y: event.clientY } };
-    sketch.beginGesture();
-  }
-
-  function dragLabel(event: PointerEvent<HTMLSpanElement>) {
-    const state = dragged.current;
-    if (!state) return;
-    event.stopPropagation();
-    moveLabel(state.id, {
-      x: state.off.x + (event.clientX - state.from.x),
-      y: state.off.y + (event.clientY - state.from.y),
-    });
-  }
-
-  function dropLabel(event: PointerEvent<HTMLSpanElement>) {
-    const state = dragged.current;
-    dragged.current = null;
-    if (!state) return;
-    event.stopPropagation();
-    const moved =
-      Math.abs(event.clientX - state.from.x) + Math.abs(event.clientY - state.from.y) > 0;
-    if (moved) sketch.endGesture();
-    else sketch.cancelGesture();
   }
 
   const captions = objects.filter(isCaption);
