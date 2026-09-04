@@ -449,6 +449,11 @@ export function parse(text: string): Opened {
     throw new Error("That file is not a GRASP sketch.");
   }
   if (file?.format !== FORMAT) throw new Error("That file is not a GRASP sketch.");
+  // Every sketch has ever written one, so a file without a version is damaged
+  // rather than old, and reading it as either would letter it wrongly.
+  if (typeof file.version !== "number") {
+    throw new Error("That sketch is damaged and cannot be opened.");
+  }
   if (file.version > VERSION) {
     throw new Error("That sketch was saved by a newer version of GRASP.");
   }
