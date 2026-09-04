@@ -1,6 +1,7 @@
-// @vitest-environment node
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { placeOf } from "./useRelabel";
+import type { Naming } from "./labels";
+import { placeOf, useRelabel } from "./useRelabel";
 
 /**
  * A run reads its place off the page rather than counting the letters it has
@@ -45,5 +46,54 @@ describe("where a relabel run has got to", () => {
     const twice = { from: "A", given: ["one", "one"] };
     expect(placeOf(twice, new Map([["one", "B"]]))).toBe(0);
     expect(placeOf(twice, new Map([["one", "A"]]))).toBe(1);
+  });
+});
+
+/** Only one call of the naming bundle is a run's to make, so the rest is left out. */
+function stubNaming(given: Map<string, string>): Naming {
+  return { labelAs: (id: string, name: string) => given.set(id, name) } as unknown as Naming;
+}
+
+describe("a run and the tool it belongs to", () => {
+  it("hands out the letters in order as the vertices are clicked", () => {
+    const given = new Map<string, string>();
+    const { result, rerender } = renderHook(
+      (names: Map<string, string>) => useRelabel({ armed: true, naming: stubNaming(given), names }),
+      { initialProps: given },
+    );
+    act(() => result.current.ask("one", { x: 0, y: 0 }));
+    act(() => result.current.startFrom("A"));
+    expect(given.get("one")).toBe("A");
+    rerender(given);
+    expect(result.current.nextName).toBe("B");
+
+    act(() => result.current.give("two"));
+    expect(given.get("two")).toBe("B");
+    rerender(given);
+    expect(result.current.nextName).toBe("C");
+  });
+
+  it("leaves the second vertex clicked alone while the box is still up", () => {
+    const given = new Map<string, string>();
+    const { result } = renderHook(() =>
+      useRelabel({ armed: true, naming: stubNaming(given), names: given }),
+    );
+    act(() => result.current.ask("one", { x: 0, y: 0 }));
+    act(() => result.current.ask("two", { x: 50, y: 0 }));
+    // The box stands beside the vertex it is about, so it stays about that one.
+    expect(result.current.asked?.id).toBe("one");
+  });
+
+  it("ends when the tool is put down, wherever it had got to", () => {
+    const given = new Map<string, string>();
+    const { result, rerender } = renderHook(
+      (armed: boolean) => useRelabel({ armed, naming: stubNaming(given), names: given }),
+      { initialProps: true },
+    );
+    act(() => result.current.ask("one", { x: 0, y: 0 }));
+    act(() => result.current.startFrom("A"));
+    rerender(false);
+    expect(result.current.nextName).toBeNull();
+    expect(result.current.asked).toBeNull();
   });
 });
