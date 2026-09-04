@@ -1,15 +1,15 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { SketchObject } from "../model";
-import { createLine, createMeasurement, createPoint } from "../model";
-import { spelledOutBy } from "./reading";
+import { createLine, createMeasurement, createPoint, namesFor, settle } from "../model";
+import { readingOf, readingText, spelledOutBy } from "./reading";
 
 /**
- * Taking a measurement labels whatever its reading names, so a new reading
+ * Taking a measurement names whatever its reading spells out, so a new reading
  * never comes out saying "?? = 5 cm". Which objects those are is not the same
  * as what the measurement was taken from: the length of a segment reads as the
  * letters of the two points it runs between, and never as the segment's own
- * name, so those points are the ones to label.
+ * name, so those points are the ones to name.
  */
 describe("what a reading spells out", () => {
   const a = createPoint({ x: 0, y: 0 }, "medium");
@@ -27,6 +27,23 @@ describe("what a reading spells out", () => {
     expect(spells).toContain(a.id);
     expect(spells).toContain(b.id);
     expect(spells).not.toContain(seg.id);
+  });
+
+  it("prints the letters of points whose labels are put away", () => {
+    // The whole reason a measurement names what it reads: the letters go into
+    // the reading whether or not either label is beside its point.
+    const named = (one: SketchObject, name: string): SketchObject => ({
+      ...one,
+      label: { name, shown: false },
+    });
+    const length = createMeasurement("length", [seg.id], { x: 0, y: 40 });
+    const objects = [named(a, "A"), named(b, "B"), seg, length];
+    const reading = readingOf(length as never, {
+      objects,
+      names: namesFor(objects),
+      settled: settle(objects).settled,
+    });
+    expect(readingText(reading)).toContain("AB");
   });
 
   it("names all three points of an angle", () => {

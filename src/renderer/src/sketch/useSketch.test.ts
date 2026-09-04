@@ -304,12 +304,13 @@ describe("whether there is anything to undo", () => {
 });
 
 /**
- * Where a label gets its name. Nothing carries one until a label is asked for,
- * and the name is written down when it is, so the letters of a figure never
- * move afterwards. Every route that shows a label goes through `commit`, which
- * is why this is asserted here rather than at each of them.
+ * Where a name comes from. Nothing carries one until one is wanted, and it is
+ * written down when it is, so the letters of a figure never move afterwards.
+ * Two things want one: a label being shown, and a reading having to spell a
+ * letter out. Both go through `commit`, which is why this is asserted here
+ * rather than at each of the routes into it.
  */
-describe("naming what is labelled", () => {
+describe("naming what needs a name", () => {
   it("leaves what has no label with no name", () => {
     const { result } = renderHook(() => useSketch());
     const a = point({ x: 0, y: 0 });
@@ -386,6 +387,38 @@ describe("naming what is labelled", () => {
     expect(called(result.current.state.objects, seg.id)).toBeUndefined();
     // Naming is what the reading needs. What the figure shows is not the
     // measurement's to change, so neither label comes on.
+    expect(showing(result.current.state.objects, a.id)).toBe(false);
+    expect(showing(result.current.state.objects, b.id)).toBe(false);
+  });
+
+  it("leaves a label that was put away put away", () => {
+    const { result } = renderHook(() => useSketch());
+    const a = point({ x: 0, y: 0 });
+    const b = point({ x: 50, y: 0 });
+    act(() => result.current.commit({ objects: [a, b], selection: [] }));
+    // A label asked for and then put away again, which is not the same as one
+    // never asked for: it holds a name already, and it stays away.
+    act(() =>
+      result.current.commit({
+        objects: labelled(result.current.state.objects, a.id, true),
+        selection: [],
+      }),
+    );
+    act(() =>
+      result.current.commit({
+        objects: labelled(result.current.state.objects, a.id, false),
+        selection: [],
+      }),
+    );
+    const span = createMeasurement("distance", [a.id, b.id], { x: 0, y: 40 });
+    act(() =>
+      result.current.commit({
+        objects: [...result.current.state.objects, span],
+        selection: [],
+      }),
+    );
+    expect(called(result.current.state.objects, a.id)).toBe("A");
+    expect(called(result.current.state.objects, b.id)).toBe("B");
     expect(showing(result.current.state.objects, a.id)).toBe(false);
     expect(showing(result.current.state.objects, b.id)).toBe(false);
   });
