@@ -22,7 +22,6 @@ import {
   sayQuantity,
 } from "../sketch/measure";
 import {
-  alongPath,
   type CaptionAlign,
   centreOf,
   clipToRect,
@@ -33,7 +32,6 @@ import {
   createPoint,
   distance,
   endsById,
-  familyOf,
   isArc,
   isButton,
   isCaption,
@@ -56,7 +54,6 @@ import {
   markShape,
   markStrokes,
   markSweep,
-  movedBy,
   namesFor,
   objectAt,
   objectsTouching,
@@ -78,7 +75,6 @@ import {
   type SketchObject,
   type SketchParameter,
   type SketchPoint,
-  type SketchWriting,
   settle,
   slackAt,
   spotOnPath,
@@ -110,6 +106,7 @@ import { Preview } from "./canvas/layers/Preview";
 import { Handles, Marquee, Snapped } from "./canvas/layers/Snapping";
 import { litWith } from "./canvas/lighting";
 import { type Marking, markUnder } from "./canvas/marks";
+import { type Held, moveBy, takeHold } from "./canvas/moving";
 import {
   angleWritten,
   type Measuring,
@@ -239,12 +236,6 @@ interface CanvasProps {
   markForm: string;
   /** The whole kinds being kept out of the way, from the Hidden panel. */
   hiddenKinds: HiddenKinds;
-}
-
-/** What a drag has hold of, and where each of those objects started. */
-interface Held {
-  ids: string[];
-  from: Position[];
 }
 
 interface Grab {
@@ -619,89 +610,11 @@ export function Canvas({
     setMiddle(null);
   }, [activeTool, sketch.cancelGesture]);
 
-  /**
-   * What a drag on these objects actually moves, and where each of them starts,
-   * or null when there is nothing in them that can be moved.
-   */
-  function whatMoves(carried: string[], objects: SketchObject[]): Held | null {
-    // A line has no place of its own, so dragging one carries its two ends. A
-    // point that was constructed carries what it was built on instead, so it
-    // moves like anything else and takes its whole configuration with it.
-    const wanted = new Set<string>();
-    const written: SketchWriting[] = [];
-    for (const id of carried) {
-      const object = objects.find((candidate) => candidate.id === id);
-      if (!object) continue;
-      // Writing sits where it was put, and what it quotes or reads is not what
-      // holds it there: it travels with the drag, and the objects it names stay
-      // put unless they were selected in their own right.
-      if (isWriting(object)) {
-        written.push(object);
-        continue;
-      }
-      // Only a point has a place of its own. Everything else is dragged by
-      // whatever holds it: a line by its ends, a circle by its centre and its
-      // radius point, a fill by its corners, and so on down.
-      if (isPoint(object)) wanted.add(object.id);
-      else for (const parent of familyOf(object) ?? []) wanted.add(parent);
-    }
-    const moving = new Set(movedBy(objects, [...wanted]));
-    const dragged: (SketchPoint | SketchWriting)[] = [
-      ...pointsOf(objects).filter((point) => moving.has(point.id)),
-      ...written,
-    ];
-    if (dragged.length === 0) return null;
-    return {
-      ids: dragged.map((object) => object.id),
-      from: dragged.map((object) => ({ x: object.x, y: object.y })),
-    };
-  }
-
-  /**
-   * Take hold of what a drag will move. One object already in the selection
-   * carries the whole selection with it; one outside it takes the selection
-   * over first.
-   */
-  function takeHold(hitId: string): Held | null {
-    const before = sketch.read();
-    const carried = before.selection.includes(hitId) ? before.selection : [hitId];
-    const held = whatMoves(carried, before.objects);
-    if (!held) return null;
-    sketch.beginGesture();
-    if (carried !== before.selection) sketch.updateGesture({ ...before, selection: carried });
-    return held;
-  }
-
   function startMove(state: Grab, hitId: string) {
-    const held = takeHold(hitId);
+    const held = takeHold(hitId, sketch);
     if (!held) return;
     state.movingIds = held.ids;
     state.moving = held.from;
-  }
-
-  /** Put everything a drag has hold of as far along as the pointer has come. */
-  function moveBy(held: Held, dx: number, dy: number) {
-    const before = sketch.read();
-    const geometry = settle(before.objects).settled;
-    sketch.updateGesture({
-      ...before,
-      objects: before.objects.map((object) => {
-        const index = held.ids.indexOf(object.id);
-        if (index === -1) return object;
-        const start = held.from[index];
-        const to = { x: start.x + dx, y: start.y + dy };
-        const from = isPoint(object) ? object.from : undefined;
-        if (from?.kind === "on") {
-          // A point on a path slides along it instead of going where the
-          // pointer went, and it rides along untouched when its path is
-          // being dragged too.
-          const path = pathIn(geometry, from.path);
-          if (!path || held.ids.includes(from.path)) return object;
-          return { ...object, from: { ...from, at: alongPath(path, to) } };
-        }
-        return { ...object, x: to.x, y: to.y };
-      }),
-    });
   }
 
   /** Put down the first of the two points a drawing tool needs. */
@@ -1240,7 +1153,7 @@ export function Canvas({
         },
         aimingNow(),
       );
-      moveBy({ ids: state.movingIds, from: state.moving }, went.x, went.y);
+      moveBy({ ids: state.movingIds, from: state.moving }, went, sketch);
       setTravel(travelOf({ ids: state.movingIds, from: state.moving, went }, aimingNow()));
       return;
     }
@@ -1721,13 +1634,13 @@ export function Canvas({
    * writing alone when it is not.
    */
   function grabWriting(id: string) {
-    written.current = takeHold(id);
+    written.current = takeHold(id, sketch);
   }
 
   function dragWriting(by: Position) {
     if (!written.current) return;
     const went = heldMove(written.current.ids, by, aimingNow());
-    moveBy(written.current, went.x, went.y);
+    moveBy(written.current, went, sketch);
     setTravel(
       travelOf({ ids: written.current.ids, from: written.current.from, went }, aimingNow()),
     );
