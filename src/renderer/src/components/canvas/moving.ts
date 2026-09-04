@@ -7,17 +7,16 @@
  * where it was put and what it quotes is not what holds it there.
  */
 
+import { endsOf } from "../../sketch/measure";
 import {
   alongPath,
   familyOf,
-  isLine,
   isPoint,
   isWriting,
   movedBy,
   type Position,
   pathIn,
   pointsOf,
-  type Settled,
   type SketchObject,
   type SketchPoint,
   type SketchWriting,
@@ -81,51 +80,76 @@ export function takeHold(hitId: string, sketch: Sketch): Held | null {
   return held;
 }
 
-/** Whether the drag moves this object, wherever down the page it hangs off. */
+/**
+ * Whether the drag moves this object, wherever down the page it hangs off. A
+ * point on a path moves when the drag has hold of it, and again when what holds
+ * its path up is moving, since it rides the path then.
+ */
 function movesWith(objects: SketchObject[], held: Held, id: string): boolean {
-  return movedBy(objects, [id]).some((point) => held.ids.includes(point));
+  const seen = new Set<string>();
+  const walk = (at: string): boolean => {
+    if (seen.has(at)) return false;
+    seen.add(at);
+    const object = objects.find((candidate) => candidate.id === at);
+    // Writing sits where it was put and holds nothing up, so a drag on it moves
+    // nothing else, whatever the writing reads.
+    if (!object || isWriting(object)) return false;
+    if (held.ids.includes(at)) return true;
+    return (familyOf(object) ?? []).some(walk);
+  };
+  return walk(id);
+}
+
+/** A path's two ends, told apart by which one the drag leaves free. */
+interface LooseEnd {
+  /** The end nothing in the drag is moving, which is what has to give. */
+  loose: string;
+  /** The end the drag has already put somewhere, which the point is measured from. */
+  anchor: string;
+  /** Whether the loose end is the one how far along the path is counted from. */
+  looseIsFirst: boolean;
 }
 
 /**
- * Whether the drag is moving what holds a path up. `held.ids` names points and
- * writing, never paths, so the question goes to the path's own parents, each of
- * which is moving if the drag has hold of it or of anything it hangs off.
- */
-function carrying(objects: SketchObject[], held: Held, path: string): boolean {
-  const found = objects.find((object) => object.id === path);
-  if (!found) return false;
-  return (familyOf(found) ?? []).some((parent) => movesWith(objects, held, parent));
-}
-
-/**
- * The end of a straight object the drag leaves alone, where it is moving the
- * other one. A dragged point on that path keeps how far along it sits, so this
- * loose end is what has to give for the point to follow the pointer.
+ * The end of a path the drag is not moving, where it is moving the other one. A
+ * dragged point on that path keeps how far along it sits, so this loose end is
+ * what has to give for the point to follow the pointer.
  *
- * Only a straight object drawn through two points has such an end. Every other
- * path is placed by more than a loose point, so a point on one rides it.
+ * Only a straight object drawn through two points has such an end to give. A
+ * point dragged on any other path rides it.
  */
-function looseEnd(objects: SketchObject[], held: Held, path: string) {
+function looseEnd(objects: SketchObject[], held: Held, path: string): LooseEnd | null {
   const found = objects.find((object) => object.id === path);
-  if (!found || !isLine(found) || found.span.kind !== "through") return null;
-  const [first, second] = found.span.ends;
-  const moving = movesWith(objects, held, first);
-  if (moving === movesWith(objects, held, second)) return null;
-  const loose = objects.find((object) => object.id === (moving ? second : first));
-  // A loose end that is itself placed by something else cannot be put anywhere.
+  const ends = found ? endsOf(found) : null;
+  if (!ends) return null;
+  const moving = movesWith(objects, held, ends[0]);
+  if (moving === movesWith(objects, held, ends[1])) return null;
+  const loose = objects.find((object) => object.id === (moving ? ends[1] : ends[0]));
+  // An end placed by something else of its own cannot be put anywhere.
   if (!loose || !isPoint(loose) || loose.from) return null;
-  return { loose: loose.id, anchor: moving ? first : second, looseIsFirst: !moving };
+  return { loose: loose.id, anchor: moving ? ends[0] : ends[1], looseIsFirst: !moving };
+}
+
+/** Where the pointer is asking one of the objects a drag holds to be. */
+function wantedAt(held: Held, index: number, by: Position): Position {
+  return { x: held.from[index].x + by.x, y: held.from[index].y + by.y };
+}
+
+/** A loose end that has to move, and what the point on its path is asking for. */
+interface Pull {
+  ends: LooseEnd;
+  /** How much of the way from the anchor to the loose end the point sits. */
+  share: number;
+  /** Where the point has to land. */
+  at: Position;
 }
 
 /**
- * Where the loose end of a path has to go for a dragged point on it to land
- * under the pointer with how far along it sits unchanged. The point sits a
- * share of the way from the anchored end to the loose one, so the end goes that
- * many times as far as the point is being asked to.
+ * Every loose end this drag has to move. An end two points are both asking for
+ * is dropped: one end cannot answer two of them, so both ride instead.
  */
-function pulledEnds(placed: SketchObject[], held: Held, by: Position): Map<string, Position> {
-  const pulls = new Map<string, Position>();
-  let settled: Settled | null = null;
+function pullsIn(placed: SketchObject[], held: Held, by: Position): Pull[] {
+  const wanted: Pull[] = [];
   for (const point of pointsOf(placed)) {
     const from = point.from;
     const index = held.ids.indexOf(point.id);
@@ -133,47 +157,60 @@ function pulledEnds(placed: SketchObject[], held: Held, by: Position): Map<strin
     const ends = looseEnd(placed, held, from.path);
     if (!ends) continue;
     const share = ends.looseIsFirst ? 1 - from.at : from.at;
-    // Sitting on the anchored end itself, the point says nothing about where
-    // the loose one belongs.
-    if (share < TINY) continue;
-    settled ??= settle(placed).settled;
-    const anchor = settled.points.get(ends.anchor);
-    if (!anchor) continue;
-    const start = held.from[index];
-    pulls.set(ends.loose, {
-      x: anchor.x + (start.x + by.x - anchor.x) / share,
-      y: anchor.y + (start.y + by.y - anchor.y) / share,
-    });
+    // Sitting on the anchored end itself, a point says nothing about where the
+    // loose one belongs, and the arithmetic below would divide by nothing.
+    if (Math.abs(share) < TINY) continue;
+    wanted.push({ ends, share, at: wantedAt(held, index, by) });
   }
-  return pulls;
+  return wanted.filter(
+    (pull) => wanted.filter((other) => other.ends.loose === pull.ends.loose).length === 1,
+  );
 }
 
-/** Everything a drag has hold of, as far along as the pointer has come. */
+/**
+ * Everything the drag put down, with each loose end moved to where the point
+ * dragged on its path needs it. The point sits a share of the way from the
+ * anchored end to the loose one, so the end goes that many times as far as the
+ * point was asked to. One at a time, settling in between, so a path hanging off
+ * an end that has already been pulled is measured from where it has got to.
+ */
+function pulled(placed: SketchObject[], held: Held, by: Position): SketchObject[] {
+  let done = placed;
+  for (const pull of pullsIn(placed, held, by)) {
+    const anchor = settle(done).settled.points.get(pull.ends.anchor);
+    if (!anchor) continue;
+    const at = {
+      x: anchor.x + (pull.at.x - anchor.x) / pull.share,
+      y: anchor.y + (pull.at.y - anchor.y) / pull.share,
+    };
+    done = done.map((object) => (object.id === pull.ends.loose ? { ...object, ...at } : object));
+  }
+  return done;
+}
+
+/**
+ * Everything a drag has hold of, as far along as the pointer has come, and the
+ * loose end of any path that has to give for a point dragged on it to follow.
+ */
 export function placedBy(objects: SketchObject[], held: Held, by: Position): SketchObject[] {
   const geometry = settle(objects).settled;
   const placed = objects.map((object) => {
     const index = held.ids.indexOf(object.id);
     if (index === -1) return object;
-    const start = held.from[index];
-    const to = { x: start.x + by.x, y: start.y + by.y };
+    const to = wantedAt(held, index, by);
     const from = isPoint(object) ? object.from : undefined;
     if (from?.kind === "on") {
       // A point on a path slides along it instead of going where the pointer
-      // went, unless the path is being dragged as well. Then how far along it
-      // sits is what holds, and the path gives instead: sliding it as well
-      // would count the drag twice over.
+      // went, unless the path is moving too. Then how far along it sits is what
+      // holds and the path gives instead, and sliding it along as well would
+      // count the drag twice over.
       const path = pathIn(geometry, from.path);
-      if (!path || carrying(objects, held, from.path)) return object;
+      if (!path || movesWith(objects, held, from.path)) return object;
       return { ...object, from: { ...from, at: alongPath(path, to) } };
     }
     return { ...object, x: to.x, y: to.y };
   });
-  const pulled = pulledEnds(placed, held, by);
-  if (pulled.size === 0) return placed;
-  return placed.map((object) => {
-    const at = pulled.get(object.id);
-    return at ? { ...object, x: at.x, y: at.y } : object;
-  });
+  return pulled(placed, held, by);
 }
 
 /** Put everything a drag has hold of where it has got to, as the gesture runs. */

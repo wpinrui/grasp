@@ -7,6 +7,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
   createCaption,
+  createCircle,
   createPoint,
   isPoint,
   lineThrough,
@@ -209,6 +210,13 @@ function spots(objects: SketchObject[]) {
   return settle(objects).settled.points;
 }
 
+/** The two-paths-deep page, selected as the sheet would have left it. */
+function deeperPage(selection: string[]) {
+  const sketch = renderHook(() => useSketch()).result;
+  act(() => sketch.current.commit({ objects: DEEPER, selection }));
+  return sketch;
+}
+
 /** What a drag on those objects has hold of, two paths deep. */
 function deeperHold(carried: string[]) {
   const held = whatMoves(carried, DEEPER);
@@ -261,6 +269,89 @@ describe("where a drag pulls a path", () => {
     const moved = spots(placedBy(figure, held, { x: 60, y: 60 }));
     expect(moved.get("R")).toMatchObject({ x: 210, y: 210 });
     expect(moved.get("Q")).toMatchObject({ x: 210, y: 280 });
+  });
+
+  /**
+   * The drag need not have hold of the path's own ends. Holding the first
+   * segment moves P, which moves the segment hanging off it, so R rides that
+   * and Q gives just the same.
+   */
+  it("pulls for a path that is moving because something further up is", () => {
+    const moved = spots(placedBy(DEEPER, deeperHold(["seg", "R"]), { x: 60, y: 60 }));
+    expect(moved.get("P")).toMatchObject({ x: 210, y: 60 });
+    expect(moved.get("R")).toMatchObject({ x: 210, y: 160 });
+    expect(moved.get("Q")).toMatchObject({ x: 210, y: 260 });
+  });
+
+  /**
+   * A point sitting on the anchored end says nothing about where the loose end
+   * belongs, so nothing is pulled and it simply rides.
+   */
+  it("leaves the loose end alone for a point sitting on the anchored end", () => {
+    const atEnd = {
+      ...createPoint({ x: 150, y: 0 }, "medium", { kind: "on", path: "hang", at: 0 }),
+      id: "R",
+    };
+    const figure: SketchObject[] = [A, B, SEGMENT, ON, Q, HANGING, atEnd];
+    const held = whatMoves(["P", "R"], figure);
+    if (!held) throw new Error("P and R can move.");
+    const moved = spots(placedBy(figure, held, { x: 60, y: 60 }));
+    expect(moved.get("Q")).toMatchObject({ x: 150, y: 200 });
+    expect(moved.get("R")).toMatchObject({ x: 210, y: 0 });
+  });
+
+  /**
+   * Only a straight object drawn through two points has an end to give. A point
+   * on a circle rides it, and the point that sets the circle's radius stays.
+   */
+  it("rides a path with no loose end to move", () => {
+    const centre = { ...createPoint({ x: 0, y: 0 }, "medium"), id: "C" };
+    const edge = { ...createPoint({ x: 100, y: 0 }, "medium"), id: "E" };
+    const round = { ...createCircle({ kind: "through", centre: "C", edge: "E" }), id: "round" };
+    const on = {
+      ...createPoint({ x: 0, y: 100 }, "medium", { kind: "on", path: "round", at: 0.25 }),
+      id: "W",
+    };
+    const figure: SketchObject[] = [centre, edge, round, on];
+    const held = whatMoves(["C", "W"], figure);
+    if (!held) throw new Error("C and W can move.");
+    const moved = placedBy(figure, held, { x: 60, y: 0 });
+    expect(spot(moved, "E")).toEqual({ x: 100, y: 0 });
+    const point = moved.find((object) => object.id === "W");
+    if (!point || !isPoint(point)) throw new Error("W is still on the sheet.");
+    expect(point.from?.kind === "on" ? point.from.at : null).toBe(0.25);
+  });
+
+  /**
+   * A drag is worked out from where it began and how far the pointer has come,
+   * so it lands in the same place however many moves it arrives in.
+   */
+  it("comes to the same place in two moves as in one", () => {
+    const once = deeperPage(["P", "R"]);
+    const straight = pressOn(once, "P");
+    if (!straight) throw new Error("P can move.");
+    act(() => moveBy(straight, { x: 60, y: 60 }, once.current));
+    const twice = deeperPage(["P", "R"]);
+    const staged = pressOn(twice, "P");
+    if (!staged) throw new Error("P can move.");
+    act(() => moveBy(staged, { x: 30, y: 30 }, twice.current));
+    act(() => moveBy(staged, { x: 60, y: 60 }, twice.current));
+    for (const id of ["P", "Q", "R"]) {
+      expect(spot(twice.current.state.objects, id)).toEqual(spot(once.current.state.objects, id));
+    }
+  });
+
+  /**
+   * Dragged with one end of its own segment, a point on it keeps its half and
+   * lands under the pointer, so the other end comes along to make that true.
+   */
+  it("moves the far end of a segment dragged by one end and a point on it", () => {
+    const held = whatMoves(["A", "P"], FIGURE);
+    if (!held) throw new Error("A and P can move.");
+    const moved = spots(placedBy(FIGURE, held, { x: 10, y: 20 }));
+    expect(moved.get("A")).toMatchObject({ x: 10, y: 20 });
+    expect(moved.get("B")).toMatchObject({ x: 310, y: 20 });
+    expect(moved.get("P")).toMatchObject({ x: 160, y: 20 });
   });
 
   /**
