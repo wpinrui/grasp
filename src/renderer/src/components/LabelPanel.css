@@ -38,6 +38,7 @@
   align-items: center;
   gap: 6px;
   text-align: left;
+  cursor: pointer;
 }
 
 .labels__group-name {
