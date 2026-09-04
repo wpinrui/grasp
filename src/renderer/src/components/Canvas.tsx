@@ -117,6 +117,7 @@ import { CaptionBox } from "./CaptionBox";
 import { dimensionOf } from "./canvas/dimensions";
 import { guideOf } from "./canvas/guides";
 import { Fills } from "./canvas/layers/Fills";
+import { Paths } from "./canvas/layers/Paths";
 import { arcsBetween, type Marking, markUnder } from "./canvas/marks";
 import {
   angleMarkOn,
@@ -2755,82 +2756,7 @@ export function Canvas({
                   points={arrowPoints(handle, scale)}
                 />
               ))}
-              {objects.map((object) => {
-                if (!isArc(object)) return null;
-                const arc = settled.arcs.get(object.id);
-                if (!arc) return null;
-                return (
-                  <g key={object.id} data-id={object.id}>
-                    {selection.includes(object.id) && (
-                      <path
-                        className="canvas__circle-halo"
-                        d={arcPath(arc)}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    )}
-                    <path
-                      className="canvas__circle"
-                      style={strokeLook(object)}
-                      d={arcPath(arc)}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </g>
-                );
-              })}
-              {objects.map((object) => {
-                if (!isCircle(object)) return null;
-                const round = settled.circles.get(object.id);
-                if (!round) return null;
-                return (
-                  <g key={object.id} data-id={object.id}>
-                    {selection.includes(object.id) && (
-                      <circle
-                        className="canvas__circle-halo"
-                        cx={round.at.x}
-                        cy={round.at.y}
-                        r={round.radius}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    )}
-                    <circle
-                      className="canvas__circle"
-                      style={strokeLook(object)}
-                      cx={round.at.x}
-                      cy={round.at.y}
-                      r={round.radius}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </g>
-                );
-              })}
-              {objects.map((object) => {
-                if (!isLine(object)) return null;
-                const span = spanOf(object);
-                if (!span) return null;
-                return (
-                  <g key={object.id} data-id={object.id}>
-                    {selection.includes(object.id) && (
-                      <line
-                        className="canvas__line-halo"
-                        x1={span[0].x}
-                        y1={span[0].y}
-                        x2={span[1].x}
-                        y2={span[1].y}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    )}
-                    <line
-                      className="canvas__line"
-                      style={strokeLook(object)}
-                      x1={span[0].x}
-                      y1={span[0].y}
-                      x2={span[1].x}
-                      y2={span[1].y}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </g>
-                );
-              })}
+              <Paths spanOf={spanOf} />
               {tracing && (
                 <g>
                   {/* What the polygon would be if it closed here: the fill once
