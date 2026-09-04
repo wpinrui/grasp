@@ -13,6 +13,7 @@ import {
   isPoint,
   isWriting,
   movedBy,
+  type Position,
   pathIn,
   pointsOf,
   type SketchObject,
@@ -25,7 +26,8 @@ import type { Sketch } from "../../sketch/useSketch";
 /** What a drag has hold of, and where each of those objects started. */
 export interface Held {
   ids: string[];
-  from: { x: number; y: number }[];
+  /** Where each of them started: `from[n]` is where `ids[n]` was. */
+  from: Position[];
 }
 
 /**
@@ -33,9 +35,8 @@ export interface Held {
  * or null when there is nothing in them that can be moved.
  */
 export function whatMoves(carried: string[], objects: SketchObject[]): Held | null {
-  // A line has no place of its own, so dragging one carries its two ends. A
-  // point that was constructed carries what it was built on instead, so it
-  // moves like anything else and takes its whole configuration with it.
+  // A point that was constructed carries what it was built on, so it moves
+  // like anything else and takes its whole configuration with it.
   const wanted = new Set<string>();
   const written: SketchWriting[] = [];
   for (const id of carried) {
@@ -77,26 +78,33 @@ export function takeHold(hitId: string, sketch: Sketch): Held | null {
   return held;
 }
 
-/** Put everything a drag has hold of as far along as the pointer has come. */
-export function moveBy(held: Held, by: { x: number; y: number }, sketch: Sketch) {
-  const before = sketch.read();
-  const geometry = settle(before.objects).settled;
-  sketch.updateGesture({
-    ...before,
-    objects: before.objects.map((object) => {
-      const index = held.ids.indexOf(object.id);
-      if (index === -1) return object;
-      const start = held.from[index];
-      const to = { x: start.x + by.x, y: start.y + by.y };
-      const from = isPoint(object) ? object.from : undefined;
-      if (from?.kind === "on") {
-        // A point on a path slides along it instead of going where the pointer
-        // went, and it rides along untouched when its path is being dragged too.
-        const path = pathIn(geometry, from.path);
-        if (!path || held.ids.includes(from.path)) return object;
-        return { ...object, from: { ...from, at: alongPath(path, to) } };
-      }
-      return { ...object, x: to.x, y: to.y };
-    }),
+/** Everything a drag has hold of, as far along as the pointer has come. */
+export function placedBy(objects: SketchObject[], held: Held, by: Position): SketchObject[] {
+  const geometry = settle(objects).settled;
+  return objects.map((object) => {
+    const index = held.ids.indexOf(object.id);
+    if (index === -1) return object;
+    const start = held.from[index];
+    const to = { x: start.x + by.x, y: start.y + by.y };
+    const from = isPoint(object) ? object.from : undefined;
+    if (from?.kind === "on") {
+      // A point on a path slides along it instead of going where the pointer
+      // went.
+      //
+      // The second test is meant to leave it alone where its own path is
+      // being dragged as well, but cannot: `held.ids` holds only points and
+      // writing, and a path is neither, so it never matches. Kept as it
+      // stands rather than fixed, since this is a move and not a change.
+      const path = pathIn(geometry, from.path);
+      if (!path || held.ids.includes(from.path)) return object;
+      return { ...object, from: { ...from, at: alongPath(path, to) } };
+    }
+    return { ...object, x: to.x, y: to.y };
   });
+}
+
+/** Put everything a drag has hold of where it has got to, as the gesture runs. */
+export function moveBy(held: Held, by: Position, sketch: Sketch) {
+  const before = sketch.read();
+  sketch.updateGesture({ ...before, objects: placedBy(before.objects, held, by) });
 }

@@ -11,7 +11,7 @@
  * the same figure lands in the same place wherever it is asked from.
  */
 
-import { armsAt, endsOf } from "../../sketch/measure";
+import { armsAt } from "../../sketch/measure";
 import {
   alongPath,
   crossings,
@@ -87,19 +87,12 @@ export function handleAt(at: Position, aiming: Aiming): Handle | null {
  * pointer, which a new point would belong to.
  */
 export function snapAt(at: Position, aiming: Aiming): Snap | null {
-  const { objects, settled, scale, slack } = aiming;
+  const { objects, settled, scale } = aiming;
   const over = objectAt(at, { objects, scale, settled });
   if (over && isPoint(over)) {
     return { kind: "point", ids: [over.id], at: { x: over.x, y: over.y } };
   }
-  // The paths the pointer is on, the newest first, as picking has them.
-  const near: { id: string; along: PathGeometry }[] = [];
-  for (let index = objects.length - 1; index >= 0; index -= 1) {
-    const object = objects[index];
-    if (!isLine(object) && !isCircle(object) && !isArc(object)) continue;
-    const along = pathIn(settled, object.id);
-    if (along && distanceToPath(along, at) <= slack) near.push({ id: object.id, along });
-  }
+  const near = pathsUnder(at, { ...aiming, straightOnly: false });
   if (near.length === 0) return null;
   for (let one = 0; one < near.length; one += 1) {
     for (let other = one + 1; other < near.length; other += 1) {
@@ -108,14 +101,19 @@ export function snapAt(at: Position, aiming: Aiming): Snap | null {
       const met = crossings(near[one].along, near[other].along);
       const pick = met.findIndex((spot) => distance(spot, at) <= CROSS_REACH / scale);
       if (pick !== -1) {
-        return { kind: "cross", ids: [near[one].id, near[other].id], pick, at: met[pick] };
+        return {
+          kind: "cross",
+          ids: [near[one].object.id, near[other].object.id],
+          pick,
+          at: met[pick],
+        };
       }
     }
   }
   const first = near[0];
   return {
     kind: "line",
-    ids: [first.id],
+    ids: [first.object.id],
     at: spotOnPath(first.along, alongPath(first.along, at)),
   };
 }
@@ -289,47 +287,44 @@ export function travelOf(
   return { from: start, to: { x: start.x + went.x, y: start.y + went.y } };
 }
 
-/**
- * The path under the pointer, which is what a tick rides and what a point put
- * on it slides along. The topmost first, the way picking has them.
- */
-export function pathUnder(
-  at: Position,
-  where: Pick<Aiming, "objects" | "settled" | "scale">,
-  straightOnly = false,
-): SketchObject | null {
-  const { objects, settled, scale } = where;
-  for (let index = objects.length - 1; index >= 0; index -= 1) {
-    const object = objects[index];
-    if (straightOnly ? !isLine(object) : !isLine(object) && !isCircle(object) && !isArc(object)) {
-      continue;
-    }
-    const along = pathIn(settled, object.id);
-    if (along && distanceToPath(along, at) <= slackAt(scale)) return object;
-  }
-  return null;
+/** A path the pointer is on, and the shape that path settled to. */
+export interface Under {
+  object: SketchObject;
+  along: PathGeometry;
 }
 
-/**
- * The point two straight objects meet at, and the far end of each. Null where
- * they do not meet, or meet twice, since neither says an angle.
- */
-export function cornerBetween(
-  one: string,
-  other: string,
-  objects: SketchObject[],
-): { corner: string; arms: [string, string] } | null {
-  const first = objects.find((object) => object.id === one);
-  const second = objects.find((object) => object.id === other);
-  if (!first || !second) return null;
-  const a = endsOf(first);
-  const b = endsOf(second);
-  if (!a || !b) return null;
-  const shared = a.filter((end) => b.includes(end));
-  if (shared.length !== 1) return null;
-  const corner = shared[0];
-  return {
-    corner,
-    arms: [a[0] === corner ? a[1] : a[0], b[0] === corner ? b[1] : b[0]] as [string, string],
-  };
+/** The figure a search for what lies under the pointer is made against. */
+interface Searching extends Figure {
+  /** How far off a path still counts as on it, at this zoom. */
+  slack: number;
+  /** Set to leave out circles and arcs, for the questions about angle sides. */
+  straightOnly: boolean;
+}
+
+/** The paths the pointer is within slack of, the newest first, as picking has them. */
+function pathsUnder(at: Position, where: Searching): Under[] {
+  const { objects, settled, slack, straightOnly } = where;
+  const found: Under[] = [];
+  for (let index = objects.length - 1; index >= 0; index -= 1) {
+    const object = objects[index];
+    const wanted = straightOnly
+      ? isLine(object)
+      : isLine(object) || isCircle(object) || isArc(object);
+    if (!wanted) continue;
+    const along = pathIn(settled, object.id);
+    if (along && distanceToPath(along, at) <= slack) found.push({ object, along });
+  }
+  return found;
+}
+
+/** The topmost path the pointer is on, or none. */
+export function pathUnder(at: Position, where: Figure): Under | null {
+  const slack = slackAt(where.scale);
+  return pathsUnder(at, { ...where, slack, straightOnly: false })[0] ?? null;
+}
+
+/** The topmost straight object the pointer is on, or none. */
+export function lineUnder(at: Position, where: Figure): Under | null {
+  const slack = slackAt(where.scale);
+  return pathsUnder(at, { ...where, slack, straightOnly: true })[0] ?? null;
 }

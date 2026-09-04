@@ -14,6 +14,7 @@ import {
   anglesAt,
   angleWanted,
   armsAt,
+  cornerOf,
   fromSheetTerms,
   placesFor,
   quantitiesOf,
@@ -141,9 +142,9 @@ import {
 import {
   type Aiming,
   aimAt,
-  cornerBetween,
   handleAt,
   heldMove,
+  lineUnder,
   pathUnder,
   snapAt,
   spanOfLocus,
@@ -245,9 +246,8 @@ interface Grab {
   /** What sat under the pointer when it went down, if anything. */
   hitId: string | null;
   moved: boolean;
-  /** Where the objects being dragged started, so the move stays exact. */
-  moving: Position[] | null;
-  movingIds: string[];
+  /** What the drag has hold of, and where each of those started. */
+  held: Held | null;
   marquee: Rect | null;
   /** Set for a hand drag: the view and the pointer where the pan began. */
   pan: PanFrom | null;
@@ -611,10 +611,7 @@ export function Canvas({
   }, [activeTool, sketch.cancelGesture]);
 
   function startMove(state: Grab, hitId: string) {
-    const held = takeHold(hitId, sketch);
-    if (!held) return;
-    state.movingIds = held.ids;
-    state.moving = held.from;
+    state.held = takeHold(hitId, sketch);
   }
 
   /** Put down the first of the two points a drawing tool needs. */
@@ -745,8 +742,7 @@ export function Canvas({
           pressed: Date.now(),
           hitId: null,
           moved: false,
-          moving: null,
-          movingIds: [],
+          held: null,
           marquee: null,
           pan: { view, clientX: at.x, clientY: at.y },
           handle: null,
@@ -765,8 +761,7 @@ export function Canvas({
         pressed: Date.now(),
         hitId: null,
         moved: false,
-        moving: null,
-        movingIds: [],
+        held: null,
         marquee: null,
         pan: { view, clientX: event.clientX, clientY: event.clientY },
         handle: null,
@@ -825,8 +820,7 @@ export function Canvas({
         pressed: Date.now(),
         hitId: caught?.id ?? null,
         moved: false,
-        moving: null,
-        movingIds: [],
+        held: null,
         marquee: null,
         pan: null,
         handle: null,
@@ -840,7 +834,7 @@ export function Canvas({
         if (corner) setArming({ corner: corner.id, start: at, at });
         // Off the vertex, the press is on one side of an angle and the drag
         // goes to the other.
-        else armFrom.current = pathUnder(at, { objects, settled, scale }, true)?.id ?? null;
+        else armFrom.current = lineUnder(at, { objects, settled, scale })?.object.id ?? null;
       }
       return;
     }
@@ -860,8 +854,7 @@ export function Canvas({
         pressed: Date.now(),
         hitId: null,
         moved: false,
-        moving: null,
-        movingIds: [],
+        held: null,
         marquee: null,
         pan: null,
         handle: null,
@@ -882,14 +875,13 @@ export function Canvas({
     // The protractor is dragged from one side of an angle to the other, the
     // way the Angle marker is.
     if (measuring === "angle")
-      armFrom.current = pathUnder(at, { objects, settled, scale }, true)?.id ?? null;
+      armFrom.current = lineUnder(at, { objects, settled, scale })?.object.id ?? null;
     grab.current = {
       origin: at,
       pressed: Date.now(),
       hitId: hit?.id ?? null,
       moved: false,
-      moving: null,
-      movingIds: [],
+      held: null,
       marquee: null,
       pan: tool === "hand" ? { view, clientX: event.clientX, clientY: event.clientY } : null,
       handle: held
@@ -1008,11 +1000,12 @@ export function Canvas({
     // A marking tool lights the midpoint of a segment it would snap to.
     if (marking && !picking && !grab.current) {
       const over = positionOf(event);
-      const path =
+      const under =
         over && marking !== "angle" ? pathUnder(over, { objects, settled, scale }) : null;
-      const along = path ? pathIn(settled, path.id) : null;
       const snapped =
-        along && over && markAlong(along, over, scale) === 0.5 ? spotOnPath(along, 0.5) : null;
+        under && over && markAlong(under.along, over, scale) === 0.5
+          ? spotOnPath(under.along, 0.5)
+          : null;
       if (
         (snapped === null) !== (middle === null) ||
         (snapped && middle && snapped.x !== middle.x)
@@ -1144,17 +1137,15 @@ export function Canvas({
       if (tool === "arrow" && state.hitId) startMove(state, state.hitId);
     }
 
-    if (state.moving) {
+    const held = state.held;
+    if (held) {
       const went = heldMove(
-        state.movingIds,
-        {
-          x: at.x - state.origin.x,
-          y: at.y - state.origin.y,
-        },
+        held.ids,
+        { x: at.x - state.origin.x, y: at.y - state.origin.y },
         aimingNow(),
       );
-      moveBy({ ids: state.movingIds, from: state.moving }, went, sketch);
-      setTravel(travelOf({ ids: state.movingIds, from: state.moving, went }, aimingNow()));
+      moveBy(held, went, sketch);
+      setTravel(travelOf({ ...held, went }, aimingNow()));
       return;
     }
 
@@ -1207,13 +1198,15 @@ export function Canvas({
     const fromSide = armFrom.current;
     armFrom.current = null;
     if (fromSide && state.moved && (marking === "angle" || measuring === "angle")) {
-      const landed = pathUnder(at, { objects, settled, scale }, true);
+      const side = objects.find((object) => object.id === fromSide);
+      const landed = lineUnder(at, { objects, settled, scale });
       const pair =
-        landed && landed.id !== fromSide ? cornerBetween(fromSide, landed.id, objects) : null;
+        side && landed && landed.object.id !== fromSide ? cornerOf(side, landed.object) : null;
       if (pair) {
+        const [from, corner, to] = pair;
         setArming(null);
-        if (marking === "angle") markAngle({ corner: pair.corner, arms: pair.arms });
-        else readAngle(pair.corner, pair.arms);
+        if (marking === "angle") markAngle({ corner, arms: [from, to] });
+        else readAngle(corner, [from, to]);
         return;
       }
     }
@@ -1347,13 +1340,12 @@ export function Canvas({
       }
       // A click on a path puts a tick where the pointer landed on it, and a
       // click on nothing puts the panel away.
-      const path = pathUnder(at, { objects, settled, scale });
-      const along = path ? pathIn(settled, path.id) : null;
-      if (!path || !along) {
+      const under = pathUnder(at, { objects, settled, scale });
+      if (!under) {
         setPanel(null);
         return;
       }
-      layTick({ path, along, spot: at });
+      layTick({ path: under.object, along: under.along, spot: at });
       return;
     }
 
@@ -1403,7 +1395,7 @@ export function Canvas({
 
     if (tool !== "arrow") return;
 
-    if (state.moving) {
+    if (state.held) {
       sketch.endGesture();
       return;
     }
@@ -1486,7 +1478,7 @@ export function Canvas({
       sketch.cancelGesture();
       return;
     }
-    if (state.moving) sketch.endGesture();
+    if (state.held) sketch.endGesture();
     // The press already cleared the selection, so an abandoned marquee
     // leaves nothing selected.
     else if (tool === "arrow" && state.marquee) sketch.select([]);

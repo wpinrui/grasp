@@ -378,6 +378,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
     return past + ANGLE_ROOM;
   }
 
+  /** A new mark lands on the page without disturbing what is selected. */
   function addMark(mark: SketchMark) {
     const before = sketch.read();
     sketch.commit({ ...before, objects: [...before.objects, mark] });
