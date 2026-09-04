@@ -530,6 +530,7 @@ export function Canvas({
     offerNothing,
     setBounds,
     setLeaders,
+    setLinked,
     setPlaces,
     setReflex: setReadingReflex,
   } = useReading(sketch);
@@ -1869,6 +1870,7 @@ export function Canvas({
               at={readingSpot}
               onBounds={setBounds}
               onLeaders={setLeaders}
+              onLink={setLinked}
               onReflex={setReadingReflex}
               places={readingOpen.places ?? placesFor(readingOpen.measure)}
               onPlaces={setPlaces}

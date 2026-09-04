@@ -34,6 +34,7 @@ export {
   BoundsNoneIcon,
   FewerPlacesIcon,
   LeadersIcon,
+  LinkIcon,
   MorePlacesIcon,
 } from "./readings";
 export {

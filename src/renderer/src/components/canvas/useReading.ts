@@ -11,7 +11,8 @@
  */
 
 import { useState } from "react";
-import { isMark, isMeasurement } from "../../sketch/model";
+import { frameOf, spotOf } from "../../sketch/measure";
+import { isMark, isMeasurement, settle } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
 import { sameAngle } from "./readings";
 import { sameReading, type Written } from "./sheet";
@@ -115,6 +116,25 @@ export function useReading(sketch: Sketch) {
     });
   }
 
+  /**
+   * The number tied to what it reads, or let loose again. Tying it takes the
+   * spot it is at now, so nothing jumps as the chain goes on; letting it loose
+   * leaves it where the figure had carried it to.
+   */
+  function setLinked(id: string, on: boolean) {
+    const before = sketch.read();
+    const settled = settle(before.objects).settled;
+    sketch.commit({
+      ...before,
+      objects: before.objects.map((object) => {
+        if (object.id !== id || !isMeasurement(object)) return object;
+        if (!on) return { ...object, linked: undefined };
+        const frame = frameOf(object, before.objects, settled);
+        return frame ? { ...object, linked: spotOf(frame, object) } : object;
+      }),
+    });
+  }
+
   function setLeaders(id: string, leaders: boolean) {
     const before = sketch.read();
     sketch.commit({
@@ -131,6 +151,7 @@ export function useReading(sketch: Sketch) {
     panel,
     setBounds,
     setLeaders,
+    setLinked,
     setPanel,
     setPlaces,
     setReflex,

@@ -90,3 +90,20 @@ export function LeadersIcon() {
     </ToolSvg>
   );
 }
+
+/**
+ * The chain that ties a number to what it reads, so the number goes wherever
+ * the figure goes. Two links meeting over the run between them, which is the
+ * one shape everybody already reads as a link.
+ */
+export function LinkIcon() {
+  return (
+    <ToolSvg>
+      <g {...STRAIGHT}>
+        <path d="M8.8 6.2 H6.6 a 3.8 3.8 0 0 0 0 7.6 h 2.2" />
+        <path d="M11.2 6.2 h 2.2 a 3.8 3.8 0 0 1 0 7.6 h -2.2" />
+        <path d="M7.2 10 h 5.6" />
+      </g>
+    </ToolSvg>
+  );
+}
