@@ -1,6 +1,5 @@
 /**
- * What the Measure tool would write, where it hangs, and how a length is drawn
- * out as a dimension.
+ * What the Measure tool would write, and where it hangs.
  *
  * A reading lands beside what it reads rather than at the pointer, so the
  * figure is not covered by the number taken off it. Working out where "beside"
@@ -20,16 +19,13 @@ import {
   isMark,
   isMeasurement,
   isPoint,
-  isRightAngle,
   type LineGeometry,
   type MeasureKind,
   markReach,
-  markStrokes,
   markSweep,
   objectAt,
   type Position,
   radiusOf,
-  type Settled,
   type SketchMark,
   type SketchMeasurement,
   type SketchObject,
@@ -38,6 +34,8 @@ import {
 } from "../../sketch/model";
 import {
   ANGLE_READING_OFF,
+  type Figure,
+  type LastMark,
   READING_CHAR,
   READING_HEIGHT,
   READING_OFF,
@@ -45,27 +43,12 @@ import {
   type Written,
 } from "./sheet";
 
-/** How big a reading came out once it was drawn, by the reading's id. */
-export type Boxes = Map<string, { width: number; height: number }>;
-
-/** What the last angle mark was set to, which is what the next one takes. */
-export interface LastMark {
-  angle: number;
-  radius: number;
-}
-
 /** The figure a reading is taken off, and what settles how it comes out. */
-export interface Measuring {
-  objects: SketchObject[];
-  points: SketchPoint[];
-  settled: Settled;
-  scale: number;
+export interface Measuring extends Figure {
   /** What the Measure tool is armed with, or null while it is not up. */
   measure: string | null;
   /** The words a reading comes out as, which is how wide it is going to be. */
   saying: (made: SketchMeasurement) => string;
-  /** How big each reading actually came out, once it has been drawn once. */
-  boxes: Boxes;
   lastMark: LastMark;
   /** How far out a new angle mark sits, clear of what is at the corner already. */
   clearOf: (corner: string) => number;
@@ -111,9 +94,10 @@ function cornerArms(corner: string, measuring: Measuring): [string, string, stri
 
 /** The point under the pointer, which is what an angle is marked at. */
 export function pointUnder(at: Position, measuring: Measuring): SketchPoint | null {
-  const { points, scale } = measuring;
-  for (let index = points.length - 1; index >= 0; index -= 1) {
-    const point = points[index];
+  const { objects, scale } = measuring;
+  for (let index = objects.length - 1; index >= 0; index -= 1) {
+    const point = objects[index];
+    if (!isPoint(point)) continue;
     if (distance(point, at) <= radiusOf(point) / scale + slackAt(scale)) return point;
   }
   return null;
@@ -223,9 +207,7 @@ export function angleReadingSpot(
 
 /**
  * The number for one angle, said by its corner and the two arms it runs
- * between, and the mark it has to be given first. `hit` is whatever was under
- * the pointer, where a click is what asked; nothing, where a drag or the dialog
- * named the arms itself.
+ * between, and the mark it has to be given first.
  */
 export function angleWritten(
   angle: {
@@ -388,32 +370,4 @@ export function readingFrom(at: Position, measuring: Measuring): Written | null 
   if (measure === "area") return areaFrom(hit, measuring);
   if (measure === "angle") return angleFrom(hit, measuring);
   return null;
-}
-
-/** The arcs an angle would land as, drawn while it is being asked about. */
-export function arcsBetween(
-  angle: { corner: string; arms: [string, string]; reflex: boolean },
-  measuring: Measuring,
-): string[] {
-  const { corner, arms, reflex } = angle;
-  const { settled, scale, lastMark } = measuring;
-  const spot = settled.points.get(corner);
-  const ends = arms.map((id) => settled.points.get(id));
-  if (!spot || ends.some((end) => end === undefined)) return [];
-  const [one, other] = ends as SketchPoint[];
-  const from = Math.atan2(one.y - spot.y, one.x - spot.x);
-  const to = Math.atan2(other.y - spot.y, other.x - spot.x);
-  const sweep = markSweep(from, to, reflex);
-  return markStrokes(
-    {
-      form: "angle",
-      at: { x: spot.x, y: spot.y },
-      from,
-      sweep,
-      strokes: lastMark.angle,
-      radius: lastMark.radius,
-      square: isRightAngle(sweep),
-    },
-    scale,
-  );
 }

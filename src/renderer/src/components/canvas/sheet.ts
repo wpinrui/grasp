@@ -9,11 +9,52 @@
 
 import {
   distance,
+  markSweep,
   type Position,
   type Rect,
+  type Settled,
   type SketchMark,
   type SketchMeasurement,
+  type SketchObject,
 } from "../../sketch/model";
+
+/**
+ * The figure anything on the sheet is worked out against: what is drawn, where
+ * it all settled, and how far the sheet is zoomed. Every context below is this
+ * plus whatever else that particular question needs.
+ */
+export interface Figure {
+  objects: SketchObject[];
+  settled: Settled;
+  scale: number;
+}
+
+/**
+ * The arm a bearing is nearest to, or nothing where there are no arms. What an
+ * angle is read against and what an angle step is counted from are the same
+ * question, so they ask it in one place and cannot come to disagree.
+ */
+export function nearestArm(arms: number[], bearing: number): number | null {
+  let nearest: number | null = null;
+  for (const arm of arms) {
+    if (
+      nearest === null ||
+      Math.abs(markSweep(arm, bearing, false)) < Math.abs(markSweep(nearest, bearing, false))
+    ) {
+      nearest = arm;
+    }
+  }
+  return nearest;
+}
+
+/** The middle of a ring of spots, which is where what it encloses is written. */
+export function middleOf(spots: Position[]): Position {
+  const sum = spots.reduce((held, spot) => ({ x: held.x + spot.x, y: held.y + spot.y }), {
+    x: 0,
+    y: 0,
+  });
+  return { x: sum.x / spots.length, y: sum.y / spots.length };
+}
 
 /** Pointer travel on screen, in pixels, that turns a click into a drag. */
 export const DRAG_THRESHOLD = 3;
@@ -192,6 +233,12 @@ export const MIN_CAPTION_WIDTH = 48;
 
 /** The angles Shift holds a new object to, as a fraction of a turn. */
 export const SHIFT_STEP = Math.PI / 12;
+
+/** What the last angle mark was set to, which is what the next one takes. */
+export interface LastMark {
+  angle: number;
+  radius: number;
+}
 
 /** A tool waiting for its second click, and where it is aiming. */
 export interface Pending {

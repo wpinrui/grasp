@@ -116,12 +116,12 @@ import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
 import { dimensionOf } from "./canvas/dimensions";
-import { guideOf, markUnder } from "./canvas/guides";
+import { guideOf } from "./canvas/guides";
+import { arcsBetween, type Marking, markUnder } from "./canvas/marks";
 import {
   angleMarkOn,
   angleReadingSpot,
   angleWritten,
-  arcsBetween,
   type Measuring,
   pointUnder,
   readingAlready,
@@ -148,12 +148,14 @@ import {
   MIN_SCALE,
   overlaps,
   PAN_FINGERS,
+  type Pending,
   SNAP_RING,
   type Snap,
   sameReading,
   snapKey,
   stopAbove,
   stopBelow,
+  type Tracing,
   type Travel,
   WHEEL_ZOOM,
   type Written,
@@ -323,20 +325,9 @@ export function Canvas({
   const scale = view.scale;
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   /** A tool waiting for its second click, and where it is aiming. */
-  const [pending, setPending] = useState<{
-    start: Position;
-    startId: string;
-    at: Position;
-    /** Which tool is drawing it, since only that tool can finish it. */
-    tool: string;
-  } | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
   /** The polygon being traced out, its corners in the order they were clicked. */
-  const [tracing, setTracing] = useState<{
-    ids: string[];
-    spots: Position[];
-    /** Where the band from the last corner is aiming. */
-    at: Position;
-  } | null>(null);
+  const [tracing, setTracing] = useState<Tracing | null>(null);
   /**
    * Escape: drops a half-drawn line and the end its first click plotted, or
    * clears the selection when there is nothing half drawn.
@@ -1511,13 +1502,11 @@ export function Canvas({
     });
   }
 
-  /**
-   * How far a new angle mark stands off a corner: past everything already
-   * marked there, so each angle at a corner gets a ring of its own. Two sets of
-   * arcs drawn at the same radius sit on top of one another, and then the
-   * second angle cannot be seen or clicked, which reads as a corner refusing to
-   * take more than one mark.
-   */
+  /** The figure a mark is drawn against, and what a new one is set to. */
+  function markingNow(): Marking {
+    return { objects, settled, scale, lastMark: lastMark.current };
+  }
+
   /**
    * The figure as a click is aimed at it. A drag reads the objects as they
    * stand rather than as this render left them, so those come through a reader
@@ -1545,17 +1534,22 @@ export function Canvas({
   function measuringNow(): Measuring {
     return {
       objects,
-      points,
       settled,
       scale,
       measure: measuring,
       saying: (made) => readingFor(made).value,
-      boxes: boxes.current,
       lastMark: lastMark.current,
       clearOf: clearOfCorner,
     };
   }
 
+  /**
+   * How far a new angle mark stands off a corner: past everything already
+   * marked there, so each angle at a corner gets a ring of its own. Two sets of
+   * arcs drawn at the same radius sit on top of one another, and then the
+   * second angle cannot be seen or clicked, which reads as a corner refusing to
+   * take more than one mark.
+   */
   function clearOfCorner(corner: string): number {
     const here = objects.filter(
       (object) => isMark(object) && !("path" in object) && object.corner === corner,
@@ -3063,7 +3057,7 @@ export function Canvas({
                   if (marking !== "angle") return null;
                   return arcsBetween(
                     { corner: overCorner, arms: there[0].arms, reflex: false },
-                    measuringNow(),
+                    markingNow(),
                   ).map((stroke) => (
                     <path
                       key={stroke}
@@ -3111,7 +3105,7 @@ export function Canvas({
                     })}
                     {arcsBetween(
                       { corner: choosing.corner, arms: showingArms, reflex: false },
-                      measuringNow(),
+                      markingNow(),
                     ).map((stroke) => (
                       <path
                         key={stroke}
@@ -3281,7 +3275,11 @@ export function Canvas({
               />
             ))}
             {readings.filter(isMeasurement).map((reading) => {
-              const drawn = dimensionOf(reading, measuringNow());
+              const drawn = dimensionOf(
+                reading,
+                boxes.current.get(reading.id) ?? readingBox(reading, measuringNow()),
+                { settled, scale },
+              );
               if (!drawn) return null;
               return (
                 <g key={`dimension-${reading.id}`} data-id={reading.id}>

@@ -16,54 +16,32 @@ import {
   degreesOf,
   distance,
   HALF_TURN,
-  isMark,
   markSweep,
-  nearMark,
   type Position,
   QUARTER_TURN,
-  type Settled,
-  type SketchMark,
-  type SketchObject,
 } from "../../sketch/model";
 import type { Snapping } from "../SnapPanel";
 import {
+  type Figure,
   GUIDE_LIFT,
   GUIDE_OFF,
   GUIDE_RADIUS,
   type Guide,
   type GuideAngle,
   type GuideText,
+  middleOf,
+  nearestArm,
   type Pending,
   type Tracing,
   type Travel,
 } from "./sheet";
 
 /** The figure as it stands, and what is half drawn over it. */
-export interface Placing {
-  objects: SketchObject[];
-  settled: Settled;
-  scale: number;
+export interface Placing extends Figure {
   snapping: Snapping;
   travel: Travel | null;
   pending: Pending | null;
   tracing: Tracing | null;
-}
-
-/** Where a mark is looked for, which is the figure it is drawn against. */
-export interface Marking {
-  objects: SketchObject[];
-  settled: Settled;
-  scale: number;
-}
-
-/** The mark under this spot, the topmost first, or nothing there. */
-export function markUnder(at: Position, where: Marking): SketchMark | null {
-  const { objects, settled, scale } = where;
-  for (let index = objects.length - 1; index >= 0; index -= 1) {
-    const object = objects[index];
-    if (isMark(object) && nearMark(object, at, { scale, settled, objects })) return object;
-  }
-  return null;
 }
 
 /** The way one spot lies from another. */
@@ -118,22 +96,8 @@ function wedgeOfArms(
   const { corner, to, arms } = aimed;
   if (arms.length === 0 || (corner.x === to.x && corner.y === to.y)) return null;
   const bearing = angleBetween(corner, to);
-  let nearest = arms[0];
-  for (const arm of arms) {
-    if (Math.abs(markSweep(arm, bearing, false)) < Math.abs(markSweep(nearest, bearing, false))) {
-      nearest = arm;
-    }
-  }
+  const nearest = nearestArm(arms, bearing) ?? arms[0];
   return cornerArc({ corner, from: nearest, to: bearing }, scale);
-}
-
-/** The middle of a ring of corners, which is where its area is written. */
-function middleOf(corners: Position[]): Position {
-  const sum = corners.reduce((held, corner) => ({ x: held.x + corner.x, y: held.y + corner.y }), {
-    x: 0,
-    y: 0,
-  });
-  return { x: sum.x / corners.length, y: sum.y / corners.length };
 }
 
 /**

@@ -22,14 +22,12 @@ import {
   isLine,
   isLocus,
   isPoint,
-  markSweep,
   objectAt,
   type PathGeometry,
   type Position,
   PX_PER_CM,
   pathIn,
   radiansOf,
-  type Settled,
   type SketchObject,
   spotOnPath,
 } from "../../sketch/model";
@@ -37,7 +35,9 @@ import type { Snapping } from "../SnapPanel";
 import {
   ARROW_GRAB,
   CROSS_REACH,
+  type Figure,
   type Handle,
+  nearestArm,
   type Pending,
   type Snap,
   stepped,
@@ -46,10 +46,7 @@ import {
 } from "./sheet";
 
 /** The figure a click is aimed at, and what is half drawn over it. */
-export interface Aiming {
-  objects: SketchObject[];
-  settled: Settled;
-  scale: number;
+export interface Aiming extends Figure {
   /** How far off a path still counts as on it, at this zoom. */
   slack: number;
   snapping: Snapping;
@@ -58,7 +55,10 @@ export interface Aiming {
   tracing: Tracing | null;
   /** Shift takes over from the snapping while it is down. */
   shiftHeld: boolean;
-  /** The objects as they stand now, which a drag reads as it goes. */
+  /**
+   * The objects as they stand right now. `objects` is what the render this was
+   * built in left; a drag moves them as it goes and has to read the live ones.
+   */
   present: () => SketchObject[];
 }
 
@@ -68,7 +68,7 @@ function startedAt(aiming: Aiming): Position | undefined {
   return pending?.start ?? tracing?.spots[tracing.spots.length - 1];
 }
 
-/** How far along a locus its arrowheads may be dragged. */
+/** The stretch of its domain a locus is drawn over. */
 export function spanOfLocus(id: string, aiming: Aiming): [number, number] {
   const locus = aiming.objects.find((object) => object.id === id);
   return locus && isLocus(locus) ? locus.span : [0, 1];
@@ -120,7 +120,7 @@ export function snapAt(at: Position, aiming: Aiming): Snap | null {
 }
 
 /** What an angle step is counted from: the nearest arm, or the horizontal. */
-export function baseAngle(bearing: number, aiming: Aiming): number {
+function baseAngle(bearing: number, aiming: Aiming): number {
   const { objects, settled, pending, tracing } = aiming;
   const arms = pending
     ? armsAt(pending.startId, objects, settled).map((arm) => arm.angle)
@@ -132,16 +132,7 @@ export function baseAngle(bearing: number, aiming: Aiming): number {
           ),
         ]
       : [];
-  let nearest: number | null = null;
-  for (const arm of arms) {
-    if (
-      nearest === null ||
-      Math.abs(markSweep(arm, bearing, false)) < Math.abs(markSweep(nearest, bearing, false))
-    ) {
-      nearest = arm;
-    }
-  }
-  return nearest ?? 0;
+  return nearestArm(arms, bearing) ?? 0;
 }
 
 /** The whole numbers around one, since the nearest may miss the path. */
