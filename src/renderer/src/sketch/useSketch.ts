@@ -6,6 +6,7 @@ import {
   nameable,
   namedWhereShown,
   namesFor,
+  namesToGive,
   type PointSize,
   resolve,
   type SketchObject,
@@ -82,10 +83,13 @@ export function useSketch() {
   }, []);
 
   /**
-   * A measurement reads out the names of what it measures, so taking one shows
-   * those labels. Without it a new reading says "?? = 5 cm": the points it is
-   * between have never been labelled, so nothing on the sheet says which is
-   * which.
+   * A measurement reads out the names of what it measures, so taking one names
+   * whatever it spells out. Without a name there the reading would say
+   * "?? = 5 cm".
+   *
+   * It names them and nothing more: a label already showing goes on showing,
+   * one put away stays away, and one never asked for stays unasked for. Taking
+   * a measurement says what the reading needs, not what the figure shows.
    */
   const spelledOut = useCallback(
     (objects: SketchObject[]): SketchObject[] => {
@@ -93,14 +97,21 @@ export function useSketch() {
       const fresh = objects.filter((object) => isMeasurement(object) && !already.has(object.id));
       if (fresh.length === 0) return objects;
       const names = namesFor(objects);
-      const wanted = new Set(
+      const spelled = new Set(
         fresh.flatMap((one) => (isMeasurement(one) ? spelledOutBy(one, { objects, names }) : [])),
       );
-      return objects.map((object) =>
-        wanted.has(object.id) && object.label?.shown !== true && nameable(object, objects)
-          ? { ...object, label: { ...object.label, shown: true } }
-          : object,
+      const nameless = objects.filter(
+        (object) => spelled.has(object.id) && !object.label?.name && nameable(object, objects),
       );
+      if (nameless.length === 0) return objects;
+      const given = namesToGive(
+        objects,
+        nameless.map((object) => object.id),
+      );
+      return objects.map((object) => {
+        const name = given.get(object.id);
+        return name ? { ...object, label: { ...object.label, name } } : object;
+      });
     },
     [alreadyThere],
   );
