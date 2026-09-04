@@ -209,7 +209,7 @@ function stretchNaming(
  * measurement spells out without settling the page first. Every `names.get`
  * from here down reaches the printed reading, and `spelledOutBy` takes that as
  * its definition: one that did not would still be counted as spelled out, and
- * would have its label shown for nothing.
+ * would be named for nothing.
  */
 function readingWith(measurement: SketchMeasurement, page: NamingOn, value: string): Reading {
   const { objects, names } = page;
@@ -314,8 +314,9 @@ class NamesAsked extends Map<string, string> {
 
 /**
  * Everything a measurement's reading writes the name of, its own name aside.
- * Taking a measurement labels these, since "AB = 5 cm" says nothing while
- * nothing on the sheet says which point is A.
+ * Taking a measurement names these, since a reading with nothing to print
+ * would come out saying "?? = 5 cm". It names them and leaves their labels
+ * alone: what the figure shows is not the measurement's to change.
  */
 export function spelledOutBy(measurement: SketchMeasurement, page: NamingOn): string[] {
   const names = new NamesAsked(page.names);
