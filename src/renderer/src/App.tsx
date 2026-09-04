@@ -153,6 +153,7 @@ export function App() {
     armed: tools.activeTool === "text" && tools.variants.text === "relabel",
     naming,
     names,
+    page: sketch.activeId,
   });
   /** The buttons on the sheet, and what pressing one does. */
   const buttons = buttonActions({

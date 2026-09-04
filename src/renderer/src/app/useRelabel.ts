@@ -16,47 +16,55 @@ import { nameAt } from "../sketch/model";
 import type { Naming } from "./labels";
 
 /** Where a run began, and the vertices it has named since, in that order. */
-interface Run {
+export interface Run {
   from: string;
   given: string[];
 }
 
 /** The vertex clicked with no run going, and where to ask about it. */
-export interface Asked {
+interface Asked {
   id: string;
   at: { x: number; y: number };
 }
 
 /**
- * How far along a run is: the longest run of vertices from its start that still
- * answer to the letters it gave them. The first one that does not is where the
- * run has got back to, and the letter it had is the next one going.
+ * How far along a run is: one past the last vertex it named that still answers
+ * to the letter it gave it. Reading its place back off the page rather than
+ * counting clicks is what keeps the run in step through an undo it did not
+ * cause, and taking the last rather than the first means it never reverses over
+ * a letter the page is still showing: lose a vertex out of the middle of a run
+ * and the letters after it are still spoken for.
  */
 export function placeOf(run: Run, names: Map<string, string>): number {
   let place = 0;
-  while (place < run.given.length && names.get(run.given[place]) === nameAt(run.from, place)) {
-    place += 1;
+  for (let at = 0; at < run.given.length; at += 1) {
+    if (names.get(run.given[at]) === nameAt(run.from, at)) place = at + 1;
   }
   return place;
 }
 
-interface Relabelled {
+export interface RelabelContext {
   /** Whether the Text tool is armed for a run at all. */
   armed: boolean;
   naming: Naming;
   /** What everything on the page is called, which is where the run reads its place. */
   names: Map<string, string>;
+  /** The page that is up, since a run's letters are on that one and no other. */
+  page: string;
 }
 
-export function useRelabel({ armed, naming, names }: Relabelled) {
+export function useRelabel({ armed, naming, names, page }: RelabelContext) {
   const [run, setRun] = useState<Run | null>(null);
   const [asked, setAsked] = useState<Asked | null>(null);
-  // The run belongs to the tool. Switching tool, or arming the Text tool for
-  // captions again, ends it wherever it had got to.
-  const wasArmed = useRef(armed);
-  if (wasArmed.current !== armed) {
-    wasArmed.current = armed;
-    if (!armed) {
+  // The run belongs to the tool, and to the page it was started on. Switching
+  // tool, arming the Text tool for captions again, or turning to another page
+  // ends it wherever it had got to: it reads its place off the page that is up,
+  // and another page's letters are not its to read.
+  const was = useRef({ armed, page });
+  if (was.current.armed !== armed || was.current.page !== page) {
+    const ended = !armed || was.current.page !== page;
+    was.current = { armed, page };
+    if (ended) {
       setRun(null);
       setAsked(null);
     }
