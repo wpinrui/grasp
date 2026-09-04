@@ -33,10 +33,11 @@ interface LabelsProps {
   /** Which labels the palette is set on, drawn as picked. */
   picked: string[];
   /**
-   * Whether a label is the pointer's to take. The Text tool always makes it so,
-   * and the Arrow only while it is armed for everything or for writing: an
-   * Arrow armed for points or paths passes over a label the way it passes over
-   * a caption.
+   * Whether a label is the pointer's to take. The Text tool makes it so while
+   * it is making captions, and the Arrow while it is armed for everything or
+   * for writing. An Arrow armed for points or paths passes over a label the way
+   * it passes over a caption, and a relabel run puts labels out of reach
+   * altogether, so a click lands on the vertex one is sitting over.
    */
   reachable: boolean;
   /**

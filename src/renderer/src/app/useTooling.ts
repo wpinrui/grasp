@@ -10,6 +10,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import type { HiddenKinds } from "../components/HiddenPanel";
+import { armedForWriting } from "../components/tools";
 import type { Armed } from "../sketch/armed";
 import { DEFAULT_POINT_SIZE, type PointSize } from "../sketch/model";
 
@@ -42,7 +43,7 @@ export function useTooling() {
     // An Arrow armed for points, paths or markings cannot reach a label, so it
     // cannot be left holding one either: the palette would be set on something
     // the pointer can no longer touch.
-    if (tool === "arrow" && variant !== "all" && variant !== "text") setLabelPick([]);
+    if (tool === "arrow" && !armedForWriting(variant)) setLabelPick([]);
   }, []);
   /**
    * What the palette has been set to for the tool that is up, which is how the

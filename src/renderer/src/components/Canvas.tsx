@@ -162,6 +162,7 @@ import { MeasurementBox } from "./MeasurementBox";
 import { ReadingPanel } from "./ReadingPanel";
 import type { Snapping } from "./SnapPanel";
 import { TableBox } from "./TableBox";
+import { armedForWriting } from "./tools";
 import "./Canvas.css";
 
 interface CanvasProps {
@@ -473,7 +474,7 @@ export function Canvas({
   /** The objects the Arrow as armed can land on. */
   const pickable = arrowKind === "all" ? objects : objects.filter(arrowTakes);
   /** Whether writing is the Arrow's to carry, as it is armed. */
-  const takesWriting = arrowKind === "all" || arrowKind === "text";
+  const takesWriting = armedForWriting(arrowKind);
 
   /** The Measure tool, and what it is armed with, or null when it is not up. */
   const measuring = tool === "measure" ? measureKind : null;
@@ -1039,7 +1040,7 @@ export function Canvas({
     if (tool === "text" && !relabelling && !picking && !grab.current) {
       const over = positionOf(event);
       const found = over ? objectAt(over, { objects: objects, scale, settled }) : null;
-      const named = found !== null && nameable(found, objects);
+      const named = found !== null && nameable(found, everything);
       if (named !== overNamed) setOverNamed(named);
     }
 
@@ -1408,7 +1409,7 @@ export function Canvas({
       // A click instead: on a thing it shows what that thing is called, and
       // clicking it again puts the label away.
       const hit = objectAt(at, { objects: objects, scale, settled });
-      if (hit && nameable(hit, objects)) onToggleLabel(hit.id);
+      if (hit && nameable(hit, everything)) onToggleLabel(hit.id);
       return;
     }
 
@@ -1477,6 +1478,9 @@ export function Canvas({
   function handlePointerLeave() {
     setSnap(null);
     setOverNamed(false);
+    // The ghost letter stands in for the vertex's own label, so leaving the
+    // sheet straight off a vertex would leave that label suppressed under it.
+    setRelabelOver(null);
     offerNothing();
   }
 

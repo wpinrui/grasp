@@ -44,6 +44,16 @@ export interface Tool {
   Icon: ComponentType;
 }
 
+/**
+ * Whether an Arrow armed this way carries writing: captions, readings, tables,
+ * buttons and labels. Armed for one kind of geometry it passes over all of them,
+ * so this is asked both where the sheet decides what the pointer reaches and
+ * where the window decides what it can still be holding.
+ */
+export function armedForWriting(arrowKind: string): boolean {
+  return arrowKind === "all" || arrowKind === "text";
+}
+
 /** The toolbox rail, top to bottom. */
 export const TOOLS: Tool[] = [
   {
