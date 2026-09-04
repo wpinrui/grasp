@@ -45,8 +45,18 @@ describe("a regular polygon waiting to be drawn", () => {
     act(() => result.current.draw({ sides: 4, locked: false }));
     expect(result.current.asked).toBeNull();
     expect(committed).toHaveLength(1);
-    expect(committed[0].objects.filter(isPoint)).toHaveLength(4);
+    const corners = committed[0].objects.filter(isPoint);
+    expect(corners).toHaveLength(4);
     expect(committed[0].objects.filter(isInterior)).toHaveLength(1);
+    // Built about the spot on the sheet, not the screen point the box stood at:
+    // the two are different coordinate spaces and only one is where to build.
+    // A regular polygon's corners average to its middle, so that is the check.
+    const middle = corners.reduce(
+      (sum, corner) => ({ x: sum.x + corner.x / 4, y: sum.y + corner.y / 4 }),
+      { x: 0, y: 0 },
+    );
+    expect(middle.x).toBeCloseTo(SPOT.spot.x, 6);
+    expect(middle.y).toBeCloseTo(SPOT.spot.y, 6);
   });
 
   it("commits nothing for a count no polygon has", () => {

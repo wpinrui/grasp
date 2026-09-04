@@ -45,6 +45,7 @@ import {
   textStyling,
 } from "../sketch/text";
 import type { Sketch } from "../sketch/useSketch";
+import type { Armings } from "./useTooling";
 
 /** What a pick shares, or null where it does not share one, over any list. */
 function agreed<T>(over: SketchObject[], read: (object: SketchObject) => T | undefined): T | null {
@@ -151,7 +152,7 @@ export interface PaletteContext {
   setArmed: (change: (was: Armed) => Armed) => void;
   activeTool: string;
   /** Which variant each tool is armed with, for what the tool draws. */
-  variants: Record<string, string>;
+  variants: Armings;
 }
 
 /**

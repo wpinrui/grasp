@@ -87,8 +87,11 @@ export function DialogFrame({
   }, [canApply, onApply, onCancel, quiet]);
 
   // Dragged by its bar, because it must be possible to get it off a point you
-  // need to click.
+  // need to click. The close button sits on that bar and is not a handle: were
+  // the press on it to capture the pointer for the bar, the click that follows
+  // would be the bar's rather than the button's and the dialog would not shut.
   function startDrag(event: PointerEvent<HTMLDivElement>) {
+    if (event.target instanceof Element && event.target.closest(".dialog__close")) return;
     drag.current = { x: event.clientX - at.x, y: event.clientY - at.y };
     event.currentTarget.setPointerCapture(event.pointerId);
   }

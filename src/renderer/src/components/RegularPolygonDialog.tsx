@@ -10,8 +10,8 @@ const SHAPES: { sides: number; name: string }[] = [
   { sides: 4, name: "Square" },
   { sides: 5, name: "Pentagon" },
   { sides: 6, name: "Hexagon" },
-  { sides: 7, name: "7-gon" },
-  { sides: 8, name: "8-gon" },
+  { sides: 7, name: "Heptagon" },
+  { sides: 8, name: "Octagon" },
 ];
 
 /**
@@ -19,9 +19,11 @@ const SHAPES: { sides: number; name: string }[] = [
  * the sheet would use, so a key looks like what pressing it makes.
  */
 function ShapeGlyph({ sides }: { sides: number }) {
-  const corners = cornersAt({ x: 16, y: 16 }, 15, sides);
+  // The toolbox's own box and reach, so a key is the tool's icon drawn larger
+  // rather than a second way of drawing the same shape.
+  const corners = cornersAt({ x: 10, y: 10.4 }, 7.6, sides);
   return (
-    <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
+    <svg width="30" height="30" viewBox="0 0 20 20" aria-hidden="true">
       <polygon
         points={corners.map((corner) => `${corner.x} ${corner.y}`).join(" ")}
         fill="var(--color-tool-polygon-fill)"
@@ -41,8 +43,8 @@ interface RegularPolygonDialogProps {
 }
 
 /**
- * What regular polygon to build: how many sides, and whether it is held that
- * way. The shapes a class meets get a key each; anything else is typed, and
+ * What regular polygon to build: how many sides, and whether the shape is
+ * locked to being one. The shapes a class meets get a key each; anything else is typed, and
  * typing takes the keys out of the running, since a number in the box is a
  * plainer answer than a key that happens to still look pressed.
  */
@@ -99,12 +101,10 @@ export function RegularPolygonDialog({ at, onApply, onCancel }: RegularPolygonDi
       </label>
 
       <div className="ngon__row">
-        <span className="ngon__of">Hold it</span>
-        <Switch name="Hold it regular" on={locked} onChange={setLocked} />
+        <span className="ngon__of">Lock</span>
+        <Switch name="Lock" on={locked} onChange={setLocked} />
         <span className="ngon__note">
-          {locked
-            ? "Held regular. It cannot stop being regular however it is dragged."
-            : "Loose. Every corner moves on its own."}
+          {locked ? "Shape fixed as a regular polygon" : "Corners move freely"}
         </span>
       </div>
     </DialogFrame>

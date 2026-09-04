@@ -15,20 +15,20 @@ import type { Armed } from "../sketch/armed";
 import { DEFAULT_POINT_SIZE, type PointSize } from "../sketch/model";
 
 /**
- * What each tool with a flyout can be armed with, one key per such tool. The
- * six are required, so none of them can be left unarmed and nothing needs a
- * default of its own; the index signature is what lets the toolbox reach one
- * by a tool's id.
+ * What each tool with a flyout can be armed with, one key per such tool. All
+ * six are required, so none can be left unarmed and nothing anywhere else has
+ * to name a default. It is an alias rather than an interface so that it still
+ * answers to the plainer map the toolbox and the palette take, while a key
+ * nothing is armed with stays an error here.
  */
-export interface Armings {
-  [tool: string]: string;
+export type Armings = {
   arrow: string;
   straightedge: string;
   polygon: string;
   text: string;
   measure: string;
   marker: string;
-}
+};
 
 /** What each of them is armed with before anything is picked. */
 const ARMED_AS: Armings = {

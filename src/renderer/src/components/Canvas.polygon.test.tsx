@@ -53,6 +53,23 @@ describe("the polygon tool", () => {
     expect(page().objects).toHaveLength(2);
   });
 
+  it("closes a surviving trace on the arming it is closed under, not the one it began on", () => {
+    // Three corners out under edges and a fill, then armed for the fill alone
+    // before closing on the first corner: the fill comes and the edges do not.
+    const { sheet, page, rearm } = watched([], "polygon", { polygonKind: "interior-edges" });
+    act(() => press(sheet, { x: 100, y: 100 }));
+    act(() => press(sheet, { x: 300, y: 100 }));
+    act(() => press(sheet, { x: 300, y: 300 }));
+    act(() => rearm({ polygonKind: "interior" }));
+    act(() => press(sheet, { x: 100, y: 100 }));
+    expect(page().objects.map((object) => object.kind)).toEqual([
+      "point",
+      "point",
+      "point",
+      "interior",
+    ]);
+  });
+
   it("drops a half-traced polygon when it is armed for the regular one", () => {
     // Two corners down, then the flyout moves to Regular. The trace has to go
     // with it: left in flight its gesture would later roll the page back over

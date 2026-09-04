@@ -488,12 +488,7 @@ export function Canvas({
   const measuring = tool === "measure" ? measureKind : null;
   /** What the Marker would mark, or null while it is not the tool that is up. */
   const marking = tool === "marker" ? (markForm as MarkForm) : null;
-  /**
-   * Whether the polygon tool is armed for the regular one, which is not clicked
-   * out corner by corner. Crossing into or out of it is what strands a trace;
-   * moving between the fill and the fill with its edges does not, since both
-   * are traced the same way and the arming is read again at the close.
-   */
+  /** Whether the polygon tool is armed for the regular one. */
   const regularArmed = polygonKind === "regular";
   /** Whether the Text tool is handing out letters rather than making captions. */
   const relabelling = tool === "text" && labelKind === "relabel";
@@ -630,7 +625,10 @@ export function Canvas({
   // Switching tools drops whatever the straightedge was halfway through, and so
   // does arming the polygon for the regular one: it is not clicked out corner by
   // corner, so a trace left in flight would strand its open gesture and the next
-  // thing to cancel would roll the page back over what came after.
+  // thing to cancel would roll the page back over what came after. Crossing into
+  // or out of that arming is what does it; moving between the fill and the fill
+  // with its edges leaves a trace alone, since both are clicked out the same way
+  // and the arming is read again at the close.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the tool changing is the whole point
   useEffect(() => {
     sketch.cancelGesture();
@@ -869,7 +867,7 @@ export function Canvas({
       const aim = aimAt(at, aimingNow());
       // The regular one is not clicked out corner by corner. One click says
       // where the middle goes, and the box that opens says what shape.
-      if (polygonKind === "regular") {
+      if (regularArmed) {
         onRegularAsk({ spot: aim.spot, at: { x: event.clientX, y: event.clientY } });
       } else polygonClick(aim.found, aim.spot);
       return;

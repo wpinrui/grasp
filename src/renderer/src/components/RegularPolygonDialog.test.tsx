@@ -33,7 +33,7 @@ function box() {
     key: (name: string) =>
       screen.getByRole("button", { name: new RegExp(name) }) as HTMLButtonElement,
     sides: () => screen.getByLabelText("Sides"),
-    hold: () => screen.getByRole("switch", { name: "Hold it regular" }),
+    lock: () => screen.getByRole("switch", { name: "Lock" }),
     draw: () => screen.getByRole("button", { name: "Draw" }) as HTMLButtonElement,
   };
 }
@@ -90,9 +90,9 @@ describe("what regular polygon to draw", () => {
     expect(asked).toEqual([]);
   });
 
-  it("lets the shape loose when the hold is turned off", () => {
-    const { asked, hold, draw } = box();
-    fireEvent.click(hold());
+  it("lets the shape loose when the lock is turned off", () => {
+    const { asked, lock, draw } = box();
+    fireEvent.click(lock());
     fireEvent.click(draw());
     expect(asked).toEqual([{ sides: 3, locked: false }]);
   });

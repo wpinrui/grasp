@@ -9,7 +9,7 @@
 
 import { useRef, useState } from "react";
 import type { PointSize, Position } from "../sketch/model";
-import { withRegular } from "../sketch/regular";
+import { canBuildSides, withRegular } from "../sketch/regular";
 import type { Sketch } from "../sketch/useSketch";
 
 /** A click asking for a regular polygon: where on the sheet, and where to ask. */
@@ -59,11 +59,11 @@ export function useRegular({ sketch, pointSize, armed, page }: RegularContext) {
     draw: ({ sides, locked }: { sides: number; locked: boolean }) => {
       if (!asked) return;
       setAsked(null);
+      // A count no polygon has builds nothing, and nothing built is no step to
+      // undo, so it is asked about here rather than read off what came back.
+      if (!canBuildSides(sides)) return;
       const before = sketch.read();
-      const after = withRegular(before, { at: asked.spot, sides, size: pointSize, locked });
-      // A count no polygon has leaves the page alone, and a step that changes
-      // nothing is not one to undo.
-      if (after !== before) sketch.commit(after);
+      sketch.commit(withRegular(before, { at: asked.spot, sides, size: pointSize, locked }));
     },
   };
 }
