@@ -38,7 +38,7 @@ describe("what a reading spells out", () => {
     });
     const length = createMeasurement("length", [seg.id], { x: 0, y: 40 });
     const objects = [named(a, "A"), named(b, "B"), seg, length];
-    const reading = readingOf(length as never, {
+    const reading = readingOf(length, {
       objects,
       names: namesFor(objects),
       settled: settle(objects).settled,
