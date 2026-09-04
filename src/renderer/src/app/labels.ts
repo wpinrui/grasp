@@ -66,8 +66,9 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
           const label = { ...object.label, name: name || undefined };
           return { ...object, label: options?.show ? { ...label, shown: true } : label };
         }
-        // The one that was called this pins the name it has now, or the
-        // automatic run would move it off the name on the next pass.
+        // A measurement, parameter, calculation or table letters itself, so
+        // the one that was called this is given that name in writing before it
+        // loses it: without that the run would move it along on the next pass.
         if (object.id === keep) {
           return { ...object, label: { ...object.label, name: names.get(object.id) } };
         }
@@ -106,24 +107,35 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
     });
   }
 
-  /** What the hidden panel lists: one row per object out of view. */
+  /**
+   * What the hidden panel lists: one row per object out of view. A row whose
+   * name is empty is something never labelled, and the panel says so its own
+   * way; the row is there either way, since what is out of view has to be
+   * reachable to be brought back.
+   */
   function hiddenRows(): HiddenRow[] {
     const names = namesFor(objects);
+    const row = (object: SketchObject, name: string) => ({
+      id: object.id,
+      name,
+      kind: kindOf(object).replace(/^(a|an|another) /, ""),
+    });
     return objects.flatMap((object) => {
       if (object.hidden !== true) return [];
       // A caption carries no name, so the row is what the caption says, and a
       // measurement is listed by its reading for the same reason: its number is
-      // what tells it from the next one.
-      const name = isCaption(object)
-        ? captionRowName(object.html)
-        : isMeasurement(object)
-          ? readingText(readingOf(object, { objects, names, settled: geometry }))
-          : nameable(object, objects)
-            ? (names.get(object.id) ?? "—")
-            : undefined;
-      return name
-        ? [{ id: object.id, name, kind: kindOf(object).replace(/^(a|an|another) /, "") }]
-        : [];
+      // what tells it from the next one. Neither is listed while it says
+      // nothing at all, having nothing to be told apart by.
+      if (isCaption(object)) {
+        const said = captionRowName(object.html);
+        return said ? [row(object, said)] : [];
+      }
+      if (isMeasurement(object)) {
+        const read = readingText(readingOf(object, { objects, names, settled: geometry }));
+        return read ? [row(object, read)] : [];
+      }
+      if (!nameable(object, objects)) return [];
+      return [row(object, names.get(object.id) ?? "")];
     });
   }
 
