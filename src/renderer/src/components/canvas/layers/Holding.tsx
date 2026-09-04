@@ -3,8 +3,9 @@
  * and a band along each straight object, so what the dialog is about can be
  * seen on the sheet while it is being filled in.
  *
- * The ghosts of what it would make are a different thing and are drawn with the
- * rest of the preview.
+ * The small caption it puts beside each one belongs here too, above the sheet
+ * as HTML rather than in it. The ghosts of what the dialog would make are a
+ * different thing and are drawn with the rest of the preview.
  *
  * A held point is found among every point on the page, so one that is hidden
  * still gets its ring; a held line is found among what is drawn, so a hidden
@@ -12,8 +13,9 @@
  * two are looked up in different places.
  */
 
-import { isLine, radiusOf } from "../../../sketch/model";
+import { isLine, type Position, radiusOf, type View } from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
+import { screenSpot } from "../sheet";
 
 interface HoldingProps {
   /** The ids a dialog has taken, each with the caption drawn by it. */
@@ -51,6 +53,37 @@ export function Holding({ marks }: HoldingProps) {
             vectorEffect="non-scaling-stroke"
           />
         ) : null;
+      })}
+    </>
+  );
+}
+
+/**
+ * The small caption a dialog puts beside each point it is holding. It rides
+ * above the sheet as HTML, so it keeps its size at any zoom.
+ */
+export function MarkCaptions({
+  marks,
+  spotOf,
+  view,
+  scale,
+}: {
+  marks: { id: string; label: string }[];
+  /** Where a mark's caption sits, or nothing where the thing is not there. */
+  spotOf: (id: string) => Position | null;
+  view: View;
+  scale: number;
+}) {
+  return (
+    <>
+      {marks.map((mark) => {
+        const at = spotOf(mark.id);
+        if (!at) return null;
+        return (
+          <span key={mark.id} className="canvas__caption" style={screenSpot(at, view, scale)}>
+            {mark.label}
+          </span>
+        );
       })}
     </>
   );

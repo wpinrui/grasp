@@ -14,7 +14,14 @@
  */
 
 import { createContext, useContext } from "react";
-import type { Position, Settled, SketchLine, SketchObject, SketchPoint } from "../../sketch/model";
+import type {
+  Position,
+  Rect,
+  Settled,
+  SketchLine,
+  SketchObject,
+  SketchPoint,
+} from "../../sketch/model";
 
 /** The figure as this render has it, which every layer draws from. */
 export interface Sheet {
@@ -38,6 +45,8 @@ export interface Sheet {
    * the object.
    */
   spanOf: (line: SketchLine) => [Position, Position] | null;
+  /** The sheet on screen, which anything running off it is cut off by. */
+  shown: Rect;
 }
 
 const SheetContext = createContext<Sheet | null>(null);
