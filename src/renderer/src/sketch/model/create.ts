@@ -64,6 +64,16 @@ export function createArc(span: ArcSpan): SketchArc {
   return { id: nextId("arc"), kind: "arc", span };
 }
 
+/**
+ * The edges round a ring of corners, closing back to the first, so a polygon is
+ * a ring however it was made: clicked out corner by corner, or built.
+ */
+export function edgesRound(ring: string[]): SketchObject[] {
+  return ring.map((corner, index) =>
+    lineThrough("segment", [corner, ring[(index + 1) % ring.length]]),
+  );
+}
+
 export function createInterior(vertices: string[]): SketchInterior {
   return { id: nextId("shape"), kind: "interior", vertices };
 }

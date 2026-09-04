@@ -11,6 +11,7 @@ import { scriptActions } from "./app/scripting";
 import { useCollecting } from "./app/useCollecting";
 import { useDialogs } from "./app/useDialogs";
 import { useKeys } from "./app/useKeys";
+import { useRegular } from "./app/useRegular";
 import { useRelabel } from "./app/useRelabel";
 import { prefsFrom, useSettings } from "./app/useSettings";
 import { useTooling } from "./app/useTooling";
@@ -148,6 +149,13 @@ export function App() {
   });
   /** Names, labels, and what is out of view. */
   const naming = labelActions({ sketch, objects, selection, geometry });
+  /** The regular polygon in hand, from the click that asked for one. */
+  const regular = useRegular({
+    sketch,
+    pointSize: tools.pointSize,
+    armed: tools.activeTool === "polygon" && tools.variants.polygon === "regular",
+    page: sketch.activeId,
+  });
   /** The relabel run in hand: the letters the Text tool is handing out. */
   const relabel = useRelabel({
     armed: tools.activeTool === "text" && tools.variants.text === "relabel",
@@ -327,7 +335,8 @@ export function App() {
   useKeys({
     // The letter a relabel run starts at is asked for in a dialog like any
     // other, so it owns the keyboard while it is up.
-    dialogOpen: moves.dialog !== null || dialogs.anyOpen || relabel.asked !== null,
+    dialogOpen:
+      moves.dialog !== null || dialogs.anyOpen || relabel.asked !== null || regular.asked !== null,
     pickTool: tools.setActiveTool,
     newSketch: doc.newSketch,
     openSketch: () => void doc.open(),
@@ -414,6 +423,7 @@ export function App() {
         dialogs={dialogs}
         naming={naming}
         relabel={relabel}
+        regular={regular}
         numbers={numbers}
         buttons={buttons}
         palette={palette}
@@ -453,6 +463,7 @@ export function App() {
         dialogs={dialogs}
         numbers={numbers}
         relabel={relabel}
+        regular={regular}
         buttons={buttons}
         custom={custom}
         settings={settings}

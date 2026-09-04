@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Switch } from "./Switch";
 import "./LabelPanel.css";
 
 export interface LabelRow {
@@ -167,16 +168,7 @@ export function LabelPanel({
           every point that lands says its name straight away. */}
       <div className="labels__bulk">
         <span className="labels__bulk-of">Label new points</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={labelNew}
-          aria-label="Label new points"
-          className={`labels__switch${labelNew ? " labels__switch--on" : ""}`}
-          onClick={() => onLabelNew(!labelNew)}
-        >
-          <span className="labels__switch-knob" />
-        </button>
+        <Switch name="Label new points" on={labelNew} onChange={onLabelNew} />
       </div>
 
       <div className="labels__bulk">

@@ -15,8 +15,8 @@ import {
   MeasureIcon,
   MeasureLengthIcon,
   ParallelMarkIcon,
+  PentagonIcon,
   PointIcon,
-  PolygonEdgesIcon,
   PolygonFillIcon,
   PolygonIcon,
   RayIcon,
@@ -91,10 +91,11 @@ export const TOOLS: Tool[] = [
     name: "Polygon",
     key: "G",
     flyout: true,
+    // Edges and a fill together is what a polygon usually wants, so it leads.
     variants: [
-      { id: "interior", name: "Polygon", Icon: PolygonFillIcon },
       { id: "interior-edges", name: "Polygon and Edges", Icon: PolygonIcon },
-      { id: "edges", name: "Polygon Edges", Icon: PolygonEdgesIcon },
+      { id: "interior", name: "Polygon", Icon: PolygonFillIcon },
+      { id: "regular", name: "Regular Polygon", Icon: PentagonIcon },
     ],
     Icon: PolygonIcon,
   },

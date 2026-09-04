@@ -56,6 +56,9 @@ export interface HarnessProps {
   relabelName?: string | null;
   onRelabelAsk?: (id: string, at: { x: number; y: number }) => void;
   onRelabelGive?: (id: string) => void;
+  onRegularAsk?: (asked: { spot: { x: number; y: number }; at: { x: number; y: number } }) => void;
+  /** What the polygon tool is armed with, since one of them opens a box. */
+  polygonKind?: string;
 }
 
 /**
@@ -74,6 +77,8 @@ function Harness({
   relabelName = null,
   onRelabelAsk = () => {},
   onRelabelGive = () => {},
+  onRegularAsk = () => {},
+  polygonKind = "interior-edges",
 }: HarnessProps) {
   const sketch = useSketch();
   const laid = useRef(false);
@@ -94,7 +99,7 @@ function Harness({
       picking={false}
       onPick={() => {}}
       lineForm="segment"
-      polygonKind="interior"
+      polygonKind={polygonKind}
       preview={preview}
       marks={marks}
       onRename={() => {}}
@@ -102,6 +107,7 @@ function Harness({
       relabelName={relabelName}
       onRelabelAsk={onRelabelAsk}
       onRelabelGive={onRelabelGive}
+      onRegularAsk={onRegularAsk}
       spotlight={spotlight}
       onToggleLabel={() => {}}
       labelPick={[]}
@@ -148,13 +154,24 @@ export function press(element: HTMLElement, at: { x: number; y: number }) {
   fireEvent.pointerUp(element, { clientX: at.x, clientY: at.y, button: 0, pointerId: 1 });
 }
 
-/** The page as it stood at the last render, which is where a gesture lands. */
-export function watched(objects: SketchObject[], tool: string) {
+/**
+ * The page as it stood at the last render, which is where a gesture lands, and
+ * the way to re-arm the tool without laying the figure out again: the harness
+ * lays it out once, so a second render is the same sheet with the tool changed.
+ */
+export function watched(
+  objects: SketchObject[],
+  tool: string,
+  more: Omit<HarnessProps, "objects" | "tool" | "report"> = {},
+) {
   const seen: SketchState[] = [];
-  const { container } = put(objects, tool, { report: (read) => seen.push(read) });
+  const props = { ...more, report: (read: SketchState) => seen.push(read) };
+  const shown = render(<Harness objects={objects} tool={tool} {...props} />);
   return {
-    sheet: sheetOf(container),
+    sheet: sheetOf(shown.container),
     page: () => seen[seen.length - 1] ?? { objects: [], selection: [] },
+    rearm: (part: Omit<HarnessProps, "objects" | "tool">) =>
+      shown.rerender(<Harness objects={objects} tool={tool} {...props} {...part} />),
   };
 }
 

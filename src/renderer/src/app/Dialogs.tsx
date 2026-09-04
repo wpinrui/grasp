@@ -18,6 +18,7 @@ import { PageSetupDialog } from "../components/PageSetupDialog";
 import { ParameterDialog } from "../components/ParameterDialog";
 import { PreferencesDialog } from "../components/PreferencesDialog";
 import { PrintPreviewDialog } from "../components/PrintPreviewDialog";
+import { RegularPolygonDialog } from "../components/RegularPolygonDialog";
 import { RelabelDialog } from "../components/RelabelDialog";
 import { ScriptDialog } from "../components/ScriptDialog";
 import { AddTableDataDialog, RemoveTableDataDialog } from "../components/TableDataDialog";
@@ -28,6 +29,7 @@ import type { Buttons } from "./buttons";
 import type { Custom } from "./customs";
 import { pagePicture, printPage } from "./printing";
 import type { Dialogs as DialogState } from "./useDialogs";
+import type { Regular } from "./useRegular";
 import type { Relabelling } from "./useRelabel";
 import type { Settings } from "./useSettings";
 import type { Moves } from "./useTransforms";
@@ -37,6 +39,7 @@ interface DialogsProps {
   dialogs: DialogState;
   numbers: Numbers;
   relabel: Relabelling;
+  regular: Regular;
   buttons: Buttons;
   custom: Custom;
   settings: Settings;
@@ -56,6 +59,7 @@ export function Dialogs({
   dialogs,
   numbers,
   relabel,
+  regular,
   buttons,
   custom,
   settings,
@@ -188,6 +192,13 @@ export function Dialogs({
         />
       )}
 
+      {regular.asked && (
+        <RegularPolygonDialog
+          at={regular.asked.at}
+          onApply={regular.draw}
+          onCancel={regular.drop}
+        />
+      )}
       {relabel.asked && (
         <RelabelDialog
           at={relabel.asked.at}

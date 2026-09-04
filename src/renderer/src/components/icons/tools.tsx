@@ -84,25 +84,18 @@ export function StraightedgeIcon() {
   );
 }
 
-/** The three polygon tools: the fill, the fill with its edges, the edges. */
-export function PolygonEdgesIcon() {
-  return (
-    <ToolSvg>
-      <path
-        d="M10 2.6 L17.4 8 L14.6 16.8 L5.4 16.8 L2.6 8 Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-    </ToolSvg>
-  );
-}
+/**
+ * A polygon is any shape clicked out corner by corner, so it is drawn as a
+ * trapezium: irregular enough that nothing about it reads as a rule. The
+ * regular one is drawn as a pentagon, which does.
+ */
+const TRAPEZIUM = "M6.4 5.2 L13.6 5.2 L17.2 15.6 L2.8 15.6 Z";
 
 export function PolygonFillIcon() {
   return (
     <ToolSvg>
       <path
-        d="M10 2.6 L17.4 8 L14.6 16.8 L5.4 16.8 L2.6 8 Z"
+        d={TRAPEZIUM}
         fill="currentColor"
         stroke="currentColor"
         strokeWidth="1.2"
@@ -114,6 +107,21 @@ export function PolygonFillIcon() {
 }
 
 export function PolygonIcon() {
+  return (
+    <ToolSvg>
+      <path
+        d={TRAPEZIUM}
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        fill="var(--color-tool-polygon-fill)"
+      />
+    </ToolSvg>
+  );
+}
+
+/** The regular polygon: every side the same, so it is drawn as one that is. */
+export function PentagonIcon() {
   return (
     <ToolSvg>
       <path

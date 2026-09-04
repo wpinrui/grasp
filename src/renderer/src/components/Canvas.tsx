@@ -32,6 +32,7 @@ import {
   createInterior,
   createPoint,
   distance,
+  edgesRound,
   endsById,
   isArc,
   isButton,
@@ -241,6 +242,12 @@ interface CanvasProps {
   relabelName: string | null;
   onRelabelAsk: (id: string, at: { x: number; y: number }) => void;
   onRelabelGive: (id: string) => void;
+  /**
+   * A regular polygon was asked for: where its middle goes on the sheet, and
+   * where on the screen the box asking should stand. The two are different
+   * coordinate spaces, so they are named rather than ordered.
+   */
+  onRegularAsk: (asked: { spot: Position; at: { x: number; y: number } }) => void;
   /** What the Marker is armed with: equal sides, parallel sides, or an angle. */
   markForm: string;
   /** The whole kinds being kept out of the way, from the Hidden panel. */
@@ -291,6 +298,7 @@ export function Canvas({
   relabelName,
   onRelabelAsk,
   onRelabelGive,
+  onRegularAsk,
   markForm,
   hiddenKinds,
   spotlight,
@@ -480,6 +488,8 @@ export function Canvas({
   const measuring = tool === "measure" ? measureKind : null;
   /** What the Marker would mark, or null while it is not the tool that is up. */
   const marking = tool === "marker" ? (markForm as MarkForm) : null;
+  /** Whether the polygon tool is armed for the regular one. */
+  const regularArmed = polygonKind === "regular";
   /** Whether the Text tool is handing out letters rather than making captions. */
   const relabelling = tool === "text" && labelKind === "relabel";
   /** The tools that put a point down, and so say what a click would land on. */
@@ -612,7 +622,13 @@ export function Canvas({
     );
   }, [captionWanted]);
 
-  // Switching tools drops whatever the straightedge was halfway through.
+  // Switching tools drops whatever the straightedge was halfway through, and so
+  // does arming the polygon for the regular one: it is not clicked out corner by
+  // corner, so a trace left in flight would strand its open gesture and the next
+  // thing to cancel would roll the page back over what came after. Crossing into
+  // or out of that arming is what does it; moving between the fill and the fill
+  // with its edges leaves a trace alone, since both are clicked out the same way
+  // and the arming is read again at the close.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the tool changing is the whole point
   useEffect(() => {
     sketch.cancelGesture();
@@ -625,7 +641,7 @@ export function Canvas({
     setPanel(null);
     setReadingPanel(null);
     setMiddle(null);
-  }, [activeTool, sketch.cancelGesture]);
+  }, [activeTool, regularArmed, sketch.cancelGesture]);
 
   /** Put down the first of the two points a drawing tool needs. */
   function startDrawing(found: Snap | null, spot: Position) {
@@ -697,8 +713,8 @@ export function Canvas({
   }
 
   /**
-   * Close the polygon and build it: the fill, its edges, or both, whichever
-   * the tool is armed with. The edges close back to the first corner, so a
+   * Close the polygon and build it: the fill, and its edges too unless the tool
+   * is armed for the fill alone. The edges close back to the first corner, so a
    * polygon is a ring however it was clicked out.
    */
   function closePolygon() {
@@ -706,13 +722,9 @@ export function Canvas({
     const before = sketch.read();
     const corners = tracing.ids;
     const made: SketchObject[] = [];
-    if (polygonKind !== "edges") made.push(createInterior(corners));
+    made.push(createInterior(corners));
     if (polygonKind !== "interior") {
-      made.push(
-        ...corners.map((corner, index) =>
-          lineThrough("segment", [corner, corners[(index + 1) % corners.length]]),
-        ),
-      );
+      made.push(...edgesRound(corners));
     }
     sketch.updateGesture({
       objects: [...before.objects, ...made],
@@ -853,7 +865,11 @@ export function Canvas({
     }
     if (tool === "polygon") {
       const aim = aimAt(at, aimingNow());
-      polygonClick(aim.found, aim.spot);
+      // The regular one is not clicked out corner by corner. One click says
+      // where the middle goes, and the box that opens says what shape.
+      if (regularArmed) {
+        onRegularAsk({ spot: aim.spot, at: { x: event.clientX, y: event.clientY } });
+      } else polygonClick(aim.found, aim.spot);
       return;
     }
     // A drawing tool puts its first point down on the press, so it can be

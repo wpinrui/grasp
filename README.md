@@ -18,7 +18,7 @@ Enjoy creating sketches with a user-first set of panels. Iterate rapidly with ke
 
 ## Features
 
-- **Construct.** Points, segments, rays, lines, circles, arcs and fills. Midpoints, intersections, parallels, perpendiculars, angle bisectors, points that slide along a path, and loci.
+- **Construct.** Points, segments, rays, lines, circles, arcs and fills. Midpoints, intersections, parallels, perpendiculars, angle bisectors, regular polygons, points that slide along a path, and loci.
 - **Transform.** Translate, rotate, dilate and reflect to create more advanced sketches.
 - **Measure.** Keep track of lengths, areas, angles, ratios and more as you iterate your sketch.
 - **Numbers.** Set parameters, do step-by-step calculations and watch them update.

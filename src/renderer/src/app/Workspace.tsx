@@ -23,6 +23,7 @@ import type { Buttons } from "./buttons";
 import type { Naming } from "./labels";
 import type { Palette as PaletteBar } from "./palette";
 import type { Dialogs } from "./useDialogs";
+import type { Regular } from "./useRegular";
 import type { Relabelling } from "./useRelabel";
 import type { Settings } from "./useSettings";
 import type { Tools } from "./useTooling";
@@ -38,6 +39,7 @@ interface WorkspaceProps {
   dialogs: Dialogs;
   naming: Naming;
   relabel: Relabelling;
+  regular: Regular;
   numbers: Numbers;
   buttons: Buttons;
   palette: PaletteBar;
@@ -58,6 +60,7 @@ export function Workspace({
   dialogs,
   naming,
   relabel,
+  regular,
   numbers,
   buttons,
   palette,
@@ -93,8 +96,8 @@ export function Workspace({
           pointSize={tools.pointSize}
           view={sketch.view}
           onView={sketch.setView}
-          lineForm={(tools.variants.straightedge ?? "segment") as LineForm}
-          polygonKind={tools.variants.polygon ?? "interior"}
+          lineForm={tools.variants.straightedge as LineForm}
+          polygonKind={tools.variants.polygon}
           picking={moves.dialog !== null || dialogs.calculator !== null}
           onPick={moves.pick}
           preview={moves.preview}
@@ -120,13 +123,14 @@ export function Workspace({
           }}
           onViewport={tools.setViewport}
           snapping={settings.snapping}
-          measureKind={tools.variants.measure ?? "length"}
-          arrowKind={tools.variants.arrow ?? "all"}
-          labelKind={tools.variants.text ?? "caption"}
+          measureKind={tools.variants.measure}
+          arrowKind={tools.variants.arrow}
+          labelKind={tools.variants.text}
           relabelName={relabel.nextName}
           onRelabelAsk={relabel.ask}
           onRelabelGive={relabel.give}
-          markForm={tools.variants.marker ?? "equal"}
+          onRegularAsk={regular.ask}
+          markForm={tools.variants.marker}
           hiddenKinds={tools.hiddenKinds}
           editing={tools.editing}
           onEditing={tools.setEditing}
