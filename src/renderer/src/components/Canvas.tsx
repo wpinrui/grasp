@@ -3,16 +3,13 @@ import {
   type MouseEvent,
   type PointerEvent,
   type RefObject,
-  type UIEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type WheelEvent,
 } from "react";
-import { insertAtCaret, linkHtml, plainText } from "../sketch/captions";
-import { LABEL_REACH, type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
+import { type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
 import {
   anglesAt,
   angleWanted,
@@ -26,18 +23,15 @@ import {
   sayQuantity,
 } from "../sketch/measure";
 import {
-  ANGLE_RADIUS,
   alongPath,
   type CaptionAlign,
   centreOf,
   clipToRect,
   contentBounds,
   createAngleMark,
-  createCaption,
   createCircle,
   createInterior,
   createPoint,
-  createTick,
   distance,
   distanceToPath,
   endsById,
@@ -57,12 +51,10 @@ import {
   isValue,
   isWriting,
   type LabelState,
-  LEAST_ANGLE_RADIUS,
   type LineForm,
   lineThrough,
   type MarkForm,
   markAlong,
-  markReach,
   markShape,
   markStrokes,
   markSweep,
@@ -71,7 +63,6 @@ import {
   objectAt,
   objectsTouching,
   type PanFrom,
-  type PathGeometry,
   type PointSize,
   type Position,
   pannedView,
@@ -85,7 +76,6 @@ import {
   type SketchCaption,
   type SketchFunction,
   type SketchLine,
-  type SketchMark,
   type SketchMeasurement,
   type SketchObject,
   type SketchParameter,
@@ -94,8 +84,6 @@ import {
   settle,
   slackAt,
   spotOnPath,
-  tangentOnPath,
-  toSheet,
   union,
   type View,
 } from "../sketch/model";
@@ -125,22 +113,17 @@ import { Handles, Marquee, Snapped } from "./canvas/layers/Snapping";
 import { litWith } from "./canvas/lighting";
 import { type Marking, markUnder } from "./canvas/marks";
 import {
-  angleMarkOn,
-  angleReadingSpot,
   angleWritten,
   type Measuring,
   pointUnder,
   readingAlready,
   readingBox,
   readingFrom,
-  sameAngle,
 } from "./canvas/readings";
 import { SheetProvider } from "./canvas/SheetContext";
 import {
   ANGLE_AIM,
-  ANGLE_ROOM,
   CAPTION_WIDTH,
-  clampScale,
   DRAG_THRESHOLD,
   DRAW_HOLD,
   DRAW_REACH,
@@ -154,14 +137,11 @@ import {
   PAN_FINGERS,
   type Pending,
   type Snap,
-  sameReading,
   snapKey,
   stopAbove,
   stopBelow,
   type Tracing,
   type Travel,
-  WHEEL_ZOOM,
-  type Written,
 } from "./canvas/sheet";
 import {
   type Aiming,
@@ -172,6 +152,11 @@ import {
   spanOfLocus,
   travelOf,
 } from "./canvas/steps";
+import { useCaptions } from "./canvas/useCaptions";
+import { useLabelDrag } from "./canvas/useLabelDrag";
+import { useMarking } from "./canvas/useMarking";
+import { useReading } from "./canvas/useReading";
+import { useView } from "./canvas/useView";
 import type { HiddenKinds } from "./HiddenPanel";
 import { MarkPanel } from "./MarkPanel";
 import { MeasurementBox } from "./MeasurementBox";
@@ -382,8 +367,6 @@ export function Canvas({
   const [snap, setSnap] = useState<Snap | null>(null);
   /** The label being typed into, and what has been typed so far. */
   const [naming, setNaming] = useState<LabelEdit | null>(null);
-  /** A label being dragged: where it started, and where the pointer did. */
-  const dragged = useRef<{ id: string; off: Position; from: Position } | null>(null);
   /** What a drag that began inside a caption or a measurement has hold of. */
   const written = useRef<Held | null>(null);
   /** The box the Text tool is dragging out for a caption that is not made yet. */
@@ -394,10 +377,6 @@ export function Canvas({
    * angles there is being asked for, the reflex one included.
    */
   const [arming, setArming] = useState<AngleDrag | null>(null);
-  /** The mark whose panel is open, or null with no panel showing. */
-  const [panel, setPanel] = useState<string | null>(null);
-  /** The reading whose panel is open, which only a length ever has. */
-  const [readingPanel, setReadingPanel] = useState<string | null>(null);
   /**
    * Which angle at a corner was meant. A corner with more than two sides
    * running out of it makes more than one angle, and a click on the point says
@@ -425,30 +404,6 @@ export function Canvas({
   const armFrom = useRef<string | null>(null);
   /** The midpoint a marking tool would snap to, lit while the pointer is near. */
   const [middle, setMiddle] = useState<Position | null>(null);
-  /**
-   * What the last mark of each kind was left as, so the next one comes out the
-   * same rather than starting from one stroke every time. `way` is the way the
-   * last arrowheads pointed, in sheet coordinates, so a second pair of parallel
-   * sides is marked the same way round as the first without being told.
-   */
-  const lastMark = useRef<{
-    equal: number;
-    parallel: number;
-    angle: number;
-    way: Position | null;
-    radius: number;
-  }>({ equal: 1, parallel: 1, angle: 1, way: null, radius: ANGLE_RADIUS });
-  /**
-   * What the Measure tool would write from where the pointer is, drawn as a
-   * ghost so the number can be seen before it is asked for. Null over anything
-   * the armed measure cannot be taken from.
-   */
-  const [previewReading, setPreviewReading] = useState<Written | null>(null);
-  /**
-   * The reading a click would go to rather than write, lit where it sits. Set
-   * instead of a ghost, since there is no new number to show.
-   */
-  const [previewHeld, setPreviewHeld] = useState<string | null>(null);
   /** Whether the Text tool is over something it could put a label on. */
   const [overNamed, setOverNamed] = useState(false);
   /** An object a Hot Text link is being pointed at, lit up where it sits. */
@@ -467,14 +422,6 @@ export function Canvas({
   const [, setMeasured] = useState(0);
   /** Set once a right-button pan has gone somewhere, so it is not a click. */
   const panMoved = useRef(false);
-  /**
-   * The scroll positions this component last put on the scrollbars, read back
-   * after writing so they are the rounded and clamped numbers the browser
-   * settled on. A scroll event reporting one of them is this component's own
-   * write echoing back, not the user moving anything, and moving the view on it
-   * would send the sheet drifting.
-   */
-  const wrote = useRef({ x: 0, y: 0 });
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [shiftHeld, setShiftHeld] = useState(false);
   const { objects: everything, selection } = sketch.state;
@@ -536,6 +483,39 @@ export function Canvas({
   // belong to the label, the caption and its grip, which carry their own.
   const cursor = tool === "text" && overNamed ? "text-label" : tool;
 
+  const {
+    panel,
+    setPanel,
+    lastMark,
+    addMark,
+    canSwap,
+    clearOfCorner,
+    dragMark,
+    dropMark,
+    flipMark,
+    flipReflex,
+    layTick,
+    markAngle,
+    ownMark,
+    panelSpotOf,
+    rememberRadius,
+    setForm,
+    setSquare,
+    setStrokes,
+  } = useMarking({ sketch, objects, settled, scale, view, marking });
+
+  const {
+    panel: readingPanel,
+    setPanel: setReadingPanel,
+    offering,
+    offer,
+    offerNothing,
+    setBounds,
+    setLeaders,
+    setPlaces,
+    setReflex: setReadingReflex,
+  } = useReading(sketch);
+
   const onScreen = {
     x: view.x,
     y: view.y,
@@ -553,14 +533,8 @@ export function Canvas({
    */
   const area = union(drawn ? union(drawn, origin) : origin, onScreen);
 
-  // The scroll and wheel handlers fire outside the render that made them, so
-  // they read these from refs rather than a closure that has gone stale.
-  const areaNow = useRef(area);
-  areaNow.current = area;
-  const viewNow = useRef(view);
-  viewNow.current = view;
-  const scaleNow = useRef(scale);
-  scaleNow.current = scale;
+  const { handleScrollX, handleScrollY, handleWheel, positionOf, scaleNow, viewNow, zoomTo } =
+    useView({ view, onView, sheet, horizontal, vertical, viewport, area, zoomable });
 
   useLayoutEffect(() => {
     const element = sheet.current;
@@ -644,80 +618,6 @@ export function Canvas({
     setReadingPanel(null);
     setMiddle(null);
   }, [activeTool, sketch.cancelGesture]);
-
-  // Every render, because the area shifts under the view as well as with it.
-  useLayoutEffect(() => {
-    const across = horizontal.current;
-    const down = vertical.current;
-    if (across) {
-      across.scrollLeft = (view.x - area.x) * scale;
-      wrote.current.x = across.scrollLeft;
-    }
-    if (down) {
-      down.scrollTop = (view.y - area.y) * scale;
-      wrote.current.y = down.scrollTop;
-    }
-  });
-
-  /**
-   * Where the scrollbar is now, or null when it is only echoing back what this
-   * component wrote. Measured against the write rather than against where the
-   * view is, because the two part company: the area moves under the view as
-   * the sheet is panned, so a scroll event that arrives a frame or two late
-   * carries a number that is right for the write it came from and wrong for
-   * the view by then. Reading those as the user scrolling is what set the
-   * sheet drifting after a pan was released with the mouse still moving.
-   */
-  function scrolledTo(at: number, axis: "x" | "y"): number | null {
-    if (Math.abs(at - wrote.current[axis]) < 0.5) return null;
-    wrote.current[axis] = at;
-    return at;
-  }
-
-  function handleScrollX(event: UIEvent<HTMLDivElement>) {
-    const at = scrolledTo(event.currentTarget.scrollLeft, "x");
-    if (at === null) return;
-    onView({ ...viewNow.current, x: areaNow.current.x + at / scaleNow.current });
-  }
-
-  function handleScrollY(event: UIEvent<HTMLDivElement>) {
-    const at = scrolledTo(event.currentTarget.scrollTop, "y");
-    if (at === null) return;
-    onView({ ...viewNow.current, y: areaNow.current.y + at / scaleNow.current });
-  }
-
-  /** Where in the sheet element a pointer is, in screen pixels. */
-  function screenOf(event: { clientX: number; clientY: number }): Position | null {
-    const bounds = sheet.current?.getBoundingClientRect();
-    return bounds ? { x: event.clientX - bounds.left, y: event.clientY - bounds.top } : null;
-  }
-
-  function positionOf(
-    event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>,
-  ): Position | null {
-    const bounds = sheet.current?.getBoundingClientRect();
-    return bounds ? toSheet(bounds, event, { view, scale }) : null;
-  }
-
-  /** Zoom, holding the sheet still under one point of the canvas. */
-  function zoomAround(next: number, at: Position) {
-    const scaled = clampScale(next);
-    const was = scaleNow.current;
-    const held = { x: viewNow.current.x + at.x / was, y: viewNow.current.y + at.y / was };
-    onView({ x: held.x - at.x / scaled, y: held.y - at.y / scaled, scale: scaled });
-  }
-
-  /** Minus, plus and the readout all hold the middle of the canvas still. */
-  function zoomTo(next: number) {
-    zoomAround(next, { x: viewport.width / 2, y: viewport.height / 2 });
-  }
-
-  function handleWheel(event: WheelEvent<HTMLDivElement>) {
-    if (!zoomable) return;
-    const at = screenOf(event);
-    if (!at) return;
-    zoomAround(scaleNow.current * Math.exp(-event.deltaY * WHEEL_ZOOM), at);
-  }
 
   /**
    * What a drag on these objects actually moves, and where each of them starts,
@@ -1086,77 +986,6 @@ export function Canvas({
     if (held) sketch.beginGesture();
   }
 
-  /** How a length is drawn out, and whether it carries its dotted lines. */
-  function setBounds(id: string, bounds: "broken" | "full" | undefined) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, bounds } : object,
-      ),
-    });
-  }
-
-  /**
-   * An angle read the long way round. The mark on that angle goes round with
-   * it: the arcs are what say which of the angles at that corner the number is
-   * about, so they cannot say one thing while the number says the other.
-   */
-  /**
-   * How far one reading is written out. It is pinned on that reading, so it
-   * keeps what it was given while the rest of the sheet follows Preferences.
-   */
-  function setPlaces(id: string, places: number) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, places } : object,
-      ),
-    });
-  }
-
-  function setReadingReflex(id: string, reflex: boolean) {
-    const before = sketch.read();
-    const reading = before.objects.find((object) => object.id === id);
-    if (!reading || !isMeasurement(reading)) return;
-    const [one, corner, other] = reading.of;
-    // Where this is the only number on that angle, the mark goes round with it.
-    // Where both sizes of the angle are written, the arcs cannot agree with
-    // both, so they stay where they are.
-    const alone =
-      before.objects.filter(
-        (object) =>
-          isMeasurement(object) && object.measure === "angle" && sameAngle(object.of, reading.of),
-      ).length === 1;
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) => {
-        if (object.id === id) return { ...reading, reflex };
-        if (
-          alone &&
-          isMark(object) &&
-          !("path" in object) &&
-          object.corner === corner &&
-          object.arms.every((arm) => arm === one || arm === other)
-        ) {
-          return { ...object, reflex };
-        }
-        return object;
-      }),
-    });
-  }
-
-  function setLeaders(id: string, leaders: boolean) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, leaders } : object,
-      ),
-    });
-  }
-
   /** The arcs the angle being dragged out would land as, drawn while it is. */
   function armingArcs(): string[] {
     // Nothing is aimed at yet, so nothing is drawn: arcs here would show a
@@ -1194,241 +1023,6 @@ export function Canvas({
     return angleWanted(armsAt(corner, objects, settled), bearing);
   }
 
-  /**
-   * What dragging a mark does: a tick slides along the path it rides, and an
-   * angle mark's arcs stand further off its corner. A mark is never a handle on
-   * the figure, so no tool drags anything else by it.
-   */
-  function dragMark(mark: SketchMark, at: Position) {
-    const before = sketch.read();
-    if ("path" in mark) {
-      const along = pathIn(settled, mark.path);
-      if (!along) return;
-      const to = alongPath(along, at);
-      sketch.updateGesture({
-        ...before,
-        objects: before.objects.map((object) =>
-          object.id === mark.id && isMark(object) && "path" in object
-            ? { ...object, at: to }
-            : object,
-        ),
-      });
-      return;
-    }
-    const corner = settled.points.get(mark.corner);
-    if (!corner) return;
-    const radius = Math.max(LEAST_ANGLE_RADIUS, distance(corner, at) * scale);
-    sketch.updateGesture({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === mark.id && isMark(object) && !("path" in object)
-          ? { ...object, radius }
-          : object,
-      ),
-    });
-  }
-
-  /**
-   * Whether a tick can be swapped for the other kind. A path carries one of
-   * each at most, so where the other kind is already there the swap would have
-   * nowhere to land and the panel does not offer it.
-   */
-  function canSwap(mark: SketchMark | null): boolean {
-    if (!mark || !("path" in mark)) return false;
-    const other = mark.form === "equal" ? "parallel" : "equal";
-    return !objects.some(
-      (object) =>
-        isMark(object) && "path" in object && object.path === mark.path && object.form === other,
-    );
-  }
-
-  /** An angle mark left at a new radius is what the next one comes out at. */
-  function rememberRadius(id: string) {
-    const now = sketch.read().objects.find((object) => object.id === id);
-    if (now && isMark(now) && !("path" in now) && now.radius) {
-      lastMark.current.radius = now.radius;
-    }
-  }
-
-  /** Whether a mark is the one the tool that is up deals in. */
-  function ownMark(mark: SketchMark | null): boolean {
-    return mark !== null && mark.form === marking;
-  }
-
-  /** Where a mark is drawn, in screen pixels, which is where its panel goes. */
-  function panelSpotOf(id: string): Position | null {
-    const mark = objects.find((object) => object.id === id);
-    if (!mark || !isMark(mark)) return null;
-    const shape = markShape(mark, { settled, objects, scale });
-    if (!shape) return null;
-    // An angle mark turns about its corner, so its panel clears the arcs.
-    const lift = shape.form === "angle" ? shape.radius + 16 : 12;
-    return {
-      x: (shape.at.x - view.x) * scale,
-      y: (shape.at.y - view.y) * scale - lift,
-    };
-  }
-
-  /** One mark, changed, as one undo step. */
-  function reshape(id: string, change: (mark: SketchMark) => SketchMark) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMark(object) ? change(object) : object,
-      ),
-    });
-  }
-
-  /** Which way a tick's arrowheads point on the sheet, once it is drawn. */
-  function wayOf(mark: SketchMark): Position | null {
-    const shape = markShape(mark, { settled, objects, scale });
-    return shape && shape.form !== "angle" ? shape.way : null;
-  }
-
-  /** What the panel does: the strokes, the direction, the form and the bin. */
-  function setStrokes(id: string, strokes: number) {
-    reshape(id, (mark) => ({ ...mark, strokes }));
-    const mark = objects.find((object) => object.id === id);
-    if (mark && isMark(mark)) lastMark.current[mark.form] = strokes;
-  }
-
-  function flipMark(id: string) {
-    reshape(id, (mark) => ("path" in mark ? { ...mark, flipped: !mark.flipped } : mark));
-    const mark = objects.find((object) => object.id === id);
-    if (mark && isMark(mark) && "path" in mark) {
-      const way = wayOf(mark);
-      // It is about to be drawn the other way round, so that is what to
-      // remember for the next one.
-      lastMark.current.way = way ? { x: -way.x, y: -way.y } : null;
-    }
-  }
-
-  function flipReflex(id: string) {
-    const mark = objects.find((object) => object.id === id);
-    if (!mark || !isMark(mark) || "path" in mark) return;
-    // Turning it round would make it the mark the other side of these arms
-    // already is, and one angle is marked once.
-    const twin = objects.some(
-      (object) =>
-        isMark(object) &&
-        !("path" in object) &&
-        object.id !== id &&
-        object.corner === mark.corner &&
-        object.arms.every((arm) => mark.arms.includes(arm)) &&
-        (object.reflex === true) !== (mark.reflex === true),
-    );
-    if (twin) return;
-    const reflex = mark.reflex !== true;
-    const turned = { ...mark, reflex };
-    // One angle marked once and read once means the mark and the number can
-    // only be about the same angle, so the number goes round with the mark,
-    // over to the other side of the corner. With more than one of either it is
-    // no longer clear which belongs to which, so only the mark turns.
-    const readings = objects.filter(
-      (object): object is SketchMeasurement =>
-        isMeasurement(object) &&
-        object.measure === "angle" &&
-        object.of.length === 3 &&
-        object.of[1] === mark.corner &&
-        mark.arms.every((arm) => object.of.includes(arm)),
-    );
-    const marked = objects.filter(
-      (object) =>
-        isMark(object) &&
-        !("path" in object) &&
-        object.corner === mark.corner &&
-        object.arms.every((arm) => mark.arms.includes(arm)),
-    );
-    const alone = readings.length === 1 && marked.length === 1 ? readings[0] : null;
-    const hangs = alone
-      ? angleReadingSpot({ reading: alone, mark: turned, reflex }, measuringNow())
-      : null;
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) => {
-        if (object.id === id) return turned;
-        if (alone && object.id === alone.id && isMeasurement(object)) {
-          return { ...object, reflex, ...(hangs ?? {}) };
-        }
-        return object;
-      }),
-    });
-  }
-
-  function setSquare(id: string, square: boolean) {
-    reshape(id, (mark) => ("path" in mark ? mark : { ...mark, square }));
-  }
-
-  function setForm(id: string, form: "equal" | "parallel") {
-    reshape(id, (mark) => ("path" in mark ? { ...mark, form } : mark));
-    const mark = objects.find((object) => object.id === id);
-    if (mark && isMark(mark)) lastMark.current[form] = mark.strokes;
-  }
-
-  function dropMark(id: string) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.filter((object) => object.id !== id),
-      selection: before.selection.filter((held) => held !== id),
-    });
-    setPanel(null);
-  }
-
-  /**
-   * A new tick on a path. It comes out the way the last one of its kind was
-   * left, and where a mark of the other kind already sits at that spot the two
-   * are grouped: that one moves to the clicked point as well, so the pair ends
-   * up centred on it with neither drawn over the other.
-   *
-   * A path says a thing once: it carries one set of bars and one arrowhead at
-   * most. Clicking a path that already says what this tool says opens that
-   * mark's panel instead of laying a second one, so a click is either making
-   * the mark or getting at the one that is there, and never both.
-   */
-  function layTick(
-    on: { path: SketchObject; along: PathGeometry; spot: Position },
-    beside?: SketchMark,
-  ) {
-    const { path, along, spot } = on;
-    const form = marking as "equal" | "parallel";
-    const already = objects.find(
-      (object) =>
-        isMark(object) && "path" in object && object.path === path.id && object.form === form,
-    );
-    if (already) {
-      setPanel(already.id);
-      return;
-    }
-    const at = markAlong(along, spot, scale);
-    const way = tangentOnPath(along, at);
-    const last = lastMark.current.way;
-    const flipped = form === "parallel" && last !== null && way.x * last.x + way.y * last.y < 0;
-    const tick = createTick({
-      form,
-      path: path.id,
-      at,
-      strokes: lastMark.current[form],
-      flipped,
-    });
-    lastMark.current.way = flipped ? { x: -way.x, y: -way.y } : way;
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: [
-        ...before.objects.map((object) =>
-          beside && object.id === beside.id && isMark(object) && "path" in object
-            ? { ...object, at }
-            : object,
-        ),
-        tick,
-      ],
-    });
-    setPanel(tick.id);
-  }
-
   /** The path under the pointer, which is what a tick rides. */
   function pathUnder(at: Position, straightOnly = false): SketchObject | null {
     for (let index = objects.length - 1; index >= 0; index -= 1) {
@@ -1461,25 +1055,6 @@ export function Canvas({
       corner,
       arms: [a[0] === corner ? a[1] : a[0], b[0] === corner ? b[1] : b[0]] as [string, string],
     };
-  }
-
-  /** Mark one angle by the two arms it runs between, or open the mark already on it. */
-  function markAngle(corner: string, arms: [string, string], reflex = false) {
-    const already = objects.find(
-      (object) =>
-        isMark(object) &&
-        !("path" in object) &&
-        object.corner === corner &&
-        object.arms.every((arm) => arms.includes(arm)) &&
-        (object.reflex === true) === reflex,
-    );
-    if (already) {
-      setPanel(already.id);
-      return;
-    }
-    const mark = angleMarkOn({ corner, arms, reflex }, null, measuringNow());
-    addMark(mark);
-    setPanel(mark.id);
   }
 
   /** Write the number for one angle, by the two arms it runs between. */
@@ -1546,27 +1121,6 @@ export function Canvas({
     };
   }
 
-  /**
-   * How far a new angle mark stands off a corner: past everything already
-   * marked there, so each angle at a corner gets a ring of its own. Two sets of
-   * arcs drawn at the same radius sit on top of one another, and then the
-   * second angle cannot be seen or clicked, which reads as a corner refusing to
-   * take more than one mark.
-   */
-  function clearOfCorner(corner: string): number {
-    const here = objects.filter(
-      (object) => isMark(object) && !("path" in object) && object.corner === corner,
-    ) as SketchMark[];
-    if (here.length === 0) return lastMark.current.radius;
-    const past = Math.max(...here.map((mark) => markReach(mark)));
-    return past + ANGLE_ROOM;
-  }
-
-  function addMark(mark: SketchMark) {
-    const before = sketch.read();
-    sketch.commit({ ...before, objects: [...before.objects, mark] });
-  }
-
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType === "touch" && fingers.current.has(event.pointerId)) {
       fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -1620,15 +1174,9 @@ export function Canvas({
       const over = positionOf(event);
       const would = over ? readingFrom(over, measuringNow()) : null;
       const already = would ? readingAlready(would, measuringNow()) : null;
-      // What is already there is lit rather than ghosted over: a click will go
-      // to it, and drawing a second copy of it on top would say otherwise.
-      setPreviewReading((was) =>
-        sameReading(was, already ? null : would) ? was : already ? null : would,
-      );
-      setPreviewHeld(already?.id ?? null);
-    } else if (previewReading || previewHeld) {
-      setPreviewReading(null);
-      setPreviewHeld(null);
+      offer(would, already?.id ?? null);
+    } else {
+      offerNothing();
     }
 
     // A plotting tool says what a click would land on: the point, the straight
@@ -1782,7 +1330,7 @@ export function Canvas({
       const pair = landed && landed.id !== fromSide ? cornerBetween(fromSide, landed.id) : null;
       if (pair) {
         setArming(null);
-        if (marking === "angle") markAngle(pair.corner, pair.arms);
+        if (marking === "angle") markAngle({ corner: pair.corner, arms: pair.arms });
         else readAngle(pair.corner, pair.arms);
         return;
       }
@@ -1870,7 +1418,7 @@ export function Canvas({
             return;
           }
           if (there.length === 1) {
-            markAngle(armed.corner, there[0].arms);
+            markAngle({ corner: armed.corner, arms: there[0].arms });
             return;
           }
           setChoosing({
@@ -2019,8 +1567,7 @@ export function Canvas({
   function handlePointerLeave() {
     setSnap(null);
     setOverNamed(false);
-    setPreviewReading(null);
-    setPreviewHeld(null);
+    offerNothing();
   }
 
   /**
@@ -2113,61 +1660,6 @@ export function Canvas({
     return createPoint(at, pointSize);
   }
 
-  /** Drag a label about within its reach of what it names. */
-  function moveLabel(id: string, off: Position) {
-    const held = Math.hypot(off.x, off.y);
-    const kept =
-      held <= LABEL_REACH
-        ? off
-        : { x: (off.x / held) * LABEL_REACH, y: (off.y / held) * LABEL_REACH };
-    const before = sketch.read();
-    sketch.updateGesture({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id ? { ...object, label: { ...object.label, off: kept } } : object,
-      ),
-    });
-  }
-
-  function startLabelDrag(event: PointerEvent<HTMLSpanElement>, id: string, off: Position) {
-    if (event.button !== 0) return;
-    event.stopPropagation();
-    // A label is picked on its own: what it names is not picked with it, so the
-    // palette is set on the label rather than on the object under it.
-    if (tool === "arrow") {
-      // A caption open to type into is what the bar is set on, so it is settled
-      // and put away before a label takes its place: only one of the two is
-      // ever the thing the palette is working on.
-      if (editing) closeCaption(null);
-      onLabelPick(id, event.shiftKey || event.ctrlKey);
-      sketch.select([]);
-    }
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragged.current = { id, off, from: { x: event.clientX, y: event.clientY } };
-    sketch.beginGesture();
-  }
-
-  function dragLabel(event: PointerEvent<HTMLSpanElement>) {
-    const state = dragged.current;
-    if (!state) return;
-    event.stopPropagation();
-    moveLabel(state.id, {
-      x: state.off.x + (event.clientX - state.from.x),
-      y: state.off.y + (event.clientY - state.from.y),
-    });
-  }
-
-  function dropLabel(event: PointerEvent<HTMLSpanElement>) {
-    const state = dragged.current;
-    dragged.current = null;
-    if (!state) return;
-    event.stopPropagation();
-    const moved =
-      Math.abs(event.clientX - state.from.x) + Math.abs(event.clientY - state.from.y) > 0;
-    if (moved) sketch.endGesture();
-    else sketch.cancelGesture();
-  }
-
   const captions = objects.filter(isCaption);
   // Everything written as a line of text with a name in front of it: the
   // numbers, and the functions, which say what they are rather than a number.
@@ -2214,41 +1706,6 @@ export function Canvas({
   }
 
   /**
-   * Change a caption. A drag reports every step of itself so the whole of it
-   * collapses into one undo step; everything else lands as its own.
-   */
-  function changeCaption(id: string, change: Partial<SketchCaption>, step: boolean) {
-    const before = sketch.read();
-    const next = {
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isCaption(object) ? { ...object, ...change } : object,
-      ),
-    };
-    if (step) sketch.commit(next);
-    else sketch.updateGesture(next);
-  }
-
-  /**
-   * Keep what was written, unless it says nothing: a caption that is blank when
-   * it is finished is taken off the sheet rather than left sitting there empty.
-   */
-  function settleCaption(id: string, html: string) {
-    const before = sketch.read();
-    const found = before.objects.find((object) => object.id === id);
-    if (!found || !isCaption(found)) return;
-    if (plainText(html) === "") {
-      sketch.commit({
-        objects: before.objects.filter((object) => object.id !== id),
-        selection: before.selection.filter((one) => one !== id),
-      });
-      if (editing === id) onEditing(null);
-      return;
-    }
-    if (found.html !== html) changeCaption(id, { html }, true);
-  }
-
-  /**
    * What a Hot Text link says: an object's name, and a measurement's value, so
    * a sentence that quotes a measurement reads the number as it stands now.
    */
@@ -2257,39 +1714,23 @@ export function Canvas({
     linkNames.set(measurement.id, readingFor(measurement).value);
   }
 
-  /** Drop a link to what was clicked into the caption being written. */
-  function insertLink(id: string) {
-    const element = editor.current;
-    const name = linkNames.get(id);
-    if (!element || !name || !editing) return;
-    insertAtCaret(element, linkHtml(id, name));
-    changeCaption(editing, { html: element.innerHTML }, true);
-  }
+  const { changeCaption, closeCaption, insertLink, makeCaption, settleCaption } = useCaptions({
+    sketch,
+    linkNames,
+    editing,
+    onEditing,
+    editor,
+    onLabelPick,
+    look: captionLook,
+  });
 
-  /**
-   * Put the open caption away, or open another, keeping whatever was written.
-   * The text lives in the browser while a caption is open, so it has to be read
-   * back before the field it was typed in goes.
-   */
-  function closeCaption(next: string | null) {
-    const element = editor.current;
-    const open = editing ? captions.find((one) => one.id === editing) : null;
-    if (open && element) settleCaption(open.id, element.innerHTML);
-    // A caption being written into is the one thing the palette is set on, so
-    // opening one lets go of the selection and of any picked label rather than
-    // setting the bar on two things at once. Putting one away hands it back to
-    // the selection, so the bar is still on it and its grip is still there, and
-    // a press on bare sheet with the Arrow lets go of that in its own turn. A
-    // caption left empty is gone by now, and a selection cannot hold what is
-    // not there.
-    if (next) {
-      sketch.select([]);
-      onLabelPick(null);
-    } else if (open && sketch.read().objects.some((one) => one.id === open.id)) {
-      sketch.select([open.id]);
-    }
-    onEditing(next);
-  }
+  const { dragLabel, dropLabel, startLabelDrag } = useLabelDrag({
+    sketch,
+    tool,
+    editing,
+    onCloseCaption: closeCaption,
+    onLabelPick,
+  });
 
   /** The hidden caption the dock is pointing at, if that is what it is. */
   function ghostAt(id: string | null): SketchCaption | null {
@@ -2328,14 +1769,6 @@ export function Canvas({
     if (!written.current) return;
     written.current = null;
     sketch.endGesture();
-  }
-
-  /** A caption of its own, made where it was asked for and opened to type in. */
-  function makeCaption(at: Position, width: number) {
-    const made = createCaption(at, width, captionLook);
-    const before = sketch.read();
-    sketch.commit({ objects: [...before.objects, made], selection: [made.id] });
-    onEditing(made.id);
   }
 
   /**
@@ -2435,7 +1868,7 @@ export function Canvas({
               <Paths />
               <Drawing tracing={tracing} pending={pending} middle={middle} />
               <Marks />
-              <MarkGhost mark={previewReading?.mark ?? null} />
+              <MarkGhost mark={offering.ghost?.mark ?? null} />
               <Arms arming={arming} arcs={armingArcs()} />
               <Resting
                 corner={choosing ? null : overCorner}
@@ -2497,7 +1930,7 @@ export function Canvas({
               at={panelSpot}
               onStrokes={setStrokes}
               onFlip={flipMark}
-              onReflex={flipReflex}
+              onReflex={(id) => flipReflex(id, measuringNow())}
               onSquare={setSquare}
               square={panelShape?.form === "angle" && panelShape.square}
               canSwap={canSwap(panelMark)}
@@ -2544,7 +1977,7 @@ export function Canvas({
               view={view}
               scale={scale}
               selected={selection.includes(measurement.id)}
-              lit={previewHeld === measurement.id}
+              lit={offering.held === measurement.id}
               tool={picking || !takesWriting ? "none" : tool}
               linking={editing !== null}
               onLink={insertLink}
@@ -2641,10 +2074,10 @@ export function Canvas({
           ))}
 
           {/* What the Measure tool would write from where the pointer is. */}
-          {previewReading && (
+          {offering.ghost && (
             <GhostReading
-              measurement={previewReading.reading}
-              reading={readingFor(previewReading.reading)}
+              measurement={offering.ghost.reading}
+              reading={readingFor(offering.ghost.reading)}
               view={view}
               scale={scale}
             />
@@ -2730,7 +2163,7 @@ export function Canvas({
               const { corner, way } = choosing;
               setChoosing(null);
               setShowingArms(null);
-              if (way === "mark") markAngle(corner, arms);
+              if (way === "mark") markAngle({ corner, arms });
               else readAngle(corner, arms);
             }}
             onShow={setShowingArms}
