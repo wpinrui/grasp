@@ -11,7 +11,6 @@ import {
   useState,
   type WheelEvent,
 } from "react";
-import { insertAtCaret, linkHtml, plainText } from "../sketch/captions";
 import { type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
 import {
   anglesAt,
@@ -32,7 +31,6 @@ import {
   clipToRect,
   contentBounds,
   createAngleMark,
-  createCaption,
   createCircle,
   createInterior,
   createPoint,
@@ -161,6 +159,7 @@ import {
   spanOfLocus,
   travelOf,
 } from "./canvas/steps";
+import { useCaptions } from "./canvas/useCaptions";
 import { useLabelDrag } from "./canvas/useLabelDrag";
 import { useMarking } from "./canvas/useMarking";
 import { useReading } from "./canvas/useReading";
@@ -550,14 +549,6 @@ export function Canvas({
     setPlaces,
     setReflex: setReadingReflex,
   } = useReading(sketch);
-
-  const { dragLabel, dropLabel, startLabelDrag } = useLabelDrag({
-    sketch,
-    tool,
-    editing,
-    onCloseCaption: closeCaption,
-    onLabelPick,
-  });
 
   const onScreen = {
     x: view.x,
@@ -1855,41 +1846,6 @@ export function Canvas({
   }
 
   /**
-   * Change a caption. A drag reports every step of itself so the whole of it
-   * collapses into one undo step; everything else lands as its own.
-   */
-  function changeCaption(id: string, change: Partial<SketchCaption>, step: boolean) {
-    const before = sketch.read();
-    const next = {
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isCaption(object) ? { ...object, ...change } : object,
-      ),
-    };
-    if (step) sketch.commit(next);
-    else sketch.updateGesture(next);
-  }
-
-  /**
-   * Keep what was written, unless it says nothing: a caption that is blank when
-   * it is finished is taken off the sheet rather than left sitting there empty.
-   */
-  function settleCaption(id: string, html: string) {
-    const before = sketch.read();
-    const found = before.objects.find((object) => object.id === id);
-    if (!found || !isCaption(found)) return;
-    if (plainText(html) === "") {
-      sketch.commit({
-        objects: before.objects.filter((object) => object.id !== id),
-        selection: before.selection.filter((one) => one !== id),
-      });
-      if (editing === id) onEditing(null);
-      return;
-    }
-    if (found.html !== html) changeCaption(id, { html }, true);
-  }
-
-  /**
    * What a Hot Text link says: an object's name, and a measurement's value, so
    * a sentence that quotes a measurement reads the number as it stands now.
    */
@@ -1898,39 +1854,24 @@ export function Canvas({
     linkNames.set(measurement.id, readingFor(measurement).value);
   }
 
-  /** Drop a link to what was clicked into the caption being written. */
-  function insertLink(id: string) {
-    const element = editor.current;
-    const name = linkNames.get(id);
-    if (!element || !name || !editing) return;
-    insertAtCaret(element, linkHtml(id, name));
-    changeCaption(editing, { html: element.innerHTML }, true);
-  }
+  const { changeCaption, closeCaption, insertLink, makeCaption, settleCaption } = useCaptions({
+    sketch,
+    captions,
+    linkNames,
+    editing,
+    onEditing,
+    editor,
+    onLabelPick,
+    look: captionLook,
+  });
 
-  /**
-   * Put the open caption away, or open another, keeping whatever was written.
-   * The text lives in the browser while a caption is open, so it has to be read
-   * back before the field it was typed in goes.
-   */
-  function closeCaption(next: string | null) {
-    const element = editor.current;
-    const open = editing ? captions.find((one) => one.id === editing) : null;
-    if (open && element) settleCaption(open.id, element.innerHTML);
-    // A caption being written into is the one thing the palette is set on, so
-    // opening one lets go of the selection and of any picked label rather than
-    // setting the bar on two things at once. Putting one away hands it back to
-    // the selection, so the bar is still on it and its grip is still there, and
-    // a press on bare sheet with the Arrow lets go of that in its own turn. A
-    // caption left empty is gone by now, and a selection cannot hold what is
-    // not there.
-    if (next) {
-      sketch.select([]);
-      onLabelPick(null);
-    } else if (open && sketch.read().objects.some((one) => one.id === open.id)) {
-      sketch.select([open.id]);
-    }
-    onEditing(next);
-  }
+  const { dragLabel, dropLabel, startLabelDrag } = useLabelDrag({
+    sketch,
+    tool,
+    editing,
+    onCloseCaption: closeCaption,
+    onLabelPick,
+  });
 
   /** The hidden caption the dock is pointing at, if that is what it is. */
   function ghostAt(id: string | null): SketchCaption | null {
@@ -1969,14 +1910,6 @@ export function Canvas({
     if (!written.current) return;
     written.current = null;
     sketch.endGesture();
-  }
-
-  /** A caption of its own, made where it was asked for and opened to type in. */
-  function makeCaption(at: Position, width: number) {
-    const made = createCaption(at, width, captionLook);
-    const before = sketch.read();
-    sketch.commit({ objects: [...before.objects, made], selection: [made.id] });
-    onEditing(made.id);
   }
 
   /**
