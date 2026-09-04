@@ -78,7 +78,7 @@ export function App() {
   /** Which dialog is open, and what it is holding while it is. */
   const dialogs = useDialogs();
   const sketch = useSketch();
-  const { canUndo, canRedo, remove, selectAll } = sketch;
+  const { undo, redo, canUndo, canRedo, remove, selectAll } = sketch;
   /** What the window remembers between runs: the dock, the steps, the paper. */
   const settings = useSettings({ sketch, phone, setSpotlight: tools.setSpotlight });
   // Whether a point that lands says its name straight away, told to the sketch
@@ -152,20 +152,8 @@ export function App() {
   const relabel = useRelabel({
     armed: tools.activeTool === "text" && tools.variants.text === "relabel",
     naming,
+    names,
   });
-  /**
-   * Undo and redo as the window does them. A relabel run's place in the
-   * alphabet steps back with the page, so a vertex clicked twice by mistake
-   * costs one step: the name it took is given back, and so is the letter.
-   */
-  function undo() {
-    relabel.steppedBack();
-    sketch.undo();
-  }
-  function redo() {
-    relabel.steppedForward();
-    sketch.redo();
-  }
   /** The buttons on the sheet, and what pressing one does. */
   const buttons = buttonActions({
     sketch,
@@ -415,8 +403,6 @@ export function App() {
         shared={shared}
         setPointSize={tools.setPointSize}
         clipboard={clipboard}
-        onUndo={undo}
-        onRedo={redo}
       />
       <Workspace
         sketch={sketch}

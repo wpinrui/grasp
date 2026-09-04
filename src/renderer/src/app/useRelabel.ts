@@ -3,42 +3,22 @@
  * clicked.
  *
  * The run belongs to the window rather than to the page, so it is no undo step
- * of its own. Where it has got to in the alphabet does step back with the page,
- * though, so a vertex clicked twice by mistake costs one Ctrl+Z: the name it
- * took is given back and so is the letter, leaving the rest of the run where it
- * was rather than shifted along by one.
+ * of its own. Where it has got to is not counted, though: it is read back off
+ * the page, as the letters it handed out that the page still holds. That is
+ * what keeps the two in step whatever else happens between two clicks. Undoing
+ * the last vertex named brings its letter round again, so a vertex clicked
+ * twice by mistake costs one Ctrl+Z; undoing anything else leaves the run
+ * exactly where it was.
  */
 
 import { useRef, useState } from "react";
+import { nameAt } from "../sketch/model";
 import type { Naming } from "./labels";
 
-/** The letters a run walks, which is the run points are named from. */
-const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-/** Whether a run can start at what was typed. One letter, and nothing else. */
-export function canStartAt(from: string): boolean {
-  return /^[A-Za-z]$/.test(from);
-}
-
-/**
- * The name a run started at one letter hands out on its nth click, counting
- * from zero. The alphabet wraps, so the name after Z is A again, which is what
- * the automatic run does too. A lower-case start walks the lower-case letters.
- */
-export function nameAt(from: string, step: number): string {
-  const letters = from === from.toLowerCase() ? CAPITALS.toLowerCase() : CAPITALS;
-  const at = letters.indexOf(from);
-  if (at < 0) return from;
-  return letters[(at + step) % letters.length];
-}
-
-/** Where a run has got to: the letter it began at, and how far along it is. */
+/** Where a run began, and the vertices it has named since, in that order. */
 interface Run {
   from: string;
-  /** How many names it has handed out, which is the next one's place in the run. */
-  handed: number;
-  /** How many it has given back, each of which a redo hands out again. */
-  ahead: number;
+  given: string[];
 }
 
 /** The vertex clicked with no run going, and where to ask about it. */
@@ -47,7 +27,28 @@ export interface Asked {
   at: { x: number; y: number };
 }
 
-export function useRelabel({ armed, naming }: { armed: boolean; naming: Naming }) {
+/**
+ * How far along a run is: the longest run of vertices from its start that still
+ * answer to the letters it gave them. The first one that does not is where the
+ * run has got back to, and the letter it had is the next one going.
+ */
+export function placeOf(run: Run, names: Map<string, string>): number {
+  let place = 0;
+  while (place < run.given.length && names.get(run.given[place]) === nameAt(run.from, place)) {
+    place += 1;
+  }
+  return place;
+}
+
+interface Relabelled {
+  /** Whether the Text tool is armed for a run at all. */
+  armed: boolean;
+  naming: Naming;
+  /** What everything on the page is called, which is where the run reads its place. */
+  names: Map<string, string>;
+}
+
+export function useRelabel({ armed, naming, names }: Relabelled) {
   const [run, setRun] = useState<Run | null>(null);
   const [asked, setAsked] = useState<Asked | null>(null);
   // The run belongs to the tool. Switching tool, or arming the Text tool for
@@ -60,14 +61,21 @@ export function useRelabel({ armed, naming }: { armed: boolean; naming: Naming }
       setAsked(null);
     }
   }
+  const place = run ? placeOf(run, names) : 0;
 
   return {
     asked,
     /** The name the next vertex clicked takes, or null before a run has started. */
-    nextName: run ? nameAt(run.from, run.handed) : null,
+    nextName: run ? nameAt(run.from, place) : null,
 
-    /** A vertex was clicked with no run going, so ask what letter to start at. */
-    ask: (id: string, at: { x: number; y: number }) => setAsked({ id, at }),
+    /**
+     * A vertex was clicked with no run going, so ask what letter to start at.
+     * A second click while the box is still up is left alone: the box stands
+     * beside the vertex it is about, and it is about the first one.
+     */
+    ask: (id: string, at: { x: number; y: number }) => {
+      if (!asked) setAsked({ id, at });
+    },
 
     dropAsk: () => setAsked(null),
 
@@ -75,30 +83,18 @@ export function useRelabel({ armed, naming }: { armed: boolean; naming: Naming }
     startFrom: (from: string) => {
       if (!asked) return;
       naming.labelAs(asked.id, nameAt(from, 0));
-      setRun({ from, handed: 1, ahead: 0 });
+      setRun({ from, given: [asked.id] });
       setAsked(null);
     },
 
     /** A vertex was clicked during a run, so it takes the next name going. */
     give: (id: string) => {
       if (!run) return;
-      naming.labelAs(id, nameAt(run.from, run.handed));
-      setRun({ ...run, handed: run.handed + 1, ahead: 0 });
+      naming.labelAs(id, nameAt(run.from, place));
+      // Whatever the page has given back since is dropped with it, so the run
+      // holds only the letters it is still standing behind.
+      setRun({ ...run, given: [...run.given.slice(0, place), id] });
     },
-
-    /** The page stepped back, so the last name handed out is the next one again. */
-    steppedBack: () =>
-      setRun((held) =>
-        held && held.handed > 0
-          ? { ...held, handed: held.handed - 1, ahead: held.ahead + 1 }
-          : held,
-      ),
-
-    /** The page stepped forward again, so the letter goes back where it was. */
-    steppedForward: () =>
-      setRun((held) =>
-        held && held.ahead > 0 ? { ...held, handed: held.handed + 1, ahead: held.ahead - 1 } : held,
-      ),
   };
 }
 

@@ -1,34 +1,49 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { canStartAt, nameAt } from "./useRelabel";
+import { placeOf } from "./useRelabel";
 
 /**
- * A relabel run hands out the letters in order from the one it was started at,
- * so what it says next depends on nothing but that letter and how many vertices
- * have been clicked. That is what lets an undo give a letter back: the run's
- * place steps back and the same name comes round again.
+ * A run reads its place off the page rather than counting the letters it has
+ * handed out, so nothing has to tell it about an undo. These are the cases that
+ * distinguish the two: undoing the vertex just named must bring its letter
+ * round again, and undoing anything else must leave the run alone.
  */
-describe("the letters a relabel run hands out", () => {
-  it("walks the alphabet from the letter it started at", () => {
-    expect([0, 1, 2].map((step) => nameAt("A", step))).toEqual(["A", "B", "C"]);
-    expect([0, 1, 2].map((step) => nameAt("P", step))).toEqual(["P", "Q", "R"]);
+describe("where a relabel run has got to", () => {
+  const run = { from: "A", given: ["one", "two", "three"] };
+  const held = (...names: string[]) =>
+    new Map(names.map((name, at) => [run.given[at], name] as const));
+
+  it("is as far as the page still answers to its letters", () => {
+    expect(placeOf(run, held("A", "B", "C"))).toBe(3);
   });
 
-  it("wraps, so the name after Z is A again", () => {
-    expect(nameAt("Z", 1)).toBe("A");
-    expect(nameAt("Y", 3)).toBe("B");
+  it("comes back one when the last vertex named gives its letter up", () => {
+    // What an undo of that naming leaves: two vertices still lettered, and the
+    // third back to whatever it was. C is the next name going again.
+    expect(placeOf(run, held("A", "B"))).toBe(2);
   });
 
-  it("walks the small letters from a small start", () => {
-    expect([0, 1].map((step) => nameAt("x", step))).toEqual(["x", "y"]);
-    expect(nameAt("z", 1)).toBe("a");
+  it("stands still while its own letters are untouched", () => {
+    // An undo of something else entirely: a label dragged, a hide, a paste.
+    // The run has not moved, so the next name is still C.
+    expect(placeOf(run, held("A", "B", "C"))).toBe(3);
   });
 
-  it("starts at one letter and nothing else", () => {
-    expect(canStartAt("A")).toBe(true);
-    expect(canStartAt("q")).toBe(true);
-    expect(canStartAt("")).toBe(false);
-    expect(canStartAt("AB")).toBe(false);
-    expect(canStartAt("1")).toBe(false);
+  it("stops at the first letter the page has lost, not the last", () => {
+    // The middle one was renamed by hand. The run stands behind A only.
+    expect(placeOf(run, held("A", "Q", "C"))).toBe(1);
+  });
+
+  it("is nowhere when the run's first vertex has lost its letter", () => {
+    expect(placeOf(run, held("Q", "B", "C"))).toBe(0);
+    expect(placeOf(run, new Map())).toBe(0);
+  });
+
+  it("counts a vertex named twice as one, so the second undo is not needed", () => {
+    // A vertex clicked twice by mistake: it holds B, so A is no longer on the
+    // page and the run is back at the start until the undo puts A back.
+    const twice = { from: "A", given: ["one", "one"] };
+    expect(placeOf(twice, new Map([["one", "B"]]))).toBe(0);
+    expect(placeOf(twice, new Map([["one", "A"]]))).toBe(1);
   });
 });
