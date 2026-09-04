@@ -22,6 +22,7 @@ export function useTooling() {
   /** What each tool with a flyout is armed with. */
   const [variants, setVariants] = useState<Record<string, string>>({
     straightedge: "segment",
+    polygon: "interior-edges",
     measure: "length",
     arrow: "all",
     marker: "equal",

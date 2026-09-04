@@ -56,6 +56,14 @@ export function useDialogs() {
   const [docOptions, setDocOptions] = useState(false);
   /** Which export is open, and so where its picture goes. */
   const [exportTo, setExportTo] = useState<ExportTo | null>(null);
+  /**
+   * A regular polygon waiting on what shape it is: where its middle goes on the
+   * sheet, and where on the screen the box asking should stand.
+   */
+  const [regular, setRegular] = useState<{
+    spot: { x: number; y: number };
+    at: { x: number; y: number };
+  } | null>(null);
   /** Whether the About box is up. */
   const [about, setAbout] = useState(false);
   /**
@@ -107,6 +115,8 @@ export function useDialogs() {
     setExportTo,
     about,
     setAbout,
+    regular,
+    setRegular,
     collecting,
     scriptWay,
     setScriptWay,

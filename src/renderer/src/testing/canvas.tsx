@@ -56,6 +56,7 @@ export interface HarnessProps {
   relabelName?: string | null;
   onRelabelAsk?: (id: string, at: { x: number; y: number }) => void;
   onRelabelGive?: (id: string) => void;
+  onRegularAsk?: (spot: { x: number; y: number }, at: { x: number; y: number }) => void;
 }
 
 /**
@@ -74,6 +75,7 @@ function Harness({
   relabelName = null,
   onRelabelAsk = () => {},
   onRelabelGive = () => {},
+  onRegularAsk = () => {},
 }: HarnessProps) {
   const sketch = useSketch();
   const laid = useRef(false);
@@ -102,6 +104,7 @@ function Harness({
       relabelName={relabelName}
       onRelabelAsk={onRelabelAsk}
       onRelabelGive={onRelabelGive}
+      onRegularAsk={onRegularAsk}
       spotlight={spotlight}
       onToggleLabel={() => {}}
       labelPick={[]}

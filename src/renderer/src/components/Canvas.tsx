@@ -241,6 +241,8 @@ interface CanvasProps {
   relabelName: string | null;
   onRelabelAsk: (id: string, at: { x: number; y: number }) => void;
   onRelabelGive: (id: string) => void;
+  /** A regular polygon was asked for: where its middle goes, and where to ask. */
+  onRegularAsk: (spot: Position, at: { x: number; y: number }) => void;
   /** What the Marker is armed with: equal sides, parallel sides, or an angle. */
   markForm: string;
   /** The whole kinds being kept out of the way, from the Hidden panel. */
@@ -291,6 +293,7 @@ export function Canvas({
   relabelName,
   onRelabelAsk,
   onRelabelGive,
+  onRegularAsk,
   markForm,
   hiddenKinds,
   spotlight,
@@ -706,7 +709,7 @@ export function Canvas({
     const before = sketch.read();
     const corners = tracing.ids;
     const made: SketchObject[] = [];
-    if (polygonKind !== "edges") made.push(createInterior(corners));
+    made.push(createInterior(corners));
     if (polygonKind !== "interior") {
       made.push(
         ...corners.map((corner, index) =>
@@ -853,7 +856,10 @@ export function Canvas({
     }
     if (tool === "polygon") {
       const aim = aimAt(at, aimingNow());
-      polygonClick(aim.found, aim.spot);
+      // The regular one is not clicked out corner by corner. One click says
+      // where the middle goes, and the box that opens says what shape.
+      if (polygonKind === "regular") onRegularAsk(aim.spot, { x: event.clientX, y: event.clientY });
+      else polygonClick(aim.found, aim.spot);
       return;
     }
     // A drawing tool puts its first point down on the press, so it can be

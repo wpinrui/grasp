@@ -18,11 +18,14 @@ import { PageSetupDialog } from "../components/PageSetupDialog";
 import { ParameterDialog } from "../components/ParameterDialog";
 import { PreferencesDialog } from "../components/PreferencesDialog";
 import { PrintPreviewDialog } from "../components/PrintPreviewDialog";
+import { RegularPolygonDialog } from "../components/RegularPolygonDialog";
 import { RelabelDialog } from "../components/RelabelDialog";
 import { ScriptDialog } from "../components/ScriptDialog";
 import { AddTableDataDialog, RemoveTableDataDialog } from "../components/TableDataDialog";
 import { TransformDialog } from "../components/TransformDialog";
 import type { Sheet } from "../sketch/expression";
+import type { PointSize } from "../sketch/model";
+import { regularPolygon } from "../sketch/regular";
 import type { Sketch } from "../sketch/useSketch";
 import type { Buttons } from "./buttons";
 import type { Custom } from "./customs";
@@ -37,6 +40,8 @@ interface DialogsProps {
   dialogs: DialogState;
   numbers: Numbers;
   relabel: Relabelling;
+  /** How big a point comes out, which a regular polygon lays its corners at. */
+  pointSize: PointSize;
   buttons: Buttons;
   custom: Custom;
   settings: Settings;
@@ -56,6 +61,7 @@ export function Dialogs({
   dialogs,
   numbers,
   relabel,
+  pointSize,
   buttons,
   custom,
   settings,
@@ -188,6 +194,23 @@ export function Dialogs({
         />
       )}
 
+      {dialogs.regular && (
+        <RegularPolygonDialog
+          at={dialogs.regular.at}
+          onApply={({ sides, locked }) => {
+            const spot = dialogs.regular?.spot;
+            dialogs.setRegular(null);
+            if (!spot) return;
+            const before = sketch.read();
+            const made = regularPolygon({ at: spot, sides, size: pointSize, locked });
+            sketch.commit({
+              objects: [...before.objects, ...made],
+              selection: made.map((object) => object.id),
+            });
+          }}
+          onCancel={() => dialogs.setRegular(null)}
+        />
+      )}
       {relabel.asked && (
         <RelabelDialog
           at={relabel.asked.at}

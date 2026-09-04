@@ -126,6 +126,7 @@ export function Workspace({
           relabelName={relabel.nextName}
           onRelabelAsk={relabel.ask}
           onRelabelGive={relabel.give}
+          onRegularAsk={(spot, at) => dialogs.setRegular({ spot, at })}
           markForm={tools.variants.marker ?? "equal"}
           hiddenKinds={tools.hiddenKinds}
           editing={tools.editing}

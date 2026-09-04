@@ -327,7 +327,11 @@ export function App() {
   useKeys({
     // The letter a relabel run starts at is asked for in a dialog like any
     // other, so it owns the keyboard while it is up.
-    dialogOpen: moves.dialog !== null || dialogs.anyOpen || relabel.asked !== null,
+    dialogOpen:
+      moves.dialog !== null ||
+      dialogs.anyOpen ||
+      relabel.asked !== null ||
+      dialogs.regular !== null,
     pickTool: tools.setActiveTool,
     newSketch: doc.newSketch,
     openSketch: () => void doc.open(),
@@ -453,6 +457,7 @@ export function App() {
         dialogs={dialogs}
         numbers={numbers}
         relabel={relabel}
+        pointSize={tools.pointSize}
         buttons={buttons}
         custom={custom}
         settings={settings}

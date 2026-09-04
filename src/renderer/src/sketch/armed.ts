@@ -54,7 +54,9 @@ export function toolDraws(tool: string, polygonKind: string): string[] {
   if (tool === "marker") return ["mark"];
   if (tool !== "polygon") return [];
   if (polygonKind === "interior") return ["interior"];
-  if (polygonKind === "edges") return ["line"];
+  // The regular one lays its own corners down, so how a point comes out is
+  // its to arm as well.
+  if (polygonKind === "regular") return ["point", "interior", "line"];
   return ["interior", "line"];
 }
 
