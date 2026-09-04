@@ -111,6 +111,7 @@ import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
 import { guideOf } from "./canvas/guides";
 import { Arms, Resting, Showing } from "./canvas/layers/Angles";
+import { Boxing, MarkCaptions } from "./canvas/layers/Captions";
 import { Dimensions } from "./canvas/layers/Dimensions";
 import { Drawing } from "./canvas/layers/Drawing";
 import { Fills } from "./canvas/layers/Fills";
@@ -2816,36 +2817,9 @@ export function Canvas({
           {ghostCaption(spotlight)}
           {ghostReading(spotlight)}
 
-          {/* The box a caption is being dragged out to, before there is one. */}
-          {boxing && (
-            <div
-              className="caption-box"
-              style={{
-                left: `${(boxing.x - view.x) * scale}px`,
-                top: `${(boxing.y - view.y) * scale}px`,
-                width: `${boxing.width * scale}px`,
-                height: `${boxing.height * scale}px`,
-              }}
-            />
-          )}
+          <Boxing boxing={boxing} view={view} scale={scale} />
 
-          {/* A dialog's marks ride above the sheet, keeping their size at any zoom. */}
-          {marks.map((mark) => {
-            const object = markAt(mark.id);
-            if (!object) return null;
-            return (
-              <span
-                key={mark.id}
-                className="canvas__caption"
-                style={{
-                  left: `${(object.x - view.x) * scale}px`,
-                  top: `${(object.y - view.y) * scale}px`,
-                }}
-              >
-                {mark.label}
-              </span>
-            );
-          })}
+          <MarkCaptions marks={marks} spotOf={markAt} view={view} scale={scale} />
 
           {zoomable && (
             <div className="canvas__zoom" onPointerDown={(event) => event.stopPropagation()}>
