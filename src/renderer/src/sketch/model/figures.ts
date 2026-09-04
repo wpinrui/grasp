@@ -111,8 +111,6 @@ export function parentsOf(from: Derivation): string[] {
  */
 export interface LabelState {
   name?: string;
-  /** Set where the name was typed rather than handed out by the run for its kind. */
-  typed?: boolean;
   shown?: boolean;
   off?: Position;
   /**

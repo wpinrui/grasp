@@ -64,13 +64,7 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
       ...before,
       objects: before.objects.map((object) => {
         if (object.id === id) {
-          // Typed by hand, so it is not the run's to hand out again: the
-          // panel offers to put a typed name back on the run.
-          const label = {
-            ...object.label,
-            name: name || undefined,
-            typed: name ? true : undefined,
-          };
+          const label = { ...object.label, name: name || undefined };
           return { ...object, label: options?.show ? { ...label, shown: true } : label };
         }
         // The one that was called this pins the name it has now, or the
@@ -149,7 +143,6 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
           name: names.get(object.id) ?? "",
           kind: kindOf(object).replace(/^(a|an|another) /, ""),
           shown: object.label?.shown === true,
-          pinned: object.label?.typed === true,
           selected: selection.includes(object.id),
         },
       ];

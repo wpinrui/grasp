@@ -72,7 +72,7 @@
 
 .labels__row {
   display: grid;
-  grid-template-columns: 46px 1fr auto;
+  grid-template-columns: 46px 1fr;
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
@@ -119,25 +119,9 @@
   background: var(--color-surface-raised);
 }
 
-.labels__auto,
-.labels__pin {
-  color: var(--color-text-disabled);
-  font-size: 10.5px;
-}
-
-.labels__pin {
-  color: var(--color-text-hint);
-}
-
-.labels__pin:hover {
-  color: var(--color-accent);
-}
-
 /* Everything in a filled-in row reads against the fill. */
 .labels__row--selected .labels__eye,
 .labels__row--selected .labels__eye--on,
-.labels__row--selected .labels__auto,
-.labels__row--selected .labels__pin,
 .labels__row--selected .labels__name {
   color: var(--color-bg);
 }
