@@ -30,6 +30,16 @@
   padding: 8px 10px 3px 10px;
 }
 
+/* The heading itself, which folds the group away. It takes the whole row bar
+   the Show button, so the fold answers to a click anywhere along it. */
+.labels__group-open {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+}
+
 .labels__group-name {
   flex: 1;
   color: var(--color-text-hint);
@@ -161,9 +171,4 @@
 .labels__switch--on .labels__switch-knob {
   background: var(--color-switch-knob);
   transform: translateX(13px);
-}
-
-/* A row for something never labelled, which has no name to show yet. */
-.labels__name--none {
-  color: var(--color-text-dim);
 }
