@@ -78,6 +78,15 @@ export function takeHold(hitId: string, sketch: Sketch): Held | null {
   return held;
 }
 
+/**
+ * Whether the drag is moving what holds a path up. `held.ids` names points and
+ * writing, never paths, so a path is moving when the points it is built on are
+ * among them, however far down it is built.
+ */
+function carrying(objects: SketchObject[], held: Held, path: string): boolean {
+  return movedBy(objects, [path]).some((id) => held.ids.includes(id));
+}
+
 /** Everything a drag has hold of, as far along as the pointer has come. */
 export function placedBy(objects: SketchObject[], held: Held, by: Position): SketchObject[] {
   const geometry = settle(objects).settled;
@@ -89,15 +98,10 @@ export function placedBy(objects: SketchObject[], held: Held, by: Position): Ske
     const from = isPoint(object) ? object.from : undefined;
     if (from?.kind === "on") {
       // A point on a path slides along it instead of going where the pointer
-      // went.
-      //
-      // The second test means to leave it alone where its own path is being
-      // dragged as well, but cannot: `held.ids` holds points and writing,
-      // never paths, so it never matches. Such a point then slides by as far
-      // as the drag went along the path, on top of riding the path itself, so
-      // the drag counts twice along it.
+      // went, unless the path is being dragged as well. Then the point rides
+      // the path, and sliding it along as well would count the drag twice over.
       const path = pathIn(geometry, from.path);
-      if (!path || held.ids.includes(from.path)) return object;
+      if (!path || carrying(objects, held, from.path)) return object;
       return { ...object, from: { ...from, at: alongPath(path, to) } };
     }
     return { ...object, x: to.x, y: to.y };

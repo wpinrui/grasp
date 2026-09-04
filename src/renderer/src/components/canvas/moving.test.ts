@@ -167,4 +167,26 @@ describe("where a drag puts things", () => {
     act(() => moveBy(held, { x: 60, y: 40 }, sketch.current));
     expect(spot(sketch.current.state.objects, "P")).toEqual({ x: 210, y: 0 });
   });
+
+  /**
+   * A point on a path rides the path when the path is dragged too, so it must
+   * not be slid along it as well or the drag counts twice over.
+   */
+  it("leaves a point alone where the path it is on is dragged with it", () => {
+    const moved = placedBy(FIGURE, holding(["seg", "P"]), { x: 60, y: 0 }).find(
+      (object) => object.id === "P",
+    );
+    if (!moved || !isPoint(moved)) throw new Error("P is still on the sheet.");
+    expect(moved.from?.kind === "on" ? moved.from.at : null).toBe(0.5);
+  });
+
+  /** The whole thing travels together: the point stays where it was on the path. */
+  it("carries a point on a path the same distance as the path itself", () => {
+    const sketch = page(["seg", "P"]);
+    const held = pressOn(sketch, "seg");
+    if (!held) throw new Error("the segment can move.");
+    act(() => moveBy(held, { x: 60, y: 0 }, sketch.current));
+    expect(spot(sketch.current.state.objects, "A")).toEqual({ x: 60, y: 0 });
+    expect(spot(sketch.current.state.objects, "P")).toEqual({ x: 210, y: 0 });
+  });
 });
