@@ -23,11 +23,7 @@ import {
   quantitiesOf,
   readingOf,
   readingOfValue,
-  sayAngle,
-  sayArea,
-  sayLength,
   sayQuantity,
-  shoelace,
 } from "../sketch/measure";
 import {
   ANGLE_RADIUS,
@@ -41,18 +37,14 @@ import {
   createCaption,
   createCircle,
   createInterior,
-  createMeasurement,
   createPoint,
   createTick,
-  crossings,
-  degreesOf,
   distance,
   distanceToPath,
   endsById,
   familyOf,
   filledPath,
   fillLook,
-  HALF_TURN,
   isArc,
   isButton,
   isCaption,
@@ -71,11 +63,9 @@ import {
   type LabelState,
   LEAST_ANGLE_RADIUS,
   type LineForm,
-  type LineGeometry,
   type LocusShape,
   lineThrough,
   type MarkForm,
-  type MeasureKind,
   markAlong,
   markReach,
   markShape,
@@ -83,22 +73,18 @@ import {
   markSweep,
   movedBy,
   namesFor,
-  nearMark,
   objectAt,
   objectsTouching,
   type PanFrom,
   type PathGeometry,
   type PointSize,
   type Position,
-  PX_PER_CM,
   pannedView,
   panTravel,
   pathIn,
   pointOnPath,
   pointsOf,
-  QUARTER_TURN,
   type Rect,
-  radiansOf,
   radiusOf,
   rectBetween,
   type SketchCalculation,
@@ -129,51 +115,60 @@ import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
+import { dimensionOf } from "./canvas/dimensions";
+import { guideOf } from "./canvas/guides";
+import { arcsBetween, type Marking, markUnder } from "./canvas/marks";
+import {
+  angleMarkOn,
+  angleReadingSpot,
+  angleWritten,
+  type Measuring,
+  pointUnder,
+  readingAlready,
+  readingBox,
+  readingFrom,
+  sameAngle,
+} from "./canvas/readings";
 import {
   ANGLE_AIM,
-  ANGLE_READING_OFF,
   ANGLE_ROOM,
-  ARROW_GRAB,
-  ARROW_HEAD,
   ARROW_SIZE,
-  ARROW_WING,
-  BREAK_GAP,
   CAPTION_WIDTH,
-  CROSS_REACH,
   clampScale,
   DRAG_THRESHOLD,
   DRAW_HOLD,
   DRAW_REACH,
-  GUIDE_LIFT,
   GUIDE_OFF,
   GUIDE_RADIUS,
-  type Guide,
-  type GuideAngle,
-  type GuideText,
   type Handle,
   hasPanel,
-  LEADER_PAST,
   LEAST_SPAN,
   MAX_SCALE,
   MIN_CAPTION_WIDTH,
   MIN_SCALE,
   overlaps,
   PAN_FINGERS,
-  READING_CHAR,
-  READING_HEIGHT,
-  READING_OFF,
-  READING_POINTS,
+  type Pending,
   SNAP_RING,
   type Snap,
   sameReading,
   snapKey,
-  stepped,
   stopAbove,
   stopBelow,
+  type Tracing,
   type Travel,
   WHEEL_ZOOM,
   type Written,
 } from "./canvas/sheet";
+import {
+  type Aiming,
+  aimAt,
+  handleAt,
+  heldMove,
+  snapAt,
+  spanOfLocus,
+  travelOf,
+} from "./canvas/steps";
 import type { HiddenKinds } from "./HiddenPanel";
 import { MarkPanel } from "./MarkPanel";
 import { MeasurementBox } from "./MeasurementBox";
@@ -329,21 +324,8 @@ export function Canvas({
   /** Screen pixels per sheet pixel. */
   const scale = view.scale;
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
-  /** A tool waiting for its second click, and where it is aiming. */
-  const [pending, setPending] = useState<{
-    start: Position;
-    startId: string;
-    at: Position;
-    /** Which tool is drawing it, since only that tool can finish it. */
-    tool: string;
-  } | null>(null);
-  /** The polygon being traced out, its corners in the order they were clicked. */
-  const [tracing, setTracing] = useState<{
-    ids: string[];
-    spots: Position[];
-    /** Where the band from the last corner is aiming. */
-    at: Position;
-  } | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [tracing, setTracing] = useState<Tracing | null>(null);
   /**
    * Escape: drops a half-drawn line and the end its first click plotted, or
    * clears the selection when there is nothing half drawn.
@@ -822,181 +804,6 @@ export function Canvas({
     });
   }
 
-  /** The stretch of its domain a locus is drawn over. */
-  function spanOfLocus(id: string): [number, number] {
-    const locus = objects.find((object) => object.id === id);
-    return locus && isLocus(locus) ? locus.span : [0, 1];
-  }
-
-  /** The arrowhead nearest the pointer, if the pointer is on one. */
-  function handleAt(at: Position): Handle | null {
-    const reach = ARROW_GRAB / scale;
-    return handles.find((handle) => distance(handle.at, at) <= reach) ?? null;
-  }
-
-  /**
-   * Where a click would go and what it would use. Shift holds the direction
-   * from the first click to the nearest 15 degrees, and takes over from the
-   * snapping while it is down, so the angle is what you asked for.
-   */
-  function aimAt(at: Position): { found: Snap | null; spot: Position } {
-    const from = pending?.start ?? tracing?.spots[tracing.spots.length - 1];
-    if (from && shiftHeld) return { found: null, spot: stepped(from, at) };
-    // What is already on the sheet comes first: a point, a path or a crossing
-    // under the pointer is what a click lands on, whatever the steps are set to.
-    const found = snapping.objects ? snapAt(at) : null;
-    if (found) return { found, spot: alongWithSteps(found, from, at) };
-    return { found: null, spot: from ? heldToSteps(from, at) : at };
-  }
-
-  /**
-   * Where on a snapped object the click actually lands.
-   *
-   * A point and a crossing are single spots: landing on one settles it, and the
-   * steps have nothing left to say. A path is not. Landing on a path only says
-   * the point is somewhere on it, and how far along is still free, so that is
-   * what the steps spend. Each step that is switched on offers its own spots
-   * along the path, and the click takes whichever of them the pointer is
-   * nearest, so having both on offers more places to land rather than fewer.
-   */
-  function alongWithSteps(found: Snap, from: Position | undefined, at: Position): Position {
-    if (found.kind !== "line" || !from) return found.at;
-    const along = pathIn(settled, found.ids[0]);
-    if (!along) return found.at;
-    const spots = stepsAlong(along, from, at);
-    if (spots.length === 0) return found.at;
-    return spots.reduce((near, spot) => (distance(spot, at) < distance(near, at) ? spot : near));
-  }
-
-  /** The whole numbers around one, since the nearest may miss the path. */
-  function nearWhole(value: number): number[] {
-    const whole = Math.round(value);
-    return [whole - 1, whole, whole + 1];
-  }
-
-  /**
-   * The spots along a path that the steps say a click may land on: where the
-   * whole-step rings about the start cross it, and where the whole-step
-   * directions out of the start cross it. Only rings and directions either side
-   * of where the pointer is, since the rest are too far away to have been meant.
-   */
-  function stepsAlong(along: PathGeometry, from: Position, at: Position): Position[] {
-    const spots: Position[] = [];
-    if (snapping.length && snapping.lengthCm > 0) {
-      const step = snapping.lengthCm * PX_PER_CM;
-      for (const whole of nearWhole(distance(from, at) / step)) {
-        if (whole <= 0) continue;
-        spots.push(...crossings({ at: from, radius: whole * step, ref: 0 }, along));
-      }
-    }
-    if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = radiansOf(snapping.angleDegrees);
-      const bearing = Math.atan2(at.y - from.y, at.x - from.x);
-      const base = baseAngle(bearing);
-      for (const whole of nearWhole((bearing - base) / step)) {
-        const angle = base + whole * step;
-        const out = { x: from.x + Math.cos(angle), y: from.y + Math.sin(angle) };
-        spots.push(...crossings({ a: from, b: out, form: "ray" }, along));
-      }
-    }
-    return spots;
-  }
-
-  /**
-   * The pointer held to whole steps of length and of angle, where those are
-   * switched on. An angle is measured from the straight object already at the
-   * corner where there is one, so the number the sheet reads out while the
-   * object is being drawn is the number being held.
-   */
-  function heldToSteps(from: Position, at: Position): Position {
-    if (!snapping.length && !snapping.angle) return at;
-    let reach = distance(from, at);
-    let angle = Math.atan2(at.y - from.y, at.x - from.x);
-    if (snapping.length && snapping.lengthCm > 0) {
-      const step = snapping.lengthCm * PX_PER_CM;
-      reach = Math.max(step, Math.round(reach / step) * step);
-    }
-    if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = radiansOf(snapping.angleDegrees);
-      const base = baseAngle(angle);
-      angle = base + Math.round((angle - base) / step) * step;
-    }
-    return { x: from.x + Math.cos(angle) * reach, y: from.y + Math.sin(angle) * reach };
-  }
-
-  /**
-   * How far a drag actually moves what it has hold of: the pointer's travel
-   * held to whole steps of length and of angle, both counted from where the
-   * drag started, the angle from the horizontal. A move can come to nothing, so
-   * unlike a line being drawn it is not held to at least one step.
-   *
-   * The steps hold geometry. Writing dragged on its own goes exactly where it
-   * is put, and a drag carrying both counts as geometry so that it all moves
-   * together.
-   */
-  function heldMove(ids: string[], by: Position): Position {
-    // The steps hold a move only when asked to. Off, a drag goes exactly where
-    // it is put, whatever the steps are set to.
-    if (!snapping.moving) return by;
-    if (!snapping.length && !snapping.angle) return by;
-    if (!carriesGeometry(ids)) return by;
-    let reach = Math.hypot(by.x, by.y);
-    let angle = Math.atan2(by.y, by.x);
-    if (snapping.length && snapping.lengthCm > 0) {
-      const step = snapping.lengthCm * PX_PER_CM;
-      reach = Math.round(reach / step) * step;
-    }
-    if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = radiansOf(snapping.angleDegrees);
-      angle = Math.round(angle / step) * step;
-    }
-    return { x: Math.cos(angle) * reach, y: Math.sin(angle) * reach };
-  }
-
-  /** Whether a drag has hold of any geometry, rather than writing alone. */
-  function carriesGeometry(ids: string[]): boolean {
-    const present = sketch.read().objects;
-    return ids.some((id) => {
-      const object = present.find((candidate) => candidate.id === id);
-      return object !== undefined && isPoint(object);
-    });
-  }
-
-  /**
-   * What a move writes on the sheet: from where the first point it carries
-   * started to where that point has got to. A drag carrying no geometry says
-   * nothing, the way it is held to no steps.
-   */
-  function travelOf(ids: string[], from: Position[], went: Position): Travel | null {
-    if (!carriesGeometry(ids)) return null;
-    const start = from[0];
-    return { from: start, to: { x: start.x + went.x, y: start.y + went.y } };
-  }
-
-  /** What an angle step is counted from: the nearest arm, or the horizontal. */
-  function baseAngle(bearing: number): number {
-    const arms = pending
-      ? armsAt(pending.startId, objects, settled).map((arm) => arm.angle)
-      : tracing && tracing.spots.length >= 2
-        ? [
-            Math.atan2(
-              tracing.spots[tracing.spots.length - 2].y - tracing.spots[tracing.spots.length - 1].y,
-              tracing.spots[tracing.spots.length - 2].x - tracing.spots[tracing.spots.length - 1].x,
-            ),
-          ]
-        : [];
-    let nearest: number | null = null;
-    for (const arm of arms) {
-      if (
-        nearest === null ||
-        Math.abs(markSweep(arm, bearing, false)) < Math.abs(markSweep(nearest, bearing, false))
-      ) {
-        nearest = arm;
-      }
-    }
-    return nearest ?? 0;
-  }
-
   /** Put down the first of the two points a drawing tool needs. */
   function startDrawing(found: Snap | null, spot: Position) {
     sketch.beginGesture();
@@ -1178,7 +985,7 @@ export function Canvas({
       setReadingPanel(null);
     }
     // An arrowhead is taken hold of before anything under it is picked.
-    const held = tool === "arrow" && !picking ? handleAt(at) : null;
+    const held = tool === "arrow" && !picking ? handleAt(at, aimingNow()) : null;
     // With a dialog open the sheet is only good for handing it a point.
     if (picking) {
       // Whatever is under the pointer goes to the dialog, which knows whether
@@ -1192,7 +999,7 @@ export function Canvas({
     // slides it along and a click opens its panel. On a bare side, the Angle
     // tool is dragged from one side of the angle to the other.
     if (marking) {
-      const found = markUnder(at);
+      const found = markUnder(at, { objects, settled, scale });
       // A tool only takes hold of the marks it deals in. Anything else under
       // the pointer is left alone and the press goes to the figure beneath.
       const caught =
@@ -1216,7 +1023,7 @@ export function Canvas({
       if (marking === "angle" && !caught) {
         // An angle mark is dragged out of the vertex. One that is already there
         // is taken hold of instead, and its drag sets how far its arcs stand.
-        const corner = pointUnder(at);
+        const corner = pointUnder(at, measuringNow());
         if (corner) setArming({ corner: corner.id, start: at, at });
         // Off the vertex, the press is on one side of an angle and the drag
         // goes to the other.
@@ -1225,14 +1032,14 @@ export function Canvas({
       return;
     }
     if (tool === "polygon") {
-      const aim = aimAt(at);
+      const aim = aimAt(at, aimingNow());
       polygonClick(aim.found, aim.spot);
       return;
     }
     // A drawing tool puts its first point down on the press, so it can be
     // dragged out to the second and released there, or left for a second click.
     if (drawing) {
-      const aim = aimAt(at);
+      const aim = aimAt(at, aimingNow());
       const fresh = !pending;
       if (fresh) startDrawing(aim.found, aim.spot);
       grab.current = {
@@ -1272,422 +1079,11 @@ export function Canvas({
       marquee: null,
       pan: tool === "hand" ? { view, clientX: event.clientX, clientY: event.clientY } : null,
       handle: held
-        ? { handle: held, span: [...spanOfLocus(held.locus)] as [number, number] }
+        ? { handle: held, span: [...spanOfLocus(held.locus, aimingNow())] as [number, number] }
         : null,
       started: false,
     };
     if (held) sketch.beginGesture();
-  }
-
-  /** The mark under the pointer, the topmost first, or null. */
-  function markUnder(at: Position): SketchMark | null {
-    for (let index = objects.length - 1; index >= 0; index -= 1) {
-      const object = objects[index];
-      if (isMark(object) && nearMark(object, at, { scale, settled, objects })) return object;
-    }
-    return null;
-  }
-
-  /**
-   * What a half-drawn object says about itself while it is being placed, all of
-   * it drawn on the sheet rather than beside the pointer: how long it is so
-   * far, written along it; every angle it makes, written at an arc drawn in
-   * that angle; and for a polygon the area it would close at, written where the
-   * shape is. It is gone the moment the object lands, since a measurement is
-   * the way to keep a number.
-   */
-  function guideOf(): Guide | null {
-    // A move says how far it has gone and which way, read off the horizontal
-    // the way a straight object drawn from a bare point is, so what the steps
-    // are holding it to is there to be read rather than merely felt.
-    // With nothing holding the move there is no step for the run, the length and
-    // the angle to read out, so a free drag says nothing and simply moves.
-    if (travel && snapping.moving) {
-      const corner = wedgeOfArms(travel.from, travel.to, [0]);
-      return {
-        length: alongText(travel.from, travel.to),
-        corners: corner ? [corner] : [],
-        datum: travel.from,
-        travel,
-      };
-    }
-    // A circle being drawn out says how far its rim is from its centre, which
-    // is the number the length steps are holding while it is drawn. The radius
-    // itself is not part of the circle, so the line the number sits on is drawn
-    // faintly, the way a move's run is.
-    if (pending && pending.tool === "compass") {
-      return {
-        length: alongText(pending.start, pending.at),
-        corners: [],
-        travel: { from: pending.start, to: pending.at },
-      };
-    }
-    if (pending && pending.tool === "straightedge") {
-      // The angle is against whatever already runs out of the point it started
-      // from, and the nearest of those is the wedge it is being drawn inside.
-      // From a point with nothing at it, it is against the horizontal, which is
-      // what the angle snapping counts from as well.
-      const arms = armsAt(pending.startId, objects, settled).map((arm) => arm.angle);
-      const corner = wedgeOfArms(pending.start, pending.at, arms.length > 0 ? arms : [0]);
-      return {
-        length: alongText(pending.start, pending.at),
-        corners: corner ? [corner] : [],
-        datum: arms.length === 0 ? pending.start : undefined,
-      };
-    }
-    if (tracing && tracing.spots.length > 0) {
-      const last = tracing.spots[tracing.spots.length - 1];
-      const ring = [...tracing.spots, tracing.at];
-      // The first edge has no corner behind it, so it reads off the horizontal
-      // the way a straight object drawn from a bare point does.
-      const first = ring.length < 3 ? wedgeOfArms(last, tracing.at, [0]) : null;
-      return {
-        length: alongText(last, tracing.at),
-        datum: first ? last : undefined,
-        // Every corner of the shape as it stands, so the whole figure can be
-        // read while it is being laid rather than one angle at a time.
-        corners: first
-          ? [first]
-          : ring.flatMap((corner, nth) => {
-              const before = ring[(nth + ring.length - 1) % ring.length];
-              const after = ring[(nth + 1) % ring.length];
-              const wedge = cornerArc(
-                corner,
-                angleBetween(corner, before),
-                angleBetween(corner, after),
-              );
-              return wedge ? [wedge] : [];
-            }),
-        area:
-          tracing.spots.length >= 2
-            ? { at: middleOf(ring), turn: 0, dy: 5, text: sayArea(shoelace(ring)) }
-            : undefined,
-      };
-    }
-    return null;
-  }
-
-  /** How long the line is so far, written along it and never upside down. */
-  function alongText(from: Position, to: Position): GuideText {
-    const turn = degreesOf(angleBetween(from, to));
-    return {
-      at: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
-      turn: turn > QUARTER_TURN || turn <= -QUARTER_TURN ? turn + HALF_TURN : turn,
-      dy: -GUIDE_LIFT,
-      text: sayLength(distance(from, to)),
-    };
-  }
-
-  /** The way one spot lies from another. */
-  function angleBetween(from: Position, to: Position): number {
-    return Math.atan2(to.y - from.y, to.x - from.x);
-  }
-
-  /** The angle a line being drawn makes with the nearest arm at its corner. */
-  function wedgeOfArms(corner: Position, to: Position, arms: number[]): GuideAngle | null {
-    if (arms.length === 0 || (corner.x === to.x && corner.y === to.y)) return null;
-    const bearing = angleBetween(corner, to);
-    let nearest = arms[0];
-    for (const arm of arms) {
-      if (Math.abs(markSweep(arm, bearing, false)) < Math.abs(markSweep(nearest, bearing, false))) {
-        nearest = arm;
-      }
-    }
-    return cornerArc(corner, nearest, bearing);
-  }
-
-  /** One angle: the arc drawn in it, and its size written just outside that. */
-  function cornerArc(corner: Position, from: number, to: number): GuideAngle | null {
-    const sweep = markSweep(from, to, false);
-    if (!Number.isFinite(sweep) || Math.abs(sweep) < 1e-6) return null;
-    const radius = GUIDE_RADIUS / scale;
-    const middle = from + sweep / 2;
-    const out = radius + GUIDE_OFF / scale;
-    const spot = (angle: number, reach: number) => ({
-      x: corner.x + Math.cos(angle) * reach,
-      y: corner.y + Math.sin(angle) * reach,
-    });
-    const start = spot(from, radius);
-    const end = spot(from + sweep, radius);
-    return {
-      arc: `M ${start.x} ${start.y} A ${radius} ${radius} 0 0 ${sweep < 0 ? 0 : 1} ${end.x} ${end.y}`,
-      text: {
-        at: spot(middle, out),
-        turn: 0,
-        dy: 5,
-        text: sayAngle(degreesOf(Math.abs(sweep))),
-      },
-    };
-  }
-
-  /** The middle of a ring of corners, which is where its area is written. */
-  function middleOf(corners: Position[]): Position {
-    const sum = corners.reduce((held, corner) => ({ x: held.x + corner.x, y: held.y + corner.y }), {
-      x: 0,
-      y: 0,
-    });
-    return { x: sum.x / corners.length, y: sum.y / corners.length };
-  }
-
-  /**
-   * Where the number on an angle hangs: along the bisector of the angle it is
-   * about, far enough out to clear the marking on it. The reflex angle is on
-   * the other side of the corner, so turning one round moves its number over.
-   */
-  function angleReadingSpot(
-    reading: SketchMeasurement,
-    mark: SketchMark,
-    reflex: boolean,
-  ): Position | null {
-    const [one, corner, other] = reading.of;
-    const spot = settled.points.get(corner);
-    const a = settled.points.get(one);
-    const b = settled.points.get(other);
-    if (!spot || !a || !b) return null;
-    const from = Math.atan2(a.y - spot.y, a.x - spot.x);
-    const to = Math.atan2(b.y - spot.y, b.x - spot.x);
-    const middle = from + markSweep(from, to, false) / 2;
-    const bisector = reflex ? middle + Math.PI : middle;
-    const box = readingBox({ ...reading, reflex });
-    const way = { x: Math.cos(bisector), y: Math.sin(bisector) };
-    const clear =
-      markReach(mark) +
-      ANGLE_READING_OFF +
-      (Math.abs(way.x) * box.width + Math.abs(way.y) * box.height) / 2;
-    return { x: spot.x + (way.x * clear) / scale, y: spot.y + (way.y * clear) / scale };
-  }
-
-  /**
-   * A reading of what was clicked, where the Measure tool can take one from it:
-   * a length off a segment, an area off a fill or a circle, an angle off an
-   * angle mark or off a corner with two straight objects at it. Anything else
-   * is measured from the Measure menu, with the objects picked first.
-   *
-   * It lands beside what it reads rather than at the pointer, so the figure is
-   * not covered by the number taken off it.
-   */
-  function readingFrom(at: Position): Written | null {
-    const hit = objectAt(at, { objects: objects, scale, settled });
-    if (!hit) return null;
-    const off = (spot: Position, way: Position, far: number) => ({
-      x: spot.x + way.x * (far / scale),
-      y: spot.y + way.y * (far / scale),
-    });
-    if (measuring === "length" && isLine(hit) && hit.form === "segment") {
-      const along = settled.lines.get(hit.id);
-      const ends = endsOf(hit);
-      if (!along || !ends) return null;
-      const mid = { x: (along.a.x + along.b.x) / 2, y: (along.a.y + along.b.y) / 2 };
-      const out = outwardOf(along, ends);
-      // Far enough out that the whole of the number clears the segment, which
-      // is further on a steep one, where the number lies across it rather than
-      // along it.
-      const made = newReading("length", [hit.id], mid);
-      const box = readingBox(made);
-      const clear = READING_OFF + (Math.abs(out.x) * box.width + Math.abs(out.y) * box.height) / 2;
-      return { reading: { ...made, ...shift(mid, off(mid, out, clear), made) }, mark: null };
-    }
-    if (measuring === "area") {
-      if (isInterior(hit)) {
-        const corners = settled.shapes.get(hit.id);
-        const inside = filledPath(hit);
-        const round = inside ? settled.circles.get(inside) : undefined;
-        const middle = corners
-          ? {
-              x: corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length,
-              y: corners.reduce((sum, corner) => sum + corner.y, 0) / corners.length,
-            }
-          : round?.at;
-        if (!middle) return null;
-        return { reading: newReading("area", [hit.id], middle), mark: null };
-      }
-      if (isCircle(hit)) {
-        const round = settled.circles.get(hit.id);
-        if (!round) return null;
-        return { reading: newReading("area", [hit.id], round.at), mark: null };
-      }
-      return null;
-    }
-    if (measuring === "angle") {
-      const corner = isMark(hit) && !("path" in hit) ? hit.corner : isPoint(hit) ? hit.id : null;
-      if (!corner) return null;
-      const at3 =
-        isMark(hit) && !("path" in hit) ? [hit.arms[0], corner, hit.arms[1]] : cornerArms(corner);
-      if (!at3) return null;
-      return angleWritten({ corner, arms: [at3[0], at3[2]] }, hit);
-    }
-    return null;
-  }
-
-  /**
-   * The number for one angle, said by its corner and the two arms it runs
-   * between, and the mark it has to be given first. `hit` is whatever was under
-   * the pointer, where a click is what asked; nothing, where a drag or the
-   * dialog named the arms itself.
-   */
-  function angleWritten(
-    angle: { corner: string; arms: [string, string] },
-    hit: SketchObject | null,
-    named = false,
-  ): Written | null {
-    const { corner, arms } = angle;
-    {
-      const at3 = [arms[0], corner, arms[1]];
-      const spot = settled.points.get(corner);
-      const ends = arms.map((id) => settled.points.get(id));
-      if (!spot || ends.some((end) => end === undefined)) return null;
-      // An angle has two sizes, and both can be on the sheet. The first click
-      // reads the angle itself; asking again reads the reflex angle, which goes
-      // on the other side of the corner so the two never sit on each other.
-      const taken = (reflex: boolean) =>
-        objects.some(
-          (object) =>
-            isMeasurement(object) &&
-            object.measure === "angle" &&
-            sameAngle(object.of, at3) &&
-            (object.reflex === true) === reflex,
-        );
-      // Clicking the same corner again is how the reflex angle is asked for, so
-      // a click that lands where a number already is means the other way round.
-      // Naming an angle is not that: a row picked out of the dialog, or a drag
-      // from one side to the other, said which angle it wanted, and the answer
-      // to that is the angle it named or the number already on it.
-      const reflex = !named && taken(false) && !taken(true);
-      // An angle has to be marked before it can be read: the arcs say which of
-      // the angles at that corner the number is about. One already there is
-      // used as it is, and the number goes outside it.
-      const mark = angleMarkOn({ corner, arms, reflex }, hit);
-      const made = { ...newReading("angle", at3, spot), reflex };
-      const hangs = angleReadingSpot(made, mark, reflex);
-      return {
-        reading: hangs ? { ...made, ...hangs } : made,
-        mark: objects.some((object) => object.id === mark.id) ? null : mark,
-      };
-    }
-  }
-
-  /**
-   * The reading already on the sheet that says what this one would say. The
-   * same thing is read once: a click on something that already carries the
-   * number the tool would write goes to that one rather than laying another of
-   * it on top, and the preview says so before the click.
-   */
-  /**
-   * Whether two readings are of the same thing. An angle is three points and the
-   * middle one is the corner, so the same three points name three different
-   * angles: ∠BEC and ∠ECB are B, E and C either way round, and only where they
-   * turn about the same point are they the one angle. Comparing them as a bag of
-   * ids says every one of them is already on the sheet.
-   */
-  function sameMeasured(one: SketchMeasurement, other: SketchMeasurement): boolean {
-    if (one.measure !== other.measure || one.of.length !== other.of.length) return false;
-    if (one.measure !== "angle" || one.of.length !== 3) {
-      return one.of.every((id) => other.of.includes(id));
-    }
-    if (one.of[1] !== other.of[1]) return false;
-    return (
-      (one.of[0] === other.of[0] && one.of[2] === other.of[2]) ||
-      (one.of[0] === other.of[2] && one.of[2] === other.of[0])
-    );
-  }
-
-  /** The same three points, read about the same corner, whichever arm comes first. */
-  function sameAngle(of: string[], at3: string[]): boolean {
-    if (of.length !== 3 || at3.length !== 3 || of[1] !== at3[1]) return false;
-    return (of[0] === at3[0] && of[2] === at3[2]) || (of[0] === at3[2] && of[2] === at3[0]);
-  }
-
-  function readingAlready(written: Written): SketchMeasurement | null {
-    const wanted = written.reading;
-    const found = objects.find(
-      (object) =>
-        isMeasurement(object) &&
-        sameMeasured(object, wanted) &&
-        (object.reflex === true) === (wanted.reflex === true),
-    );
-    return found && isMeasurement(found) ? found : null;
-  }
-
-  /** The mark on an angle, made where that way round is not marked already. */
-  function angleMarkOn(
-    angle: { corner: string; arms: [string, string]; reflex: boolean },
-    hit: SketchObject | null,
-  ): SketchMark {
-    const { corner, arms, reflex } = angle;
-    if (hit && isMark(hit) && !("path" in hit) && (hit.reflex === true) === reflex) return hit;
-    const already = objects.find(
-      (object) =>
-        isMark(object) &&
-        !("path" in object) &&
-        object.corner === corner &&
-        object.arms.every((arm) => arms.includes(arm)) &&
-        (object.reflex === true) === reflex,
-    );
-    if (already && isMark(already)) return already;
-    const sides = armsAt(corner, objects, settled)
-      .filter((arm) => arms.includes(arm.end))
-      .map((arm) => arm.side);
-    return createAngleMark({
-      corner,
-      arms,
-      sides: [sides[0], sides[1]] as [string, string],
-      strokes: lastMark.current.angle,
-      reflex,
-      radius: clearOfCorner(corner),
-    });
-  }
-
-  /**
-   * Which way is out of the figure at a segment: away from the middle of
-   * everything its ends are joined to, so a number taken off a polygon's edge
-   * lands outside the polygon rather than across it. With nothing joined to it
-   * there is no inside to be out of, so it goes up the page.
-   */
-  function outwardOf(along: LineGeometry, ends: [string, string]): Position {
-    const way = { x: along.b.x - along.a.x, y: along.b.y - along.a.y };
-    const length = Math.hypot(way.x, way.y) || 1;
-    const across = { x: -way.y / length, y: way.x / length };
-    const up = across.y > 0 ? { x: -across.x, y: -across.y } : across;
-    const ring = joinedTo(ends);
-    if (ring.length < 3) return up;
-    const middle = {
-      x: ring.reduce((sum, spot) => sum + spot.x, 0) / ring.length,
-      y: ring.reduce((sum, spot) => sum + spot.y, 0) / ring.length,
-    };
-    const mid = { x: (along.a.x + along.b.x) / 2, y: (along.a.y + along.b.y) / 2 };
-    const outward = (mid.x - middle.x) * across.x + (mid.y - middle.y) * across.y;
-    if (Math.abs(outward) < 1e-9) return up;
-    return outward > 0 ? across : { x: -across.x, y: -across.y };
-  }
-
-  /** Every point joined to these ones by straight objects, however far along. */
-  function joinedTo(ends: string[]): Position[] {
-    const seen = new Set<string>(ends);
-    const queue = [...ends];
-    while (queue.length > 0) {
-      const id = queue.shift() as string;
-      for (const arm of armsAt(id, objects, settled)) {
-        if (seen.has(arm.end)) continue;
-        seen.add(arm.end);
-        queue.push(arm.end);
-      }
-    }
-    return [...seen]
-      .map((id) => settled.points.get(id))
-      .filter((spot): spot is SketchPoint => spot !== undefined);
-  }
-
-  /** About how big a reading comes out on screen, before it has been drawn. */
-  function readingBox(made: SketchMeasurement): { width: number; height: number } {
-    return {
-      width: readingFor(made).value.length * READING_CHAR,
-      height: READING_HEIGHT,
-    };
-  }
-
-  /** A reading moved from where it hangs now to where it should hang. */
-  function shift(was: Position, to: Position, made: SketchMeasurement): Position {
-    return { x: made.x + (to.x - was.x), y: made.y + (to.y - was.y) };
   }
 
   /** How a length is drawn out, and whether it carries its dotted lines. */
@@ -1759,136 +1155,6 @@ export function Canvas({
         object.id === id && isMeasurement(object) ? { ...object, leaders } : object,
       ),
     });
-  }
-
-  /**
-   * The dimension a length is drawn out as: the arrows from one end of the
-   * segment to the other, run out to wherever the number has been dragged, and
-   * the dotted lines back to the segment where it carries them.
-   *
-   * The number itself is drawn over the sheet, so what is drawn here is only
-   * what runs around it: where it sits is what says how far off the segment the
-   * whole dimension stands.
-   */
-  function dimensionOf(reading: SketchMeasurement): {
-    lines: string[];
-    heads: string[];
-    dotted: string[];
-  } | null {
-    if (reading.measure !== "length" || !reading.bounds) return null;
-    const along = settled.lines.get(reading.of[0]);
-    if (!along) return null;
-    const way = { x: along.b.x - along.a.x, y: along.b.y - along.a.y };
-    const length = Math.hypot(way.x, way.y);
-    if (length === 0) return null;
-    const u = { x: way.x / length, y: way.y / length };
-    const across = { x: -u.y, y: u.x };
-    const box = boxes.current.get(reading.id) ?? readingBox(reading);
-    // Where the middle of the number sits, and how far off the segment that is.
-    const middle = {
-      x: reading.x + box.width / 2 / scale,
-      y: reading.y + box.height / 2 / scale,
-    };
-    const mid = { x: (along.a.x + along.b.x) / 2, y: (along.a.y + along.b.y) / 2 };
-    const number = (middle.x - mid.x) * across.x + (middle.y - mid.y) * across.y;
-    // The arrows run where the number does, except in the full form, where the
-    // number stands clear above them instead of being run through.
-    const stand =
-      reading.bounds === "full"
-        ? (Math.abs(across.x) * box.width + Math.abs(across.y) * box.height) / 2 / scale +
-          BREAK_GAP / scale
-        : 0;
-    const off = number - Math.sign(number || 1) * stand;
-    const from = { x: along.a.x + across.x * off, y: along.a.y + across.y * off };
-    const to = { x: along.b.x + across.x * off, y: along.b.y + across.y * off };
-    const head = ARROW_HEAD / scale;
-    const wing = ARROW_WING / scale;
-    const spot = (at: Position) => `${at.x} ${at.y}`;
-    // A filled head, drawn as the triangle it is rather than as two strokes.
-    const arrow = (tip: Position, back: Position) => {
-      const point = { x: back.x - tip.x, y: back.y - tip.y };
-      const far = Math.hypot(point.x, point.y) || 1;
-      const runs = { x: (point.x / far) * head, y: (point.y / far) * head };
-      const side = { x: -runs.y / head, y: runs.x / head };
-      return `M ${spot(tip)} L ${spot({ x: tip.x + runs.x + side.x * wing, y: tip.y + runs.y + side.y * wing })} L ${spot({ x: tip.x + runs.x - side.x * wing, y: tip.y + runs.y - side.y * wing })} Z`;
-    };
-    const heads = [arrow(from, to), arrow(to, from)];
-    const lines: string[] = [];
-    if (reading.bounds === "full") {
-      lines.push(`M ${spot(from)} L ${spot(to)}`);
-    } else {
-      // Broken by the number: the runs stop either side of the room it takes
-      // along the dimension, so nothing is drawn under it.
-      const gap =
-        (Math.abs(u.x) * box.width + Math.abs(u.y) * box.height) / 2 / scale + BREAK_GAP / scale;
-      const at = (middle.x - along.a.x) * u.x + (middle.y - along.a.y) * u.y;
-      const stop = { x: from.x + u.x * (at - gap), y: from.y + u.y * (at - gap) };
-      const start = { x: from.x + u.x * (at + gap), y: from.y + u.y * (at + gap) };
-      if (at - gap > 0) lines.push(`M ${spot(from)} L ${spot(stop)}`);
-      if (at + gap < length) lines.push(`M ${spot(start)} L ${spot(to)}`);
-    }
-    // The dotted lines run a little past the arrows, the way a drawn dimension
-    // is, so the end of the line is clear of the head.
-    const past = {
-      x: across.x * Math.sign(off || 1) * (LEADER_PAST / scale),
-      y: across.y * Math.sign(off || 1) * (LEADER_PAST / scale),
-    };
-    const dotted = reading.leaders
-      ? [
-          `M ${spot(along.a)} L ${spot({ x: from.x + past.x, y: from.y + past.y })}`,
-          `M ${spot(along.b)} L ${spot({ x: to.x + past.x, y: to.y + past.y })}`,
-        ]
-      : [];
-    return { lines, heads, dotted };
-  }
-
-  /** The two straight objects at a corner, as the three points of its angle. */
-  function cornerArms(corner: string): [string, string, string] | null {
-    const arms = armsAt(corner, objects, settled);
-    return arms.length === 2 ? [arms[0].end, corner, arms[1].end] : null;
-  }
-
-  /**
-   * A reading as the Measure tool writes it: the number alone, at 16px, hung by
-   * the middle of what it says rather than by its top left corner, so it sits
-   * where it was asked for instead of hanging down and to the right of there.
-   */
-  function newReading(measure: MeasureKind, of: string[], at: Position): SketchMeasurement {
-    const made = { ...createMeasurement(measure, of, at), size: READING_POINTS, bare: true };
-    const box = readingBox(made);
-    return { ...made, x: at.x - box.width / 2 / scale, y: at.y - box.height / 2 / scale };
-  }
-
-  /** The point under the pointer, which is what an angle is marked at. */
-  function pointUnder(at: Position): SketchPoint | null {
-    for (let index = points.length - 1; index >= 0; index -= 1) {
-      const point = points[index];
-      if (distance(point, at) <= radiusOf(point) / scale + slackAt(scale)) return point;
-    }
-    return null;
-  }
-
-  /** The arcs an angle would land as, drawn while it is being asked about. */
-  function arcsBetween(corner: string, arms: [string, string], reflex: boolean): string[] {
-    const spot = settled.points.get(corner);
-    const ends = arms.map((id) => settled.points.get(id));
-    if (!spot || ends.some((end) => end === undefined)) return [];
-    const [one, other] = ends as SketchPoint[];
-    const from = Math.atan2(one.y - spot.y, one.x - spot.x);
-    const to = Math.atan2(other.y - spot.y, other.x - spot.x);
-    const sweep = markSweep(from, to, reflex);
-    return markStrokes(
-      {
-        form: "angle",
-        at: { x: spot.x, y: spot.y },
-        from,
-        sweep,
-        strokes: lastMark.current.angle,
-        radius: lastMark.current.radius,
-        square: isRightAngle(sweep),
-      },
-      scale,
-    );
   }
 
   /** The arcs the angle being dragged out would land as, drawn while it is. */
@@ -2075,7 +1341,9 @@ export function Canvas({
         object.arms.every((arm) => mark.arms.includes(arm)),
     );
     const alone = readings.length === 1 && marked.length === 1 ? readings[0] : null;
-    const hangs = alone ? angleReadingSpot(alone, turned, reflex) : null;
+    const hangs = alone
+      ? angleReadingSpot({ reading: alone, mark: turned, reflex }, measuringNow())
+      : null;
     const before = sketch.read();
     sketch.commit({
       ...before,
@@ -2209,16 +1477,16 @@ export function Canvas({
       setPanel(already.id);
       return;
     }
-    const mark = angleMarkOn({ corner, arms, reflex }, null);
+    const mark = angleMarkOn({ corner, arms, reflex }, null, measuringNow());
     addMark(mark);
     setPanel(mark.id);
   }
 
   /** Write the number for one angle, by the two arms it runs between. */
   function readAngle(corner: string, arms: [string, string]) {
-    const written = angleWritten({ corner, arms }, null, true);
+    const written = angleWritten({ corner, arms, hit: null, named: true }, measuringNow());
     if (!written) return;
-    const already = readingAlready(written);
+    const already = readingAlready(written, measuringNow());
     if (already) {
       sketch.select([already.id]);
       setReadingPanel(hasPanel(written.reading) ? already.id : null);
@@ -2230,6 +1498,52 @@ export function Canvas({
       ...before,
       objects: [...before.objects, ...(written.mark ? [written.mark] : []), written.reading],
     });
+  }
+
+  /** How big a reading came out, or how big it is going to come out. */
+  function boxOf(reading: SketchMeasurement): { width: number; height: number } {
+    return boxes.current.get(reading.id) ?? readingBox(reading, measuringNow());
+  }
+
+  /** Where the figure settled, the zoom, and what a new mark is set to. */
+  function markingNow(): Marking {
+    return { settled, scale, lastMark: lastMark.current };
+  }
+
+  /**
+   * The figure as a click is aimed at it. A drag reads the objects as they
+   * stand rather than as this render left them, so those come through a reader
+   * rather than as a list.
+   */
+  function aimingNow(): Aiming {
+    return {
+      objects,
+      settled,
+      scale,
+      slack,
+      snapping,
+      handles,
+      pending,
+      tracing,
+      shiftHeld,
+      present: () => sketch.read().objects,
+    };
+  }
+
+  /**
+   * The figure as the readings read it. Built where it is asked for rather than
+   * held, since every part of it is read off this render anyway.
+   */
+  function measuringNow(): Measuring {
+    return {
+      objects,
+      settled,
+      scale,
+      measure: measuring,
+      saying: (made) => readingFor(made).value,
+      lastMark: lastMark.current,
+      clearOf: clearOfCorner,
+    };
   }
 
   /**
@@ -2292,7 +1606,7 @@ export function Canvas({
     // would read, and at a corner with several that is the question.
     if ((marking === "angle" || measuring === "angle") && !picking && !grab.current) {
       const over = positionOf(event);
-      const spot = over ? pointUnder(over) : null;
+      const spot = over ? pointUnder(over, measuringNow()) : null;
       const corner = spot && anglesAt(spot.id, objects, settled).length > 0 ? spot.id : null;
       if (corner !== overCorner) setOverCorner(corner);
     } else if (overCorner !== null) {
@@ -2304,8 +1618,8 @@ export function Canvas({
     // put on the angle first.
     if (measuring && !picking && !grab.current) {
       const over = positionOf(event);
-      const would = over ? readingFrom(over) : null;
-      const already = would ? readingAlready(would) : null;
+      const would = over ? readingFrom(over, measuringNow()) : null;
+      const already = would ? readingAlready(would, measuringNow()) : null;
       // What is already there is lit rather than ghosted over: a click will go
       // to it, and drawing a second copy of it on top would say otherwise.
       setPreviewReading((was) =>
@@ -2324,7 +1638,7 @@ export function Canvas({
     if (plotting && !picking && !grab.current?.pan) {
       const at = positionOf(event);
       if (!at) return;
-      const aim = aimAt(at);
+      const aim = aimAt(at, aimingNow());
       if (snapKey(aim.found) !== snapKey(snap)) setSnap(aim.found);
       if (pending) setPending({ ...pending, at: aim.spot });
       if (tracing) setTracing({ ...tracing, at: aim.spot });
@@ -2402,12 +1716,16 @@ export function Canvas({
     }
 
     if (state.moving) {
-      const went = heldMove(state.movingIds, {
-        x: at.x - state.origin.x,
-        y: at.y - state.origin.y,
-      });
+      const went = heldMove(
+        state.movingIds,
+        {
+          x: at.x - state.origin.x,
+          y: at.y - state.origin.y,
+        },
+        aimingNow(),
+      );
       moveBy({ ids: state.movingIds, from: state.moving }, went.x, went.y);
-      setTravel(travelOf(state.movingIds, state.moving, went));
+      setTravel(travelOf({ ids: state.movingIds, from: state.moving, went }, aimingNow()));
       return;
     }
 
@@ -2493,7 +1811,7 @@ export function Canvas({
       }
     }
     if (measuring && !state.moved) {
-      const written = readingFrom(at);
+      const written = readingFrom(at, measuringNow());
       if (!written) {
         // Bare sheet: the panel goes away, and so does whatever was picked, the
         // same way pressing bare sheet with the Arrow lets go of everything.
@@ -2504,7 +1822,7 @@ export function Canvas({
       // The same thing is only read once. Asking again for a number that is
       // already on the sheet takes you to the one that is there rather than
       // laying another of it on top.
-      const already = readingAlready(written);
+      const already = readingAlready(written, measuringNow());
       if (already) {
         sketch.select([already.id]);
         setReadingPanel(hasPanel(written.reading) ? already.id : null);
@@ -2610,7 +1928,7 @@ export function Canvas({
     }
 
     if (drawing) {
-      const aim = aimAt(at);
+      const aim = aimAt(at, aimingNow());
       // The press that started it and was let go without really pulling
       // anything out leaves it half drawn, for a second click to finish. One
       // that was held and dragged out finishes here.
@@ -2639,7 +1957,7 @@ export function Canvas({
     if (tool === "point") {
       // The point lands where the pointer comes up, dragged there or not. On
       // top of one that is already there it selects that one instead.
-      const found = snapAt(at);
+      const found = snapAt(at, aimingNow());
       if (found?.kind === "point") {
         sketch.select([found.ids[0]]);
         return;
@@ -2717,7 +2035,7 @@ export function Canvas({
     if (picking) return;
     const at = positionOf(event);
     if (!at) return;
-    const found = markUnder(at);
+    const found = markUnder(at, { objects, settled, scale });
     if (found) {
       setPanel(found.id);
       return;
@@ -2770,43 +2088,6 @@ export function Canvas({
 
   /** The page as the labelling reads it. */
   const labelling: Labelling = { objects, settled, scale, ends, spanOf };
-
-  /**
-   * What a click at this spot would land on. A point already there wins, then
-   * the crossing of two straight objects, then the one straight object under
-   * the pointer, which a new point would belong to.
-   */
-  function snapAt(at: Position): Snap | null {
-    const over = objectAt(at, { objects: objects, scale, settled });
-    if (over && isPoint(over))
-      return { kind: "point", ids: [over.id], at: { x: over.x, y: over.y } };
-    // The paths the pointer is on, the newest first, as picking has them.
-    const near: { id: string; along: PathGeometry }[] = [];
-    for (let index = objects.length - 1; index >= 0; index -= 1) {
-      const object = objects[index];
-      if (!isLine(object) && !isCircle(object) && !isArc(object)) continue;
-      const along = pathIn(settled, object.id);
-      if (along && distanceToPath(along, at) <= slack) near.push({ id: object.id, along });
-    }
-    if (near.length === 0) return null;
-    for (let one = 0; one < near.length; one += 1) {
-      for (let other = one + 1; other < near.length; other += 1) {
-        // Two paths can meet twice, so the one being pointed at is the one the
-        // click builds, and which of the two it is holds still as they move.
-        const met = crossings(near[one].along, near[other].along);
-        const pick = met.findIndex((spot) => distance(spot, at) <= CROSS_REACH / scale);
-        if (pick !== -1) {
-          return { kind: "cross", ids: [near[one].id, near[other].id], pick, at: met[pick] };
-        }
-      }
-    }
-    const first = near[0];
-    return {
-      kind: "line",
-      ids: [first.id],
-      at: spotOnPath(first.along, alongPath(first.along, at)),
-    };
-  }
 
   /**
    * The point a click plots: the crossing itself where two straight objects
@@ -3078,9 +2359,11 @@ export function Canvas({
 
   function dragWriting(by: Position) {
     if (!written.current) return;
-    const went = heldMove(written.current.ids, by);
+    const went = heldMove(written.current.ids, by, aimingNow());
     moveBy(written.current, went.x, went.y);
-    setTravel(travelOf(written.current.ids, written.current.from, went));
+    setTravel(
+      travelOf({ ids: written.current.ids, from: written.current.from, went }, aimingNow()),
+    );
   }
 
   function dropWriting() {
@@ -3456,7 +2739,7 @@ export function Canvas({
     return (point ? radiusOf(point) + 5.5 : SNAP_RING) / scale;
   }
 
-  const guide = guideOf();
+  const guide = guideOf({ objects, settled, scale, snapping, travel, pending, tracing });
 
   // A panel with nothing left to be about closes itself.
   const onPanel = panel ? objects.find((object) => object.id === panel) : undefined;
@@ -3468,9 +2751,7 @@ export function Canvas({
   const readingOpen = onReading && isMeasurement(onReading) ? onReading : null;
   const readingSpot = readingOpen
     ? {
-        x:
-          (readingOpen.x - view.x) * scale +
-          (boxes.current.get(readingOpen.id)?.width ?? readingBox(readingOpen).width) / 2,
+        x: (readingOpen.x - view.x) * scale + boxOf(readingOpen).width / 2,
         y: (readingOpen.y - view.y) * scale - 10,
       }
     : null;
@@ -3773,7 +3054,10 @@ export function Canvas({
                   // The protractor already ghosts the marking it would lay, so
                   // this is only the Marker's business.
                   if (marking !== "angle") return null;
-                  return arcsBetween(overCorner, there[0].arms, false).map((stroke) => (
+                  return arcsBetween(
+                    { corner: overCorner, arms: there[0].arms, reflex: false },
+                    markingNow(),
+                  ).map((stroke) => (
                     <path
                       key={stroke}
                       className="canvas__mark-stroke canvas__mark-stroke--preview"
@@ -3818,7 +3102,10 @@ export function Canvas({
                         />
                       );
                     })}
-                    {arcsBetween(choosing.corner, showingArms, false).map((stroke) => (
+                    {arcsBetween(
+                      { corner: choosing.corner, arms: showingArms, reflex: false },
+                      markingNow(),
+                    ).map((stroke) => (
                       <path
                         key={stroke}
                         className="canvas__mark-stroke"
@@ -3987,7 +3274,7 @@ export function Canvas({
               />
             ))}
             {readings.filter(isMeasurement).map((reading) => {
-              const drawn = dimensionOf(reading);
+              const drawn = dimensionOf(reading, boxOf(reading), { settled, scale });
               if (!drawn) return null;
               return (
                 <g key={`dimension-${reading.id}`} data-id={reading.id}>
