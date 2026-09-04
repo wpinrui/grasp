@@ -116,6 +116,7 @@ import { Drawing } from "./canvas/layers/Drawing";
 import { Fills } from "./canvas/layers/Fills";
 import { Guides } from "./canvas/layers/Guides";
 import { Holding } from "./canvas/layers/Holding";
+import { Labels } from "./canvas/layers/Labels";
 import { Lit } from "./canvas/layers/Lit";
 import { Loci } from "./canvas/layers/Locus";
 import { MarkGhost, Marks } from "./canvas/layers/Marks";
@@ -2603,57 +2604,19 @@ export function Canvas({
           pointer there, and the click that follows would be retargeted to the
           sheet with it, never reaching the button.
         */}
-          {labels.map((label) => {
-            const where = {
-              left: `${(label.at.x - view.x) * scale + label.off.x}px`,
-              top: `${(label.at.y - view.y) * scale + label.off.y}px`,
-            };
-            if (naming?.id === label.id) {
-              return (
-                <input
-                  key={label.id}
-                  className="canvas__label-input"
-                  style={where}
-                  // biome-ignore lint/a11y/noAutofocus: the double-click asked for it
-                  autoFocus
-                  value={naming.text}
-                  onChange={(event) => setNaming({ ...naming, text: event.target.value })}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") event.currentTarget.blur();
-                    if (event.key === "Escape") setNaming(null);
-                  }}
-                  onBlur={() => {
-                    if (naming.text.trim() !== label.name) onRename(label.id, naming.text.trim());
-                    setNaming(null);
-                  }}
-                />
-              );
-            }
-            return (
-              // biome-ignore lint/a11y/noStaticElementInteractions: a label is dragged and typed into, not pressed
-              <span
-                key={label.id}
-                data-id={label.id}
-                className={`canvas__label${
-                  labelPick.includes(label.id) ? " canvas__label--picked" : ""
-                }`}
-                style={{
-                  ...where,
-                  ...label.look,
-                  // A label is dragged and typed into by the two tools that deal
-                  // in labels, and is out of the way of every other tool.
-                  pointerEvents:
-                    (tool === "arrow" || tool === "text") && !picking ? "auto" : "none",
-                }}
-                onPointerDown={(event) => startLabelDrag(event, label.id, label.off)}
-                onPointerMove={dragLabel}
-                onPointerUp={dropLabel}
-                onDoubleClick={() => setNaming({ id: label.id, text: label.name })}
-              >
-                {label.name}
-              </span>
-            );
-          })}
+          <Labels
+            labels={labels}
+            view={view}
+            scale={scale}
+            picked={labelPick}
+            reachable={(tool === "arrow" || tool === "text") && !picking}
+            naming={naming}
+            onNaming={setNaming}
+            onRename={onRename}
+            onGrab={startLabelDrag}
+            onDrag={dragLabel}
+            onDrop={dropLabel}
+          />
 
           {readingOpen && readingSpot && (
             <ReadingPanel
