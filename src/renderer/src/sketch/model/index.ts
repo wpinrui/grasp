@@ -111,6 +111,7 @@ export {
   SHAPE_SAMPLES,
   setPickReach,
   slackAt,
+  TINY,
   toSheet,
   union,
 } from "./geometry";
