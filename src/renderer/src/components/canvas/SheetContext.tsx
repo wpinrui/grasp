@@ -15,6 +15,12 @@ import type { Settled, SketchObject, SketchPoint } from "../../sketch/model";
 export interface Sheet {
   /** What is drawn, which is everything not hidden or put away by kind. */
   objects: SketchObject[];
+  /**
+   * Everything on the page, hidden included. A hidden object still holds the
+   * figure together, and lighting one up is the only way to see where it sits
+   * before it is shown again.
+   */
+  everything: SketchObject[];
   /** Just the points among them, since several layers want only those. */
   points: SketchPoint[];
   settled: Settled;

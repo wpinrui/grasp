@@ -120,8 +120,10 @@ import { Dimensions } from "./canvas/layers/Dimensions";
 import { Fills } from "./canvas/layers/Fills";
 import { Guides } from "./canvas/layers/Guides";
 import { Holding } from "./canvas/layers/Holding";
+import { Lit } from "./canvas/layers/Lit";
 import { Paths } from "./canvas/layers/Paths";
 import { Points } from "./canvas/layers/Points";
+import { litWith } from "./canvas/lighting";
 import { arcsBetween, type Marking, markUnder } from "./canvas/marks";
 import {
   angleMarkOn,
@@ -2582,126 +2584,6 @@ export function Canvas({
     );
   }
 
-  /**
-   * A path lit up because a click would land on it, or because a panel is
-   * pointing at it. Hidden objects are lit too: that band is the only way to
-   * see where one sits before it is shown again.
-   */
-  /**
-   * What lighting an object up should actually light. An angle is three points
-   * and nothing else, which lights three dots and leaves the reader to work out
-   * which angle was meant; the arms are what say that, so they are lit too. It
-   * is the same for an angle mark, which knows its own two sides.
-   */
-  function litWith(id: string): string[] {
-    const object = everything.find((candidate) => candidate.id === id);
-    if (!object) return [id];
-    if (isMark(object) && !("path" in object)) return [id, ...object.sides];
-    if (!isMeasurement(object) || object.measure !== "angle" || object.of.length !== 3) {
-      return [id];
-    }
-    const [one, corner, other] = object.of;
-    const sides = everything
-      .filter((side) => {
-        const ends = isLine(side) && side.span.kind === "through" ? side.span.ends : null;
-        if (!ends?.includes(corner)) return false;
-        return ends.includes(one) || ends.includes(other);
-      })
-      .map((side) => side.id);
-    return [id, ...sides];
-  }
-
-  function litPath(id: string) {
-    const object = everything.find((candidate) => candidate.id === id);
-    if (!object) return null;
-    if (isArc(object)) {
-      const arc = settled.arcs.get(object.id);
-      return arc ? (
-        <path
-          key={id}
-          className="canvas__snap-band canvas__snap-band--round"
-          d={arcPath(arc)}
-          vectorEffect="non-scaling-stroke"
-        />
-      ) : null;
-    }
-    if (isCircle(object)) {
-      const round = settled.circles.get(object.id);
-      return round ? (
-        <circle
-          key={id}
-          className="canvas__snap-band canvas__snap-band--round"
-          cx={round.at.x}
-          cy={round.at.y}
-          r={round.radius}
-          vectorEffect="non-scaling-stroke"
-        />
-      ) : null;
-    }
-    if (isInterior(object)) {
-      const inside = filledPath(object);
-      if (inside) {
-        const wedge = wedgeOf(object);
-        const arc = wedge ? settled.arcs.get(inside) : undefined;
-        if (arc) {
-          return (
-            <path
-              key={id}
-              className="canvas__snap-band canvas__snap-band--round"
-              d={wedgePath(arc, wedge as "sector")}
-              vectorEffect="non-scaling-stroke"
-            />
-          );
-        }
-        const round = settled.circles.get(inside);
-        return round ? (
-          <circle
-            key={id}
-            className="canvas__snap-band canvas__snap-band--round"
-            cx={round.at.x}
-            cy={round.at.y}
-            r={round.radius}
-            vectorEffect="non-scaling-stroke"
-          />
-        ) : null;
-      }
-      const corners = settled.shapes.get(object.id);
-      return corners ? (
-        <polygon
-          key={id}
-          className="canvas__snap-band canvas__snap-band--round"
-          points={corners.map((corner) => `${corner.x},${corner.y}`).join(" ")}
-          vectorEffect="non-scaling-stroke"
-        />
-      ) : null;
-    }
-    if (isPoint(object)) {
-      const spot = ends.get(object.id);
-      return spot ? (
-        <circle
-          key={id}
-          className="canvas__snap"
-          cx={spot.x}
-          cy={spot.y}
-          r={(radiusOf(spot) + 5.5) / scale}
-          vectorEffect="non-scaling-stroke"
-        />
-      ) : null;
-    }
-    const span = isLine(object) ? spanOf(object) : null;
-    return span ? (
-      <line
-        key={id}
-        className="canvas__snap-band"
-        x1={span[0].x}
-        y1={span[0].y}
-        x2={span[1].x}
-        y2={span[1].y}
-        vectorEffect="non-scaling-stroke"
-      />
-    ) : null;
-  }
-
   /** The ring at a snap: around the dot it found, or a fixed one on a path. */
   function snapRadius(found: Snap): number {
     const point = found.kind === "point" ? ends.get(found.ids[0]) : undefined;
@@ -2726,7 +2608,7 @@ export function Canvas({
     : null;
 
   return (
-    <SheetProvider value={{ objects, points, settled, selection, scale }}>
+    <SheetProvider value={{ objects, everything, points, settled, selection, scale }}>
       <div className="canvas">
         {/* biome-ignore lint/a11y/noStaticElementInteractions: the sheet is the drawing surface, where every gesture is a pointer gesture; the keyboard reaches the same work through the menus and their shortcuts */}
         <div
@@ -2967,18 +2849,21 @@ export function Canvas({
                   );
                 })()}
               <Points />
-              {spotlight && litWith(spotlight).map((id) => litPath(id))}
-              {lit && lit !== spotlight && litWith(lit).map((id) => litPath(id))}
-              {under &&
-                under !== spotlight &&
-                !selection.includes(under) &&
-                litWith(under).map((id) => litPath(id))}
-              {litReading.map((id) => litPath(id))}
+              {spotlight && (
+                <Lit ids={litWith(spotlight, everything)} ends={ends} spanOf={spanOf} />
+              )}
+              {lit && lit !== spotlight && (
+                <Lit ids={litWith(lit, everything)} ends={ends} spanOf={spanOf} />
+              )}
+              {under && under !== spotlight && !selection.includes(under) && (
+                <Lit ids={litWith(under, everything)} ends={ends} spanOf={spanOf} />
+              )}
+              <Lit ids={litReading} ends={ends} spanOf={spanOf} />
               {snap && (
                 <g>
                   {/* The paths a click would attach to, or whose crossing it
                     would build, lit the whole way along. */}
-                  {snap.kind !== "point" && snap.ids.map((id) => litPath(id))}
+                  {snap.kind !== "point" && <Lit ids={snap.ids} ends={ends} spanOf={spanOf} />}
                   <circle
                     className="canvas__snap"
                     cx={snap.at.x}
@@ -3232,7 +3117,9 @@ export function Canvas({
               onHover={(id) => {
                 const found = id ? everything.find((object) => object.id === id) : null;
                 setLitReading(
-                  found && isMeasurement(found) ? [...found.of, ...litWith(found.id)] : [],
+                  found && isMeasurement(found)
+                    ? [...found.of, ...litWith(found.id, everything)]
+                    : [],
                 );
               }}
               onOpen={(id) => {
