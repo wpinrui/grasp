@@ -250,24 +250,7 @@
 }
 
 /* The caret each box carries, pointing the way the list will open. */
-.palette__caret {
-  flex: none;
-  width: 0;
-  height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  pointer-events: none;
-}
-
-.palette__caret--down {
-  border-top: 5px solid var(--color-text-dim);
-}
-
-.palette__caret--up {
-  border-bottom: 5px solid var(--color-text-dim);
-}
-
-.palette__box:disabled .palette__caret--down {
+.palette__box:disabled .caret--down {
   border-top-color: var(--color-text-disabled);
 }
 
@@ -320,7 +303,7 @@
   color: var(--color-text-disabled);
 }
 
-.palette__opener:disabled .palette__caret--up {
+.palette__opener:disabled .caret--up {
   border-bottom-color: var(--color-text-disabled);
 }
 

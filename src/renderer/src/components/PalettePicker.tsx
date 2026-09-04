@@ -67,7 +67,7 @@ export function Picker({ label, value, disabled, wide, face, options, onPick }: 
         onClick={() => setOpen((was) => !was)}
       >
         <span className="palette__value">{value}</span>
-        <span className="palette__caret palette__caret--down" />
+        <span className="caret caret--down" />
       </button>
       {open && (
         <div className="palette__list">
@@ -127,7 +127,7 @@ export function Popout({
       >
         <span className="palette__sample">{sample}</span>
         {name}
-        <span className="palette__caret palette__caret--up" />
+        <span className="caret caret--up" />
       </button>
       {open && <div className="palette__panel">{children}</div>}
     </div>
