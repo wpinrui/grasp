@@ -1613,7 +1613,7 @@ export function Canvas({
   /** The hidden measurement the dock is pointing at, if that is what it is. */
   function ghostReadingAt(id: string | null) {
     const found = id ? everything.find((object) => object.id === id) : null;
-    if (!found || found.hidden !== true) return null;
+    if (found?.hidden !== true) return null;
     return isValue(found) || isFunction(found) ? found : null;
   }
 
