@@ -54,6 +54,40 @@ interface LabelsProps {
   onDrop: (event: PointerEvent<HTMLElement>) => void;
 }
 
+/** What a name is typed into, in place of the label, until it is settled. */
+function NameBox({
+  label,
+  naming,
+  where,
+  onNaming,
+  onRename,
+}: {
+  label: DrawnLabel;
+  naming: LabelEdit;
+  where: CSSProperties;
+  onNaming: (naming: LabelEdit | null) => void;
+  onRename: (id: string, name: string) => void;
+}) {
+  return (
+    <input
+      className="canvas__label-input"
+      style={where}
+      // biome-ignore lint/a11y/noAutofocus: the double-click asked for it
+      autoFocus
+      value={naming.text}
+      onChange={(event) => onNaming({ ...naming, text: event.target.value })}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.currentTarget.blur();
+        if (event.key === "Escape") onNaming(null);
+      }}
+      onBlur={() => {
+        if (naming.text.trim() !== label.name) onRename(label.id, naming.text.trim());
+        onNaming(null);
+      }}
+    />
+  );
+}
+
 export function Labels({
   labels,
   view,
@@ -82,22 +116,13 @@ export function Labels({
         const where = whereOf(label);
         if (naming?.id === label.id) {
           return (
-            <input
+            <NameBox
               key={label.id}
-              className="canvas__label-input"
-              style={where}
-              // biome-ignore lint/a11y/noAutofocus: the double-click asked for it
-              autoFocus
-              value={naming.text}
-              onChange={(event) => onNaming({ ...naming, text: event.target.value })}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") event.currentTarget.blur();
-                if (event.key === "Escape") onNaming(null);
-              }}
-              onBlur={() => {
-                if (naming.text.trim() !== label.name) onRename(label.id, naming.text.trim());
-                onNaming(null);
-              }}
+              label={label}
+              naming={naming}
+              where={where}
+              onNaming={onNaming}
+              onRename={onRename}
             />
           );
         }
