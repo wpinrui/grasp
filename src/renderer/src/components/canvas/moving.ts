@@ -81,9 +81,11 @@ export function takeHold(hitId: string, sketch: Sketch): Held | null {
 }
 
 /**
- * Whether the drag moves this object, wherever down the page it hangs off. A
- * point on a path moves when the drag has hold of it, and again when what holds
- * its path up is moving, since it rides the path then.
+ * Whether the drag moves the geometry this object stands on, wherever down the
+ * page it hangs off. A point on a path moves when the drag has hold of it, and
+ * again when what holds its path up is moving, since it rides the path then.
+ * Writing stops the walk: it sits where it was put and holds nothing up, so a
+ * drag carrying a caption answers no here however much the caption reads.
  */
 function movesWith(objects: SketchObject[], held: Held, id: string): boolean {
   const seen = new Set<string>();
@@ -162,17 +164,21 @@ function pullsIn(placed: SketchObject[], held: Held, by: Position): Pull[] {
     if (Math.abs(share) < TINY) continue;
     wanted.push({ ends, share, at: wantedAt(held, index, by) });
   }
-  return wanted.filter(
-    (pull) => wanted.filter((other) => other.ends.loose === pull.ends.loose).length === 1,
-  );
+  const asked = new Map<string, number>();
+  for (const pull of wanted) asked.set(pull.ends.loose, (asked.get(pull.ends.loose) ?? 0) + 1);
+  return wanted.filter((pull) => asked.get(pull.ends.loose) === 1);
 }
 
 /**
  * Everything the drag put down, with each loose end moved to where the point
  * dragged on its path needs it. The point sits a share of the way from the
  * anchored end to the loose one, so the end goes that many times as far as the
- * point was asked to. One at a time, settling in between, so a path hanging off
- * an end that has already been pulled is measured from where it has got to.
+ * point was asked to.
+ *
+ * One at a time, settling in between, in the order the points come on the page.
+ * Parents come before what hangs off them there, so an anchor riding a path an
+ * earlier pull has moved is measured from where it has got to. An anchor that
+ * reaches a pulled end some other way round can still be read before it moves.
  */
 function pulled(placed: SketchObject[], held: Held, by: Position): SketchObject[] {
   let done = placed;

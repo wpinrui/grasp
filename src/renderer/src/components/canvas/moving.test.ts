@@ -371,9 +371,49 @@ describe("where a drag pulls a path", () => {
     const figure: SketchObject[] = [A, B, SEGMENT, ON, onSegment, between, near];
     const held = whatMoves(["P", "R"], figure);
     if (!held) throw new Error("P and R can move.");
-    const moved = spots(placedBy(figure, held, { x: 60, y: 0 }));
-    expect(moved.get("S")).toMatchObject({ x: 270, y: 0 });
-    expect(moved.get("R")).toMatchObject({ x: 240, y: 0 });
+    const moved = placedBy(figure, held, { x: 60, y: 0 });
+    // Read before the page settles: settling would put S back on its own path
+    // and hide anything scribbled onto it.
+    expect(spot(moved, "S")).toEqual({ x: 270, y: 0 });
+    expect(spots(moved).get("R")).toMatchObject({ x: 240, y: 0 });
+  });
+
+  /**
+   * One end cannot answer two points at once. Where two dragged points sit on
+   * the same path, neither is pulled for and both ride, rather than the last
+   * one asked quietly winning.
+   */
+  it("moves nothing where two dragged points want the same end", () => {
+    const second = {
+      ...createPoint({ x: 150, y: 150 }, "medium", { kind: "on", path: "hang", at: 0.75 }),
+      id: "T",
+    };
+    const figure: SketchObject[] = [...DEEPER, second];
+    const held = whatMoves(["P", "R", "T"], figure);
+    if (!held) throw new Error("P, R and T can move.");
+    const moved = spots(placedBy(figure, held, { x: 60, y: 60 }));
+    expect(moved.get("Q")).toMatchObject({ x: 150, y: 200 });
+    expect(moved.get("R")).toMatchObject({ x: 180, y: 100 });
+  });
+
+  /**
+   * Three deep, so one pull feeds the next: Q goes for R, and only once R has
+   * settled where that puts it does Q2 go for U.
+   */
+  it("takes one pull at a time, so a later anchor has already moved", () => {
+    const far = { ...createPoint({ x: 450, y: 100 }, "medium"), id: "Q2" };
+    const second = { ...lineThrough("segment", ["R", "Q2"]), id: "hang2" };
+    const outer = {
+      ...createPoint({ x: 300, y: 100 }, "medium", { kind: "on", path: "hang2", at: 0.5 }),
+      id: "U",
+    };
+    const figure: SketchObject[] = [...DEEPER, far, second, outer];
+    const held = whatMoves(["P", "R", "U"], figure);
+    if (!held) throw new Error("P, R and U can move.");
+    const moved = spots(placedBy(figure, held, { x: 60, y: 60 }));
+    expect(moved.get("R")).toMatchObject({ x: 210, y: 160 });
+    expect(moved.get("U")).toMatchObject({ x: 360, y: 160 });
+    expect(moved.get("Q2")).toMatchObject({ x: 510, y: 160 });
   });
 
   /**
