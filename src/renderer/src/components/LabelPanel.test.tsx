@@ -48,6 +48,15 @@ describe("the labels panel", () => {
     expect(screen.queryByText("j")).toBeNull();
   });
 
+  it("turns the triangle to say which way a group is", () => {
+    panel();
+    // Folded, so it points at what it would open; open, so it points into it.
+    expect(heading("Segments").querySelector(".caret--right")).toBeTruthy();
+    expect(heading("Points").querySelector(".caret--down")).toBeTruthy();
+    fireEvent.click(heading("Segments"));
+    expect(heading("Segments").querySelector(".caret--down")).toBeTruthy();
+  });
+
   it("lists what has a name and leaves out what has none", () => {
     const { container } = panel();
     fireEvent.click(heading("Segments"));

@@ -1,3 +1,37 @@
+/*
+ * The little triangle that says a thing opens: on the palette's pickers, and on
+ * a heading that folds its group away. It is drawn with borders rather than a
+ * glyph so it keeps its exact size at any font, and it lives here because more
+ * than one panel wants the same one.
+ */
+.caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.caret--down,
+.caret--up {
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+.caret--down {
+  border-top: 5px solid var(--color-text-dim);
+}
+
+.caret--up {
+  border-bottom: 5px solid var(--color-text-dim);
+}
+
+/* Folded away, so it points at what it would open rather than down into it. */
+.caret--right {
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid var(--color-text-dim);
+}
+
 .app {
   height: 100%;
   min-height: 720px;

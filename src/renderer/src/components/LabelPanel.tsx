@@ -234,6 +234,7 @@ export function LabelPanel({
                   aria-expanded={!folded[group.kind]}
                   onClick={() => setFolded((was) => ({ ...was, [group.kind]: !was[group.kind] }))}
                 >
+                  <span className={`caret caret--${folded[group.kind] ? "right" : "down"}`} />
                   <span className="labels__group-name">{group.title}</span>
                   <span className="labels__count">
                     {showing} of {group.rows.length}
