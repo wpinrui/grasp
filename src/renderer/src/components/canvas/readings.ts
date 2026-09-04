@@ -58,7 +58,7 @@ export interface Measuring extends Figure {
 /** About how big a reading comes out on screen, before it has been drawn. */
 export function readingBox(
   made: SketchMeasurement,
-  measuring: Measuring,
+  measuring: Pick<Measuring, "saying">,
 ): { width: number; height: number } {
   return {
     width: measuring.saying(made).length * READING_CHAR,
@@ -150,7 +150,7 @@ export function readingAlready(written: Written, measuring: Measuring): SketchMe
 export function angleMarkOn(
   angle: { corner: string; arms: [string, string]; reflex: boolean },
   hit: SketchObject | null,
-  measuring: Measuring,
+  measuring: Pick<Measuring, "objects" | "settled" | "lastMark" | "clearOf">,
 ): SketchMark {
   const { corner, arms, reflex } = angle;
   const { objects, settled, lastMark, clearOf } = measuring;
@@ -184,7 +184,7 @@ export function angleMarkOn(
  */
 export function angleReadingSpot(
   hung: { reading: SketchMeasurement; mark: SketchMark; reflex: boolean },
-  measuring: Measuring,
+  measuring: Pick<Measuring, "settled" | "scale" | "saying">,
 ): Position | null {
   const { reading, mark, reflex } = hung;
   const { settled, scale } = measuring;
