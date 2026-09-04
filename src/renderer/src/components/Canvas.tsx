@@ -47,7 +47,6 @@ import {
   isCaption,
   isCircle,
   isFunction,
-  isInterior,
   isLine,
   isLocus,
   isMark,
@@ -117,12 +116,12 @@ import { Drawing } from "./canvas/layers/Drawing";
 import { Fills } from "./canvas/layers/Fills";
 import { Guides } from "./canvas/layers/Guides";
 import { Holding } from "./canvas/layers/Holding";
-import { InteriorGlyph } from "./canvas/layers/Interior";
 import { Lit } from "./canvas/layers/Lit";
-import { Loci, Locus } from "./canvas/layers/Locus";
+import { Loci } from "./canvas/layers/Locus";
 import { MarkGhost, Marks } from "./canvas/layers/Marks";
 import { Paths } from "./canvas/layers/Paths";
 import { Points } from "./canvas/layers/Points";
+import { Preview } from "./canvas/layers/Preview";
 import { litWith } from "./canvas/lighting";
 import { type Marking, markUnder } from "./canvas/marks";
 import {
@@ -137,7 +136,7 @@ import {
   sameAngle,
 } from "./canvas/readings";
 import { SheetProvider } from "./canvas/SheetContext";
-import { arcPath, arrowPoints, interiorShape } from "./canvas/shapes";
+import { arrowPoints } from "./canvas/shapes";
 import {
   ANGLE_AIM,
   ANGLE_ROOM,
@@ -2576,71 +2575,13 @@ export function Canvas({
                 </g>
               )}
               <Holding marks={marks} />
-              {preview.map((object) => {
-                if (isArc(object)) {
-                  const arc = previewSettled.arcs.get(object.id);
-                  return arc ? (
-                    <path
-                      key={object.id}
-                      className="canvas__circle canvas__circle--preview"
-                      d={arcPath(arc)}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ) : null;
-                }
-                if (isCircle(object)) {
-                  const round = previewSettled.circles.get(object.id);
-                  return round ? (
-                    <circle
-                      key={object.id}
-                      className="canvas__circle canvas__circle--preview"
-                      cx={round.at.x}
-                      cy={round.at.y}
-                      r={round.radius}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ) : null;
-                }
-                if (isLocus(object)) {
-                  const shape = previewSettled.loci.get(object.id);
-                  return shape ? (
-                    <Locus key={object.id} id={object.id} shape={shape} ghost shown={shown} />
-                  ) : null;
-                }
-                if (isInterior(object)) {
-                  const shape = interiorShape(object, previewSettled);
-                  return shape ? (
-                    <InteriorGlyph
-                      key={object.id}
-                      shape={shape}
-                      className="canvas__interior canvas__interior--preview"
-                    />
-                  ) : null;
-                }
-                if (!isLine(object)) return null;
-                const span = spanOf(object, previewSettled);
-                return span ? (
-                  <line
-                    key={object.id}
-                    className="canvas__line canvas__line--preview"
-                    x1={span[0].x}
-                    y1={span[0].y}
-                    x2={span[1].x}
-                    y2={span[1].y}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ) : null;
-              })}
-              {previewPoints.map((point) => (
-                <circle
-                  key={point.id}
-                  className="canvas__point canvas__point--preview"
-                  cx={point.x}
-                  cy={point.y}
-                  r={radiusOf(point) / scale}
-                  vectorEffect="non-scaling-stroke"
-                />
-              ))}
+              <Preview
+                objects={preview}
+                points={previewPoints}
+                settled={previewSettled}
+                spanOf={spanOf}
+                shown={shown}
+              />
               <Dimensions boxOf={boxOf} />
               <Guides guide={guide} />
               {marquee && (
