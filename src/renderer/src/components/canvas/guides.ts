@@ -33,25 +33,10 @@ import {
   type Guide,
   type GuideAngle,
   type GuideText,
+  type Pending,
+  type Tracing,
   type Travel,
 } from "./sheet";
-
-/** A tool waiting for its second click, and where it is aiming. */
-export interface Pending {
-  start: Position;
-  startId: string;
-  at: Position;
-  /** Which tool is drawing it, since only that tool can finish it. */
-  tool: string;
-}
-
-/** The polygon being traced out, its corners in the order they were clicked. */
-export interface Tracing {
-  ids: string[];
-  spots: Position[];
-  /** Where the band from the last corner is aiming. */
-  at: Position;
-}
 
 /** The figure as it stands, and what is half drawn over it. */
 export interface Placing {

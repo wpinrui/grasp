@@ -39,7 +39,6 @@ import {
   createInterior,
   createPoint,
   createTick,
-  crossings,
   distance,
   distanceToPath,
   endsById,
@@ -80,14 +79,12 @@ import {
   type PathGeometry,
   type PointSize,
   type Position,
-  PX_PER_CM,
   pannedView,
   panTravel,
   pathIn,
   pointOnPath,
   pointsOf,
   type Rect,
-  radiansOf,
   radiusOf,
   rectBetween,
   type SketchCalculation,
@@ -135,10 +132,8 @@ import {
 import {
   ANGLE_AIM,
   ANGLE_ROOM,
-  ARROW_GRAB,
   ARROW_SIZE,
   CAPTION_WIDTH,
-  CROSS_REACH,
   clampScale,
   DRAG_THRESHOLD,
   DRAW_HOLD,
@@ -157,13 +152,21 @@ import {
   type Snap,
   sameReading,
   snapKey,
-  stepped,
   stopAbove,
   stopBelow,
   type Travel,
   WHEEL_ZOOM,
   type Written,
 } from "./canvas/sheet";
+import {
+  type Aiming,
+  aimAt,
+  handleAt,
+  heldMove,
+  snapAt,
+  spanOfLocus,
+  travelOf,
+} from "./canvas/steps";
 import type { HiddenKinds } from "./HiddenPanel";
 import { MarkPanel } from "./MarkPanel";
 import { MeasurementBox } from "./MeasurementBox";
@@ -812,181 +815,6 @@ export function Canvas({
     });
   }
 
-  /** The stretch of its domain a locus is drawn over. */
-  function spanOfLocus(id: string): [number, number] {
-    const locus = objects.find((object) => object.id === id);
-    return locus && isLocus(locus) ? locus.span : [0, 1];
-  }
-
-  /** The arrowhead nearest the pointer, if the pointer is on one. */
-  function handleAt(at: Position): Handle | null {
-    const reach = ARROW_GRAB / scale;
-    return handles.find((handle) => distance(handle.at, at) <= reach) ?? null;
-  }
-
-  /**
-   * Where a click would go and what it would use. Shift holds the direction
-   * from the first click to the nearest 15 degrees, and takes over from the
-   * snapping while it is down, so the angle is what you asked for.
-   */
-  function aimAt(at: Position): { found: Snap | null; spot: Position } {
-    const from = pending?.start ?? tracing?.spots[tracing.spots.length - 1];
-    if (from && shiftHeld) return { found: null, spot: stepped(from, at) };
-    // What is already on the sheet comes first: a point, a path or a crossing
-    // under the pointer is what a click lands on, whatever the steps are set to.
-    const found = snapping.objects ? snapAt(at) : null;
-    if (found) return { found, spot: alongWithSteps(found, from, at) };
-    return { found: null, spot: from ? heldToSteps(from, at) : at };
-  }
-
-  /**
-   * Where on a snapped object the click actually lands.
-   *
-   * A point and a crossing are single spots: landing on one settles it, and the
-   * steps have nothing left to say. A path is not. Landing on a path only says
-   * the point is somewhere on it, and how far along is still free, so that is
-   * what the steps spend. Each step that is switched on offers its own spots
-   * along the path, and the click takes whichever of them the pointer is
-   * nearest, so having both on offers more places to land rather than fewer.
-   */
-  function alongWithSteps(found: Snap, from: Position | undefined, at: Position): Position {
-    if (found.kind !== "line" || !from) return found.at;
-    const along = pathIn(settled, found.ids[0]);
-    if (!along) return found.at;
-    const spots = stepsAlong(along, from, at);
-    if (spots.length === 0) return found.at;
-    return spots.reduce((near, spot) => (distance(spot, at) < distance(near, at) ? spot : near));
-  }
-
-  /** The whole numbers around one, since the nearest may miss the path. */
-  function nearWhole(value: number): number[] {
-    const whole = Math.round(value);
-    return [whole - 1, whole, whole + 1];
-  }
-
-  /**
-   * The spots along a path that the steps say a click may land on: where the
-   * whole-step rings about the start cross it, and where the whole-step
-   * directions out of the start cross it. Only rings and directions either side
-   * of where the pointer is, since the rest are too far away to have been meant.
-   */
-  function stepsAlong(along: PathGeometry, from: Position, at: Position): Position[] {
-    const spots: Position[] = [];
-    if (snapping.length && snapping.lengthCm > 0) {
-      const step = snapping.lengthCm * PX_PER_CM;
-      for (const whole of nearWhole(distance(from, at) / step)) {
-        if (whole <= 0) continue;
-        spots.push(...crossings({ at: from, radius: whole * step, ref: 0 }, along));
-      }
-    }
-    if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = radiansOf(snapping.angleDegrees);
-      const bearing = Math.atan2(at.y - from.y, at.x - from.x);
-      const base = baseAngle(bearing);
-      for (const whole of nearWhole((bearing - base) / step)) {
-        const angle = base + whole * step;
-        const out = { x: from.x + Math.cos(angle), y: from.y + Math.sin(angle) };
-        spots.push(...crossings({ a: from, b: out, form: "ray" }, along));
-      }
-    }
-    return spots;
-  }
-
-  /**
-   * The pointer held to whole steps of length and of angle, where those are
-   * switched on. An angle is measured from the straight object already at the
-   * corner where there is one, so the number the sheet reads out while the
-   * object is being drawn is the number being held.
-   */
-  function heldToSteps(from: Position, at: Position): Position {
-    if (!snapping.length && !snapping.angle) return at;
-    let reach = distance(from, at);
-    let angle = Math.atan2(at.y - from.y, at.x - from.x);
-    if (snapping.length && snapping.lengthCm > 0) {
-      const step = snapping.lengthCm * PX_PER_CM;
-      reach = Math.max(step, Math.round(reach / step) * step);
-    }
-    if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = radiansOf(snapping.angleDegrees);
-      const base = baseAngle(angle);
-      angle = base + Math.round((angle - base) / step) * step;
-    }
-    return { x: from.x + Math.cos(angle) * reach, y: from.y + Math.sin(angle) * reach };
-  }
-
-  /**
-   * How far a drag actually moves what it has hold of: the pointer's travel
-   * held to whole steps of length and of angle, both counted from where the
-   * drag started, the angle from the horizontal. A move can come to nothing, so
-   * unlike a line being drawn it is not held to at least one step.
-   *
-   * The steps hold geometry. Writing dragged on its own goes exactly where it
-   * is put, and a drag carrying both counts as geometry so that it all moves
-   * together.
-   */
-  function heldMove(ids: string[], by: Position): Position {
-    // The steps hold a move only when asked to. Off, a drag goes exactly where
-    // it is put, whatever the steps are set to.
-    if (!snapping.moving) return by;
-    if (!snapping.length && !snapping.angle) return by;
-    if (!carriesGeometry(ids)) return by;
-    let reach = Math.hypot(by.x, by.y);
-    let angle = Math.atan2(by.y, by.x);
-    if (snapping.length && snapping.lengthCm > 0) {
-      const step = snapping.lengthCm * PX_PER_CM;
-      reach = Math.round(reach / step) * step;
-    }
-    if (snapping.angle && snapping.angleDegrees > 0) {
-      const step = radiansOf(snapping.angleDegrees);
-      angle = Math.round(angle / step) * step;
-    }
-    return { x: Math.cos(angle) * reach, y: Math.sin(angle) * reach };
-  }
-
-  /** Whether a drag has hold of any geometry, rather than writing alone. */
-  function carriesGeometry(ids: string[]): boolean {
-    const present = sketch.read().objects;
-    return ids.some((id) => {
-      const object = present.find((candidate) => candidate.id === id);
-      return object !== undefined && isPoint(object);
-    });
-  }
-
-  /**
-   * What a move writes on the sheet: from where the first point it carries
-   * started to where that point has got to. A drag carrying no geometry says
-   * nothing, the way it is held to no steps.
-   */
-  function travelOf(ids: string[], from: Position[], went: Position): Travel | null {
-    if (!carriesGeometry(ids)) return null;
-    const start = from[0];
-    return { from: start, to: { x: start.x + went.x, y: start.y + went.y } };
-  }
-
-  /** What an angle step is counted from: the nearest arm, or the horizontal. */
-  function baseAngle(bearing: number): number {
-    const arms = pending
-      ? armsAt(pending.startId, objects, settled).map((arm) => arm.angle)
-      : tracing && tracing.spots.length >= 2
-        ? [
-            Math.atan2(
-              tracing.spots[tracing.spots.length - 2].y - tracing.spots[tracing.spots.length - 1].y,
-              tracing.spots[tracing.spots.length - 2].x - tracing.spots[tracing.spots.length - 1].x,
-            ),
-          ]
-        : [];
-    let nearest: number | null = null;
-    for (const arm of arms) {
-      if (
-        nearest === null ||
-        Math.abs(markSweep(arm, bearing, false)) < Math.abs(markSweep(nearest, bearing, false))
-      ) {
-        nearest = arm;
-      }
-    }
-    return nearest ?? 0;
-  }
-
   /** Put down the first of the two points a drawing tool needs. */
   function startDrawing(found: Snap | null, spot: Position) {
     sketch.beginGesture();
@@ -1168,7 +996,7 @@ export function Canvas({
       setReadingPanel(null);
     }
     // An arrowhead is taken hold of before anything under it is picked.
-    const held = tool === "arrow" && !picking ? handleAt(at) : null;
+    const held = tool === "arrow" && !picking ? handleAt(at, aimingNow()) : null;
     // With a dialog open the sheet is only good for handing it a point.
     if (picking) {
       // Whatever is under the pointer goes to the dialog, which knows whether
@@ -1215,14 +1043,14 @@ export function Canvas({
       return;
     }
     if (tool === "polygon") {
-      const aim = aimAt(at);
+      const aim = aimAt(at, aimingNow());
       polygonClick(aim.found, aim.spot);
       return;
     }
     // A drawing tool puts its first point down on the press, so it can be
     // dragged out to the second and released there, or left for a second click.
     if (drawing) {
-      const aim = aimAt(at);
+      const aim = aimAt(at, aimingNow());
       const fresh = !pending;
       if (fresh) startDrawing(aim.found, aim.spot);
       grab.current = {
@@ -1262,7 +1090,7 @@ export function Canvas({
       marquee: null,
       pan: tool === "hand" ? { view, clientX: event.clientX, clientY: event.clientY } : null,
       handle: held
-        ? { handle: held, span: [...spanOfLocus(held.locus)] as [number, number] }
+        ? { handle: held, span: [...spanOfLocus(held.locus, aimingNow())] as [number, number] }
         : null,
       started: false,
     };
@@ -1689,6 +1517,26 @@ export function Canvas({
    * take more than one mark.
    */
   /**
+   * The figure as a click is aimed at it. A drag reads the objects as they
+   * stand rather than as this render left them, so those come through a reader
+   * rather than as a list.
+   */
+  function aimingNow(): Aiming {
+    return {
+      objects,
+      settled,
+      scale,
+      slack,
+      snapping,
+      handles,
+      pending,
+      tracing,
+      shiftHeld,
+      present: () => sketch.read().objects,
+    };
+  }
+
+  /**
    * The figure as the readings read it. Built where it is asked for rather than
    * held, since every part of it is read off this render anyway.
    */
@@ -1791,7 +1639,7 @@ export function Canvas({
     if (plotting && !picking && !grab.current?.pan) {
       const at = positionOf(event);
       if (!at) return;
-      const aim = aimAt(at);
+      const aim = aimAt(at, aimingNow());
       if (snapKey(aim.found) !== snapKey(snap)) setSnap(aim.found);
       if (pending) setPending({ ...pending, at: aim.spot });
       if (tracing) setTracing({ ...tracing, at: aim.spot });
@@ -1869,12 +1717,16 @@ export function Canvas({
     }
 
     if (state.moving) {
-      const went = heldMove(state.movingIds, {
-        x: at.x - state.origin.x,
-        y: at.y - state.origin.y,
-      });
+      const went = heldMove(
+        state.movingIds,
+        {
+          x: at.x - state.origin.x,
+          y: at.y - state.origin.y,
+        },
+        aimingNow(),
+      );
       moveBy({ ids: state.movingIds, from: state.moving }, went.x, went.y);
-      setTravel(travelOf(state.movingIds, state.moving, went));
+      setTravel(travelOf(state.movingIds, state.moving, went, aimingNow()));
       return;
     }
 
@@ -2077,7 +1929,7 @@ export function Canvas({
     }
 
     if (drawing) {
-      const aim = aimAt(at);
+      const aim = aimAt(at, aimingNow());
       // The press that started it and was let go without really pulling
       // anything out leaves it half drawn, for a second click to finish. One
       // that was held and dragged out finishes here.
@@ -2106,7 +1958,7 @@ export function Canvas({
     if (tool === "point") {
       // The point lands where the pointer comes up, dragged there or not. On
       // top of one that is already there it selects that one instead.
-      const found = snapAt(at);
+      const found = snapAt(at, aimingNow());
       if (found?.kind === "point") {
         sketch.select([found.ids[0]]);
         return;
@@ -2237,43 +2089,6 @@ export function Canvas({
 
   /** The page as the labelling reads it. */
   const labelling: Labelling = { objects, settled, scale, ends, spanOf };
-
-  /**
-   * What a click at this spot would land on. A point already there wins, then
-   * the crossing of two straight objects, then the one straight object under
-   * the pointer, which a new point would belong to.
-   */
-  function snapAt(at: Position): Snap | null {
-    const over = objectAt(at, { objects: objects, scale, settled });
-    if (over && isPoint(over))
-      return { kind: "point", ids: [over.id], at: { x: over.x, y: over.y } };
-    // The paths the pointer is on, the newest first, as picking has them.
-    const near: { id: string; along: PathGeometry }[] = [];
-    for (let index = objects.length - 1; index >= 0; index -= 1) {
-      const object = objects[index];
-      if (!isLine(object) && !isCircle(object) && !isArc(object)) continue;
-      const along = pathIn(settled, object.id);
-      if (along && distanceToPath(along, at) <= slack) near.push({ id: object.id, along });
-    }
-    if (near.length === 0) return null;
-    for (let one = 0; one < near.length; one += 1) {
-      for (let other = one + 1; other < near.length; other += 1) {
-        // Two paths can meet twice, so the one being pointed at is the one the
-        // click builds, and which of the two it is holds still as they move.
-        const met = crossings(near[one].along, near[other].along);
-        const pick = met.findIndex((spot) => distance(spot, at) <= CROSS_REACH / scale);
-        if (pick !== -1) {
-          return { kind: "cross", ids: [near[one].id, near[other].id], pick, at: met[pick] };
-        }
-      }
-    }
-    const first = near[0];
-    return {
-      kind: "line",
-      ids: [first.id],
-      at: spotOnPath(first.along, alongPath(first.along, at)),
-    };
-  }
 
   /**
    * The point a click plots: the crossing itself where two straight objects
@@ -2545,9 +2360,9 @@ export function Canvas({
 
   function dragWriting(by: Position) {
     if (!written.current) return;
-    const went = heldMove(written.current.ids, by);
+    const went = heldMove(written.current.ids, by, aimingNow());
     moveBy(written.current, went.x, went.y);
-    setTravel(travelOf(written.current.ids, written.current.from, went));
+    setTravel(travelOf(written.current.ids, written.current.from, went, aimingNow()));
   }
 
   function dropWriting() {
