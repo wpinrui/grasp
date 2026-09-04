@@ -19,11 +19,11 @@ const SHAPES: { sides: number; name: string }[] = [
  * the sheet would use, so a key looks like what pressing it makes.
  */
 function ShapeGlyph({ sides }: { sides: number }) {
-  // The toolbox's own box and reach, so a key is the tool's icon drawn larger
-  // rather than a second way of drawing the same shape.
+  // The toolbox's own box, reach and ink, so a key is the tool's icon drawn
+  // larger rather than a second way of drawing the same shape.
   const corners = cornersAt({ x: 10, y: 10.4 }, 7.6, sides);
   return (
-    <svg width="30" height="30" viewBox="0 0 20 20" aria-hidden="true">
+    <svg className="ngon__shape" width="30" height="30" viewBox="0 0 20 20" aria-hidden="true">
       <polygon
         points={corners.map((corner) => `${corner.x} ${corner.y}`).join(" ")}
         fill="var(--color-tool-polygon-fill)"

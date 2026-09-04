@@ -38,6 +38,12 @@
   opacity: 0.5;
 }
 
+/* Drawn in the polygon tool's own ink, the way the toolbox draws its icon: the
+   shape's stroke is currentColor, and this is what that colour is. */
+.ngon__shape {
+  color: var(--color-tool-polygon);
+}
+
 .ngon__key-name {
   font-size: var(--font-size-caption);
 }

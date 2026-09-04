@@ -155,6 +155,7 @@ export function App() {
     pointSize: tools.pointSize,
     armed: tools.activeTool === "polygon" && tools.variants.polygon === "regular",
     page: sketch.activeId,
+    onDrawn: () => tools.setActiveTool("arrow"),
   });
   /** The relabel run in hand: the letters the Text tool is handing out. */
   const relabel = useRelabel({

@@ -26,9 +26,14 @@ export interface RegularContext {
   armed: boolean;
   /** The page that is up, since the click that asked was made on that one. */
   page: string;
+  /**
+   * Called once a shape has been drawn. The shape lands picked and there is
+   * nothing more to click out, so what is wanted next is the Arrow.
+   */
+  onDrawn: () => void;
 }
 
-export function useRegular({ sketch, pointSize, armed, page }: RegularContext) {
+export function useRegular({ sketch, pointSize, armed, page, onDrawn }: RegularContext) {
   const [asked, setAsked] = useState<RegularAsked | null>(null);
   // The ask belongs to the arming that made it, and to the page it was made on.
   // Arming the polygon otherwise, putting the tool down or turning the page
@@ -64,6 +69,7 @@ export function useRegular({ sketch, pointSize, armed, page }: RegularContext) {
       if (!canBuildSides(sides)) return;
       const before = sketch.read();
       sketch.commit(withRegular(before, { at: asked.spot, sides, size: pointSize, locked }));
+      onDrawn();
     },
   };
 }
