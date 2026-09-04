@@ -8,7 +8,7 @@
  */
 
 import { withNames } from "../../../sketch/captions";
-import type { SketchCaption, SketchObject, View } from "../../../sketch/model";
+import type { SketchCaption, View } from "../../../sketch/model";
 import { drawnAs } from "../../../sketch/text";
 import { MeasurementBox } from "../../MeasurementBox";
 import { screenSpot } from "../sheet";
@@ -56,7 +56,7 @@ export function GhostReading({
   view,
   scale,
 }: {
-  measurement: SketchObject;
+  measurement: Parameters<typeof MeasurementBox>[0]["measurement"];
   /** The measurement as it reads, which is what the box writes out. */
   reading: Parameters<typeof MeasurementBox>[0]["reading"];
   view: View;
@@ -64,7 +64,7 @@ export function GhostReading({
 }) {
   return (
     <MeasurementBox
-      measurement={measurement as Parameters<typeof MeasurementBox>[0]["measurement"]}
+      measurement={measurement}
       reading={reading}
       view={view}
       scale={scale}

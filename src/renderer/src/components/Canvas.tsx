@@ -2631,23 +2631,12 @@ export function Canvas({
           {/* Hovering a Measure entry writes the number it would take, as a
             ghost, where it would land. */}
           {preview.filter(isMeasurement).map((measurement) => (
-            <MeasurementBox
+            <GhostReading
               key={measurement.id}
               measurement={measurement}
               reading={readingFor(measurement)}
               view={view}
               scale={scale}
-              selected={false}
-              tool="none"
-              ghost
-              linking={false}
-              onLink={() => {}}
-              onSelect={() => {}}
-              onGrab={() => {}}
-              onDrag={() => {}}
-              onDrop={() => {}}
-              onToggleLabel={() => {}}
-              onMeasure={() => {}}
             />
           ))}
 
