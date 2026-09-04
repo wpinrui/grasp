@@ -3,13 +3,11 @@ import {
   type MouseEvent,
   type PointerEvent,
   type RefObject,
-  type UIEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type WheelEvent,
 } from "react";
 import { type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
 import {
@@ -86,7 +84,6 @@ import {
   settle,
   slackAt,
   spotOnPath,
-  toSheet,
   union,
   type View,
 } from "../sketch/model";
@@ -128,7 +125,6 @@ import { SheetProvider } from "./canvas/SheetContext";
 import {
   ANGLE_AIM,
   CAPTION_WIDTH,
-  clampScale,
   DRAG_THRESHOLD,
   DRAW_HOLD,
   DRAW_REACH,
@@ -148,7 +144,6 @@ import {
   stopBelow,
   type Tracing,
   type Travel,
-  WHEEL_ZOOM,
 } from "./canvas/sheet";
 import {
   type Aiming,
@@ -163,6 +158,7 @@ import { useCaptions } from "./canvas/useCaptions";
 import { useLabelDrag } from "./canvas/useLabelDrag";
 import { useMarking } from "./canvas/useMarking";
 import { useReading } from "./canvas/useReading";
+import { useView } from "./canvas/useView";
 import type { HiddenKinds } from "./HiddenPanel";
 import { MarkPanel } from "./MarkPanel";
 import { MeasurementBox } from "./MeasurementBox";
@@ -457,7 +453,6 @@ export function Canvas({
    * write echoing back, not the user moving anything, and moving the view on it
    * would send the sheet drifting.
    */
-  const wrote = useRef({ x: 0, y: 0 });
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [shiftHeld, setShiftHeld] = useState(false);
   const { objects: everything, selection } = sketch.state;
@@ -567,14 +562,16 @@ export function Canvas({
    */
   const area = union(drawn ? union(drawn, origin) : origin, onScreen);
 
-  // The scroll and wheel handlers fire outside the render that made them, so
-  // they read these from refs rather than a closure that has gone stale.
-  const areaNow = useRef(area);
-  areaNow.current = area;
-  const viewNow = useRef(view);
-  viewNow.current = view;
-  const scaleNow = useRef(scale);
-  scaleNow.current = scale;
+  const {
+    handleScrollX,
+    handleScrollY,
+    handleWheel,
+    positionOf,
+    scaleNow,
+    viewNow,
+    wrote,
+    zoomTo,
+  } = useView({ view, onView, sheet, viewport, area, zoomable });
 
   useLayoutEffect(() => {
     const element = sheet.current;
@@ -672,66 +669,6 @@ export function Canvas({
       wrote.current.y = down.scrollTop;
     }
   });
-
-  /**
-   * Where the scrollbar is now, or null when it is only echoing back what this
-   * component wrote. Measured against the write rather than against where the
-   * view is, because the two part company: the area moves under the view as
-   * the sheet is panned, so a scroll event that arrives a frame or two late
-   * carries a number that is right for the write it came from and wrong for
-   * the view by then. Reading those as the user scrolling is what set the
-   * sheet drifting after a pan was released with the mouse still moving.
-   */
-  function scrolledTo(at: number, axis: "x" | "y"): number | null {
-    if (Math.abs(at - wrote.current[axis]) < 0.5) return null;
-    wrote.current[axis] = at;
-    return at;
-  }
-
-  function handleScrollX(event: UIEvent<HTMLDivElement>) {
-    const at = scrolledTo(event.currentTarget.scrollLeft, "x");
-    if (at === null) return;
-    onView({ ...viewNow.current, x: areaNow.current.x + at / scaleNow.current });
-  }
-
-  function handleScrollY(event: UIEvent<HTMLDivElement>) {
-    const at = scrolledTo(event.currentTarget.scrollTop, "y");
-    if (at === null) return;
-    onView({ ...viewNow.current, y: areaNow.current.y + at / scaleNow.current });
-  }
-
-  /** Where in the sheet element a pointer is, in screen pixels. */
-  function screenOf(event: { clientX: number; clientY: number }): Position | null {
-    const bounds = sheet.current?.getBoundingClientRect();
-    return bounds ? { x: event.clientX - bounds.left, y: event.clientY - bounds.top } : null;
-  }
-
-  function positionOf(
-    event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>,
-  ): Position | null {
-    const bounds = sheet.current?.getBoundingClientRect();
-    return bounds ? toSheet(bounds, event, { view, scale }) : null;
-  }
-
-  /** Zoom, holding the sheet still under one point of the canvas. */
-  function zoomAround(next: number, at: Position) {
-    const scaled = clampScale(next);
-    const was = scaleNow.current;
-    const held = { x: viewNow.current.x + at.x / was, y: viewNow.current.y + at.y / was };
-    onView({ x: held.x - at.x / scaled, y: held.y - at.y / scaled, scale: scaled });
-  }
-
-  /** Minus, plus and the readout all hold the middle of the canvas still. */
-  function zoomTo(next: number) {
-    zoomAround(next, { x: viewport.width / 2, y: viewport.height / 2 });
-  }
-
-  function handleWheel(event: WheelEvent<HTMLDivElement>) {
-    if (!zoomable) return;
-    const at = screenOf(event);
-    if (!at) return;
-    zoomAround(scaleNow.current * Math.exp(-event.deltaY * WHEEL_ZOOM), at);
-  }
 
   /**
    * What a drag on these objects actually moves, and where each of them starts,
