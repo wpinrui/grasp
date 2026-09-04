@@ -1,6 +1,10 @@
 import { useCallback, useRef } from "react";
 import { type Arming, armedOnto } from "./armed";
+import { spelledOutBy } from "./measure";
 import {
+  isMeasurement,
+  nameable,
+  namesFor,
   namesToGive,
   type PointSize,
   resolve,
@@ -78,6 +82,30 @@ export function useSketch() {
   }, []);
 
   /**
+   * A measurement reads out the names of what it measures, so taking one shows
+   * those labels. Without it a new reading says "?? = 5 cm": the points it is
+   * between have never been labelled, so nothing on the sheet says which is
+   * which.
+   */
+  const spelledOut = useCallback(
+    (objects: SketchObject[]): SketchObject[] => {
+      const already = alreadyThere();
+      const fresh = objects.filter((object) => isMeasurement(object) && !already.has(object.id));
+      if (fresh.length === 0) return objects;
+      const names = namesFor(objects);
+      const wanted = new Set(
+        fresh.flatMap((one) => (isMeasurement(one) ? spelledOutBy(one, { objects, names }) : [])),
+      );
+      return objects.map((object) =>
+        wanted.has(object.id) && object.label?.shown !== true && nameable(object, objects)
+          ? { ...object, label: { ...object.label, shown: true } }
+          : object,
+      );
+    },
+    [alreadyThere],
+  );
+
+  /**
    * A label shown on something that has never carried a name takes one now, and
    * keeps it. It is done here rather than at every place a label can be shown,
    * so one asked for by the panel, by a key, by a paste, by a transform or by a
@@ -106,10 +134,10 @@ export function useSketch() {
    */
   const apply = useCallback(
     (next: SketchState, arm = true) => {
-      const objects = arm ? armed(lettered(namedIfWanted(next.objects))) : next.objects;
+      const objects = arm ? armed(lettered(spelledOut(namedIfWanted(next.objects)))) : next.objects;
       write({ ...next, objects: resolve(objects) });
     },
-    [write, armed, lettered, namedIfWanted],
+    [write, armed, lettered, spelledOut, namedIfWanted],
   );
 
   const select = useCallback(
