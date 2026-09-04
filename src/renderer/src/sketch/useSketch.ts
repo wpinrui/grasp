@@ -1,12 +1,7 @@
 import { useCallback, useRef } from "react";
 import { type Arming, armedOnto } from "./armed";
-import { spelledOutBy } from "./measure";
 import {
-  isMeasurement,
-  nameable,
   namedWhereShown,
-  namesFor,
-  namesToGive,
   type PointSize,
   resolve,
   type SketchObject,
@@ -15,6 +10,7 @@ import {
 } from "./model";
 import { demotedUnder } from "./overlaps";
 import { type PageContent, usePages } from "./pages";
+import { spelledOutNamed } from "./spelled";
 
 /**
  * The sketch: what a tool does to the page that is up.
@@ -82,37 +78,9 @@ export function useSketch() {
     naming.current = on;
   }, []);
 
-  /**
-   * A measurement reads out the names of what it measures, so taking one names
-   * whatever it spells out. Without a name there the reading would say
-   * "?? = 5 cm".
-   *
-   * It names them and nothing more: a label already showing goes on showing,
-   * one put away stays away, and one never asked for stays unasked for. Taking
-   * a measurement says what the reading needs, not what the figure shows.
-   */
+  /** A name on whatever a reading that has just landed has to spell out. */
   const spelledOut = useCallback(
-    (objects: SketchObject[]): SketchObject[] => {
-      const already = alreadyThere();
-      const fresh = objects.filter((object) => isMeasurement(object) && !already.has(object.id));
-      if (fresh.length === 0) return objects;
-      const names = namesFor(objects);
-      const spelled = new Set(
-        fresh.flatMap((one) => (isMeasurement(one) ? spelledOutBy(one, { objects, names }) : [])),
-      );
-      const nameless = objects.filter(
-        (object) => spelled.has(object.id) && !object.label?.name && nameable(object, objects),
-      );
-      if (nameless.length === 0) return objects;
-      const given = namesToGive(
-        objects,
-        nameless.map((object) => object.id),
-      );
-      return objects.map((object) => {
-        const name = given.get(object.id);
-        return name ? { ...object, label: { ...object.label, name } } : object;
-      });
-    },
+    (objects: SketchObject[]): SketchObject[] => spelledOutNamed(objects, alreadyThere()),
     [alreadyThere],
   );
 
@@ -123,7 +91,7 @@ export function useSketch() {
   const apply = useCallback(
     (next: SketchState, arm = true) => {
       // Three passes, and their order is the point: a new point may want its
-      // label shown, a new reading may want the labels of what it names shown,
+      // label shown, a new reading needs a name on everything it spells out,
       // and only after both can anything left shown but nameless be given a
       // name. Undo and redo go round all three, since what they hand back was
       // arrived at once already.

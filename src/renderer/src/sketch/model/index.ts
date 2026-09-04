@@ -164,6 +164,7 @@ export {
   canStartAt,
   nameAt,
   nameable,
+  namedAmong,
   namedWhereShown,
   namesAsBuilt,
   namesFor,
