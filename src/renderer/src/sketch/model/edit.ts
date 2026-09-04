@@ -35,7 +35,7 @@ export function withFamily(objects: SketchObject[], ids: string[]): SketchObject
 }
 
 /**
- * The same objects again as a copy: new ids, no pinned names, and stepped off
+ * The same objects again as a copy: new ids, no names of their own, and stepped off
  * where they came from so the copy is not hiding under the original. The step
  * grows with each paste of the same copy, so pasting twice gives two.
  *

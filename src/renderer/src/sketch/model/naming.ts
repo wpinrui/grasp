@@ -161,10 +161,10 @@ function nameDerivatives(
 }
 
 /**
- * What everything is called, with `all` saying whether the runs reach the kinds
- * that are named only by being labelled.
+ * What everything is called, with `evenUnlabelled` saying whether the runs also
+ * reach the kinds that are named only by being labelled.
  */
-function lettering(objects: SketchObject[], all: boolean): Map<string, string> {
+function lettering(objects: SketchObject[], evenUnlabelled: boolean): Map<string, string> {
   const names = new Map<string, string>();
   const taken = new Set<string>();
   for (const object of objects) {
@@ -178,7 +178,7 @@ function lettering(objects: SketchObject[], all: boolean): Map<string, string> {
   for (const object of objects) {
     if (names.has(object.id)) continue;
     const run = runFor(object, objects);
-    if (!run || (!all && RUNS[run]?.onLabel === true)) continue;
+    if (!run || (!evenUnlabelled && RUNS[run]?.onLabel === true)) continue;
     const { name, nth } = freeInRun(run, taken, reached[run] ?? 0);
     reached[run] = nth + 1;
     names.set(object.id, name);
@@ -232,10 +232,10 @@ export function namesAsBuilt(objects: SketchObject[]): Map<string, string> {
 
 /**
  * The page with a name written onto anything whose label is shown but which has
- * never carried one. This is the one place a label is given its name, so a
- * label asked for by the panel, by a key, by a paste, by a transform or by a
- * script is named the same way, and once written the name is kept: a figure's
- * letters do not move again.
+ * never carried one. This is the one place the run hands a name out, so a label
+ * asked for by the panel, by a key, by a paste, by a transform or by a script
+ * is named the same way, and once written the name is kept: a figure's letters
+ * do not move again.
  */
 export function namedWhereShown(objects: SketchObject[]): SketchObject[] {
   const wanting = objects.filter((object) => object.label?.shown === true && !object.label.name);
