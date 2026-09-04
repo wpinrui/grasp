@@ -3,19 +3,19 @@
  *
  * The canvas is the one part of GRASP that cannot be checked by reading the
  * types: a layer that stops drawing, or draws in the wrong order, or loses a
- * class, still compiles. So the figure below is drawn over a fixed viewport and
- * the SVG it comes out as is pinned. Splitting the component is meant to change
+ * class, still compiles. So the figure is drawn over a fixed viewport and the
+ * SVG it comes out as is pinned. Splitting the component is meant to change
  * none of it, and anything that does change shows up here rather than on
  * someone's screen.
  *
- * The ids in the figure are written out rather than counted out by `nextId`,
- * which stamps a random token into every id and would put a different string in
- * the markup on every run.
+ * The harness lives in `testing/canvas`, since more than one suite draws the
+ * same sheet. The ids in the figure are written out rather than counted out by
+ * `nextId`, which stamps a random token into every id and would put a different
+ * string in the markup on every run.
  */
 
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
-import { useEffect, useRef } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   createCircle,
   createInterior,
@@ -23,11 +23,12 @@ import {
   createPoint,
   lineThrough,
   type SketchObject,
-  type SketchState,
 } from "../sketch/model";
-import { useSketch } from "../sketch/useSketch";
-import { SHEET, stubSheetBox } from "../testing/sheet";
-import { Canvas } from "./Canvas";
+import { press, put, stubTheSheet, watched } from "../testing/canvas";
+import "./Canvas";
+
+stubTheSheet();
+afterEach(cleanup);
 
 /** A figure holding one of every kind the layers draw. */
 const FIGURE: SketchObject[] = [
@@ -105,98 +106,6 @@ const FIGURE: SketchObject[] = [
   },
 ];
 
-interface HarnessProps {
-  objects: SketchObject[];
-  tool: string;
-  /** What is picked when the figure is laid out. */
-  selection?: string[];
-  /** Called on every render with the page as it stands, for a test to read. */
-  report?: (state: SketchState) => void;
-  /** An object lit up from somewhere else, so the band drawn on it is covered. */
-  spotlight?: string | null;
-  /** What a dialog is holding, so the rings and bands it draws are covered. */
-  marks?: { id: string; label: string }[];
-  /** The ghosts of what a dialog would make, which are drawn as a preview. */
-  preview?: SketchObject[];
-}
-
-/**
- * The canvas as the window puts it up, with the props that do not matter to
- * what is drawn tied off.
- */
-function Harness({
-  objects,
-  tool,
-  selection = [],
-  report,
-  spotlight = null,
-  marks = [],
-  preview = [],
-}: HarnessProps) {
-  const sketch = useSketch();
-  const laid = useRef(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the figure is laid out once, and the sketch handle is stable
-  useEffect(() => {
-    if (laid.current) return;
-    laid.current = true;
-    sketch.commit({ objects, selection });
-  }, []);
-  report?.(sketch.state);
-  return (
-    <Canvas
-      activeTool={tool}
-      sketch={sketch}
-      pointSize="medium"
-      view={sketch.view}
-      onView={sketch.setView}
-      picking={false}
-      onPick={() => {}}
-      lineForm="segment"
-      polygonKind="interior"
-      preview={preview}
-      marks={marks}
-      onRename={() => {}}
-      labelKind="caption"
-      relabelName={null}
-      onRelabelAsk={() => {}}
-      onRelabelGive={() => {}}
-      spotlight={spotlight}
-      onToggleLabel={() => {}}
-      labelPick={[]}
-      onLabelPick={() => {}}
-      onEditValue={() => {}}
-      onPressButton={() => {}}
-      onCaptureRow={() => {}}
-      onDropRow={() => {}}
-      onMarkMirror={() => {}}
-      editing={null}
-      onEditing={() => {}}
-      editor={{ current: null }}
-      zoomable
-      captionWanted={0}
-      captionLook={{
-        font: "Times New Roman",
-        size: 14,
-        colour: "--color-ink-black",
-        align: "left",
-      }}
-      onViewport={() => {}}
-      snapping={{
-        objects: true,
-        length: false,
-        lengthCm: 1,
-        angle: false,
-        angleDegrees: 15,
-        moving: false,
-      }}
-      measureKind="length"
-      arrowKind="all"
-      markForm="equal"
-      hiddenKinds={{ marks: false, text: false }}
-    />
-  );
-}
-
 /**
  * Everything the sheet drew: the SVG the geometry is drawn in, and the labels,
  * captions and readings, which are HTML sitting over it.
@@ -206,47 +115,6 @@ function drawn(container: HTMLElement): string {
   if (!sheet) throw new Error("The canvas drew no sheet at all.");
   return sheet.innerHTML;
 }
-
-function put(
-  objects: SketchObject[],
-  tool: string,
-  more: Omit<HarnessProps, "objects" | "tool"> = {},
-) {
-  return render(<Harness objects={objects} tool={tool} {...more} />);
-}
-
-let unstub: () => void;
-
-beforeEach(() => {
-  // jsdom has no ResizeObserver and lays nothing out, so the sheet is told its
-  // size once. Without it the viewport is nothing and every line is clipped
-  // away to nothing with it.
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      constructor(private readonly said: ResizeObserverCallback) {}
-      observe() {
-        this.said(
-          [{ contentRect: { width: SHEET.width, height: SHEET.height } } as ResizeObserverEntry],
-          this as unknown as ResizeObserver,
-        );
-      }
-      unobserve() {}
-      disconnect() {}
-    },
-  );
-  unstub = stubSheetBox();
-  // jsdom implements no pointer capture, which every gesture on the sheet takes.
-  Element.prototype.setPointerCapture = () => {};
-  Element.prototype.releasePointerCapture = () => {};
-  Element.prototype.hasPointerCapture = () => false;
-});
-
-afterEach(() => {
-  unstub();
-  cleanup();
-  vi.unstubAllGlobals();
-});
 
 describe("the figure on the sheet", () => {
   it("draws every layer of it", () => {
@@ -344,27 +212,6 @@ describe("the figure on the sheet", () => {
 });
 
 describe("the gestures the sheet is drawn with", () => {
-  function sheetOf(container: HTMLElement): HTMLElement {
-    const found = container.querySelector(".canvas__sheet");
-    if (!found) throw new Error("There is no sheet to press on.");
-    return found as HTMLElement;
-  }
-
-  function press(element: HTMLElement, at: { x: number; y: number }) {
-    fireEvent.pointerDown(element, { clientX: at.x, clientY: at.y, button: 0, pointerId: 1 });
-    fireEvent.pointerUp(element, { clientX: at.x, clientY: at.y, button: 0, pointerId: 1 });
-  }
-
-  /** The page as it stood at the last render, which is where a gesture lands. */
-  function watched(objects: SketchObject[], tool: string) {
-    const seen: SketchState[] = [];
-    const { container } = put(objects, tool, { report: (read) => seen.push(read) });
-    return {
-      sheet: sheetOf(container),
-      page: () => seen[seen.length - 1] ?? { objects: [], selection: [] },
-    };
-  }
-
   it("plots a point where the Point tool is clicked", () => {
     const { sheet, page } = watched([], "point");
     act(() => press(sheet, { x: 100, y: 120 }));
