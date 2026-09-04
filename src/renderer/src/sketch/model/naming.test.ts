@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { createMeasurement, createPoint } from "./create";
+import { createCaption, createMeasurement, createPoint } from "./create";
 import type { SketchPoint } from "./figures";
-import { nameable, namesAsBuilt, namesFor, namesToGive } from "./naming";
+import { canStartAt, nameAt, nameable, namesAsBuilt, namesFor, namesToGive } from "./naming";
 import type { SketchObject } from "./values";
 
 function point(x: number): SketchPoint {
@@ -28,7 +28,7 @@ describe("what a figure is called", () => {
     expect(namesToGive(drawn, [wanted.id]).get(wanted.id)).toBe("A");
   });
 
-  it("hands out the letters in the order the labels were asked for", () => {
+  it("hands out the letters in the order the objects were built", () => {
     const drawn = [point(0), point(10), point(20)];
     const given = namesToGive(drawn, [drawn[2].id, drawn[0].id]);
     // Handed out oldest first, whatever order they were asked for in.
@@ -65,6 +65,14 @@ describe("what a figure is called", () => {
   it("says what can carry a name whether or not it has one", () => {
     const bare = point(0);
     expect(nameable(bare, [bare])).toBe(true);
+    // A caption says what it says and a button has its name written on it, so
+    // neither takes a turn in any run. The panel and Ctrl+K both lean on this.
+    const caption = createCaption({ x: 0, y: 0 }, 100, {
+      font: "Arial",
+      size: 12,
+      colour: "--color-canvas-text",
+    });
+    expect(nameable(caption, [caption])).toBe(false);
   });
 
   it("letters everything as a sketch written before was lettered", () => {
@@ -72,5 +80,35 @@ describe("what a figure is called", () => {
     // its turn in the run, labelled or not, so the third point is C.
     const drawn = [point(0), point(10), point(20)];
     expect(namesAsBuilt(drawn).get(drawn[2].id)).toBe("C");
+  });
+});
+
+/**
+ * A relabel run hands out the letters in order from the one it was started at,
+ * so what it says next depends on nothing but that letter and how far along the
+ * run is. That is what lets the run read its place off the page.
+ */
+describe("the letters a relabel run hands out", () => {
+  it("walks the alphabet from the letter it started at", () => {
+    expect([0, 1, 2].map((step) => nameAt("A", step))).toEqual(["A", "B", "C"]);
+    expect([0, 1, 2].map((step) => nameAt("P", step))).toEqual(["P", "Q", "R"]);
+  });
+
+  it("wraps, so the name after Z is A again", () => {
+    expect(nameAt("Z", 1)).toBe("A");
+    expect(nameAt("Y", 3)).toBe("B");
+  });
+
+  it("walks the small letters from a small start", () => {
+    expect([0, 1].map((step) => nameAt("x", step))).toEqual(["x", "y"]);
+    expect(nameAt("z", 1)).toBe("a");
+  });
+
+  it("starts at one letter and nothing else", () => {
+    expect(canStartAt("A")).toBe(true);
+    expect(canStartAt("q")).toBe(true);
+    expect(canStartAt("")).toBe(false);
+    expect(canStartAt("AB")).toBe(false);
+    expect(canStartAt("1")).toBe(false);
   });
 });

@@ -159,7 +159,15 @@ export {
   nearMark,
   tangentOnPath,
 } from "./marks";
-export { nameable, namesAsBuilt, namesFor, namesToGive } from "./naming";
+export {
+  canStartAt,
+  nameAt,
+  nameable,
+  namedWhereShown,
+  namesAsBuilt,
+  namesFor,
+  namesToGive,
+} from "./naming";
 export { centreOf, type PanFrom, pannedView, panTravel } from "./panning";
 export {
   alongPath,

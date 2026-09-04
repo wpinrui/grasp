@@ -2,10 +2,11 @@
  * Names, labels and what is out of view: everything the labels panel and the
  * hidden panel act on, and the renaming a label typed into asks for.
  *
- * A name is either pinned to an object or handed out automatically, so several
- * of these read the whole page back before they write: a name landing on one
- * already in use has to pin what that one was called, or the automatic run
- * would move it off that name on the next pass.
+ * A label carries the name it was given and keeps it, so nothing here has to
+ * guard a name against moving on the next pass. A name landing on one already
+ * in use is allowed, but only what was typed into may change, so a write reads
+ * the page back first: anything named by its own run, a measurement or a
+ * parameter, is given that name in writing before it can lose it.
  */
 
 import type { HiddenRow } from "../components/HiddenPanel";
@@ -35,9 +36,6 @@ export interface LabelContext {
   geometry: Settled;
 }
 
-/** What a row says where the thing it lists has never been labelled. */
-const NAMELESS = "—";
-
 /** What to call an object in a sentence. */
 export function kindOf(object: SketchObject): string {
   if (isCaption(object)) return "a caption";
@@ -52,11 +50,12 @@ export function kindOf(object: SketchObject): string {
 
 export function labelActions({ sketch, objects, selection, geometry }: LabelContext) {
   /**
-   * Give one object a name. Whatever already answers to it keeps it, by pinning
-   * what it is called now, so the name lands without moving a single other name
-   * on the page. An empty name unpins, putting the object back on the run.
+   * Give one object a name. Whatever already answers to it keeps it, written
+   * down as what it is called now, so the name lands without moving a single
+   * other name on the page. An empty name takes the name away, and a label
+   * still showing is given the next one the run has going.
    */
-  function pinName(id: string, name: string, options?: { keep?: string; show?: boolean }) {
+  function giveName(id: string, name: string, options?: { keep?: string; show?: boolean }) {
     const keep = options?.keep;
     const before = sketch.read();
     const names = namesFor(before.objects);
@@ -120,7 +119,7 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
         : isMeasurement(object)
           ? readingText(readingOf(object, { objects, names, settled: geometry }))
           : nameable(object, objects)
-            ? (names.get(object.id) ?? NAMELESS)
+            ? (names.get(object.id) ?? "—")
             : undefined;
       return name
         ? [{ id: object.id, name, kind: kindOf(object).replace(/^(a|an|another) /, "") }]
@@ -165,11 +164,11 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
    */
   function rename(id: string, name: string) {
     if (!name) {
-      pinName(id, "");
+      giveName(id, "");
       return;
     }
     const first = objects.find((object) => object.id === id)?.label?.name === undefined;
-    pinName(id, name, { keep: holderOf(id, name)?.id, show: first });
+    giveName(id, name, { keep: holderOf(id, name)?.id, show: first });
   }
 
   /**
@@ -177,7 +176,7 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
    * vertex it is pointed at: there is no sense naming what cannot be read.
    */
   function labelAs(id: string, name: string) {
-    pinName(id, name, { keep: holderOf(id, name)?.id, show: true });
+    giveName(id, name, { keep: holderOf(id, name)?.id, show: true });
   }
 
   /**

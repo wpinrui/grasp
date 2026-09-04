@@ -17,6 +17,9 @@ import {
 } from "./guards";
 import type { SketchObject } from "./values";
 
+/** The capitals, which points are named from and a relabel run walks too. */
+const POINTS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 /**
  * The run of names each kind of object takes its turn in, after the reference
  * app: points through the capitals, straight objects through the letters from
@@ -24,31 +27,28 @@ import type { SketchObject } from "./values";
  * name after Z is A again, so a figure with twenty-seven labelled points has
  * two called A rather than one called A1. Two objects sharing a name is allowed
  * and nothing is keyed by one, so nothing is damaged by it.
+ *
+ * `onLabel` marks a run whose names are only ever read off a label. Nothing in
+ * one of those carries a name until a label is asked for, so the points nobody
+ * labels never eat the letters of the ones that are: label three points out of
+ * a dozen and they come out A, B and C. A run without it writes its own name as
+ * part of itself, so it is named the moment it is made.
  */
-const RUNS: Record<string, { letters?: string; stem?: string }> = {
-  point: { letters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ" },
-  line: { letters: "jklmnopqrstuvwxyz" },
-  circle: { stem: "c" },
-  arc: { stem: "a" },
-  polygon: { stem: "P" },
-  disc: { stem: "C" },
-  wedge: { stem: "A" },
-  locus: { stem: "L" },
+const RUNS: Record<string, { letters?: string; stem?: string; onLabel?: boolean }> = {
+  point: { letters: POINTS, onLabel: true },
+  line: { letters: "jklmnopqrstuvwxyz", onLabel: true },
+  circle: { stem: "c", onLabel: true },
+  arc: { stem: "a", onLabel: true },
+  polygon: { stem: "P", onLabel: true },
+  disc: { stem: "C", onLabel: true },
+  wedge: { stem: "A", onLabel: true },
+  locus: { stem: "L", onLabel: true },
   measurement: { stem: "m" },
   parameter: { stem: "t" },
   calculation: { stem: "c" },
   table: { stem: "T" },
   function: { letters: "fgh" },
 };
-
-/**
- * The runs whose names are only ever read off a label. Nothing in one of these
- * carries a name until a label is asked for, so the points nobody labels never
- * eat the letters of the ones that are: label three points out of a dozen and
- * they come out A, B and C. Everything else writes its own name as part of
- * itself, so it is named the moment it is made.
- */
-const ON_A_LABEL = new Set(["point", "line", "circle", "arc", "polygon", "disc", "wedge", "locus"]);
 
 /** Which run an object takes its name from, or null when it can carry none. */
 function runFor(object: SketchObject, objects: SketchObject[]): string | null {
@@ -86,11 +86,33 @@ export function nameable(object: SketchObject, objects: SketchObject[]): boolean
   return runFor(object, objects) !== null;
 }
 
+/** The nth letter of a run of letters, which wraps round at its end. */
+function letterOf(letters: string, nth: number): string {
+  return letters[nth % letters.length];
+}
+
 /** The nth name of a run, counting from zero. A run of letters wraps at its end. */
 function nameInRun(run: string, nth: number): string {
   const { letters, stem } = RUNS[run] ?? {};
   if (!letters) return `${stem ?? "x"}${nth + 1}`;
-  return letters[nth % letters.length];
+  return letterOf(letters, nth);
+}
+
+/** Whether a relabel run can start at what was typed: one letter, and nothing else. */
+export function canStartAt(from: string): boolean {
+  return /^[A-Za-z]$/.test(from);
+}
+
+/**
+ * The name a relabel run started at one letter hands out on its nth vertex,
+ * counting from zero. It walks the run points are named from and wraps with it,
+ * so the name after Z is A again. A lower-case start walks that same run in
+ * lower case, since a figure is sometimes lettered that way.
+ */
+export function nameAt(from: string, nth: number): string {
+  const letters = from === from.toLowerCase() ? POINTS.toLowerCase() : POINTS;
+  const at = letters.indexOf(from);
+  return at < 0 ? from : letterOf(letters, at + nth);
 }
 
 /**
@@ -156,7 +178,7 @@ function lettering(objects: SketchObject[], all: boolean): Map<string, string> {
   for (const object of objects) {
     if (names.has(object.id)) continue;
     const run = runFor(object, objects);
-    if (!run || (!all && ON_A_LABEL.has(run))) continue;
+    if (!run || (!all && RUNS[run]?.onLabel === true)) continue;
     const { name, nth } = freeInRun(run, taken, reached[run] ?? 0);
     reached[run] = nth + 1;
     names.set(object.id, name);
@@ -206,4 +228,25 @@ export function namesToGive(objects: SketchObject[], ids: string[]): Map<string,
  */
 export function namesAsBuilt(objects: SketchObject[]): Map<string, string> {
   return lettering(objects, true);
+}
+
+/**
+ * The page with a name written onto anything whose label is shown but which has
+ * never carried one. This is the one place a label is given its name, so a
+ * label asked for by the panel, by a key, by a paste, by a transform or by a
+ * script is named the same way, and once written the name is kept: a figure's
+ * letters do not move again.
+ */
+export function namedWhereShown(objects: SketchObject[]): SketchObject[] {
+  const wanting = objects.filter((object) => object.label?.shown === true && !object.label.name);
+  if (wanting.length === 0) return objects;
+  const given = namesToGive(
+    objects,
+    wanting.map((object) => object.id),
+  );
+  if (given.size === 0) return objects;
+  return objects.map((object) => {
+    const name = given.get(object.id);
+    return name ? { ...object, label: { ...object.label, name } } : object;
+  });
 }

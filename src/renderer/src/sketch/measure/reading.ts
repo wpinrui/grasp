@@ -206,7 +206,10 @@ function stretchNaming(
  * quantity written the way it is written in print, and that value after it.
  *
  * The naming takes no geometry, which is what lets the sheet ask what a
- * measurement spells out without settling the page first.
+ * measurement spells out without settling the page first. Every `names.get`
+ * from here down reaches the printed reading, and `spelledOutBy` takes that as
+ * its definition: one that did not would still be counted as spelled out, and
+ * would have its label shown for nothing.
  */
 function readingWith(measurement: SketchMeasurement, page: NamingOn, value: string): Reading {
   const { objects, names } = page;

@@ -163,8 +163,14 @@ export const API_REFERENCE: { heading: string; entries: ApiEntry[] }[] = [
         says: 'What it is: "point", "line", "circle", "arc", "interior", "mark", "caption", "measurement".',
       },
       { call: "at(point) -> { x, y }", says: "Where a point sits." },
-      { call: "nameOf(handle) -> string", says: "What it is called." },
-      { call: "byLabel(name) -> handle", says: "The thing with that name, or null." },
+      {
+        call: "nameOf(handle) -> string",
+        says: "What it is called, or null where it has never been labelled, which most of a page has not.",
+      },
+      {
+        call: "byLabel(name) -> handle",
+        says: "The thing with that name, or null. Only something that has been labelled has one.",
+      },
       { call: "remove(handle)", says: "Take it off the page, and everything built on it with it." },
       { call: "sheet", says: "Not a call: an object carrying `width`, `height` and `pixelRatio`." },
     ],

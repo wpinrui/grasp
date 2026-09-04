@@ -4,8 +4,8 @@ import { spelledOutBy } from "./measure";
 import {
   isMeasurement,
   nameable,
+  namedWhereShown,
   namesFor,
-  namesToGive,
   type PointSize,
   resolve,
   type SketchObject,
@@ -106,38 +106,22 @@ export function useSketch() {
   );
 
   /**
-   * A label shown on something that has never carried a name takes one now, and
-   * keeps it. It is done here rather than at every place a label can be shown,
-   * so one asked for by the panel, by a key, by a paste, by a transform or by a
-   * script is named the same way. Undo and redo go round it: what they hand
-   * back was arrived at once already.
-   */
-  const lettered = useCallback((objects: SketchObject[]): SketchObject[] => {
-    const wanting = objects.filter(
-      (object) => object.label?.shown === true && object.label.name === undefined,
-    );
-    if (wanting.length === 0) return objects;
-    const given = namesToGive(
-      objects,
-      wanting.map((object) => object.id),
-    );
-    if (given.size === 0) return objects;
-    return objects.map((object) => {
-      const name = given.get(object.id);
-      return name ? { ...object, label: { ...object.label, name } } : object;
-    });
-  }, []);
-
-  /**
    * Every change goes through here, so an image is never left behind by the
    * point it came from: `resolve` settles them all before anything is shown.
    */
   const apply = useCallback(
     (next: SketchState, arm = true) => {
-      const objects = arm ? armed(lettered(spelledOut(namedIfWanted(next.objects)))) : next.objects;
+      // Three passes, and their order is the point: a new point may want its
+      // label shown, a new reading may want the labels of what it names shown,
+      // and only after both can anything left shown but nameless be given a
+      // name. Undo and redo go round all three, since what they hand back was
+      // arrived at once already.
+      const objects = arm
+        ? armed(namedWhereShown(spelledOut(namedIfWanted(next.objects))))
+        : next.objects;
       write({ ...next, objects: resolve(objects) });
     },
-    [write, armed, lettered, spelledOut, namedIfWanted],
+    [write, armed, spelledOut, namedIfWanted],
   );
 
   const select = useCallback(

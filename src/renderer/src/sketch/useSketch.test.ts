@@ -1,6 +1,13 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createPoint, isPoint, type Position, type SketchObject } from "./model";
+import {
+  createLine,
+  createMeasurement,
+  createPoint,
+  isPoint,
+  type Position,
+  type SketchObject,
+} from "./model";
 import { useSketch } from "./useSketch";
 
 const point = (at: Position) => createPoint(at, "medium");
@@ -8,6 +15,23 @@ const point = (at: Position) => createPoint(at, "medium");
 /** The page as ids, which is what an undo step is judged by. */
 function ids(objects: SketchObject[]): string[] {
   return objects.map((object) => object.id);
+}
+
+/** What one object is called, which is only ever what is written on its label. */
+function called(objects: SketchObject[], id: string): string | undefined {
+  return objects.find((object) => object.id === id)?.label?.name;
+}
+
+/** Whether one object's label is showing. */
+function showing(objects: SketchObject[], id: string): boolean {
+  return objects.find((object) => object.id === id)?.label?.shown === true;
+}
+
+/** The same page with one object's label shown or hidden, as a commit would leave it. */
+function labelled(objects: SketchObject[], id: string, shown: boolean): SketchObject[] {
+  return objects.map((object) =>
+    object.id === id ? { ...object, label: { ...object.label, shown } } : object,
+  );
 }
 
 function sized(objects: SketchObject[], id: string): string | undefined {
@@ -276,5 +300,109 @@ describe("whether there is anything to undo", () => {
 
     act(() => result.current.selectPage(first));
     expect(result.current.canUndo).toBe(true);
+  });
+});
+
+/**
+ * Where a label gets its name. Nothing carries one until a label is asked for,
+ * and the name is written down when it is, so the letters of a figure never
+ * move afterwards. Every route that shows a label goes through `commit`, which
+ * is why this is asserted here rather than at each of them.
+ */
+describe("naming what is labelled", () => {
+  it("leaves what has no label with no name", () => {
+    const { result } = renderHook(() => useSketch());
+    const a = point({ x: 0, y: 0 });
+    const b = point({ x: 50, y: 0 });
+    act(() => result.current.commit({ objects: [a, b], selection: [] }));
+    expect(called(result.current.state.objects, a.id)).toBeUndefined();
+    expect(called(result.current.state.objects, b.id)).toBeUndefined();
+  });
+
+  it("names a label the moment it is shown, from the start of the run", () => {
+    const { result } = renderHook(() => useSketch());
+    const a = point({ x: 0, y: 0 });
+    const b = point({ x: 50, y: 0 });
+    act(() => result.current.commit({ objects: [a, b], selection: [] }));
+    // The second point, and only the second: the first took no letter by being
+    // drawn, so what is labelled is A rather than B.
+    act(() =>
+      result.current.commit({
+        objects: labelled(result.current.state.objects, b.id, true),
+        selection: [],
+      }),
+    );
+    expect(called(result.current.state.objects, b.id)).toBe("A");
+    expect(called(result.current.state.objects, a.id)).toBeUndefined();
+  });
+
+  it("keeps the name when the label is hidden again", () => {
+    const { result } = renderHook(() => useSketch());
+    const a = point({ x: 0, y: 0 });
+    act(() => result.current.commit({ objects: [a], selection: [] }));
+    act(() =>
+      result.current.commit({
+        objects: labelled(result.current.state.objects, a.id, true),
+        selection: [],
+      }),
+    );
+    act(() =>
+      result.current.commit({
+        objects: labelled(result.current.state.objects, a.id, false),
+        selection: [],
+      }),
+    );
+    expect(called(result.current.state.objects, a.id)).toBe("A");
+  });
+
+  it("labels a new point straight away where the panel has asked for it", () => {
+    const { result } = renderHook(() => useSketch());
+    act(() => result.current.labelNewPoints(true));
+    const a = point({ x: 0, y: 0 });
+    act(() => result.current.commit({ objects: [a], selection: [] }));
+    expect(showing(result.current.state.objects, a.id)).toBe(true);
+    expect(called(result.current.state.objects, a.id)).toBe("A");
+  });
+
+  it("shows and names the points a new measurement reads out", () => {
+    const { result } = renderHook(() => useSketch());
+    const a = point({ x: 0, y: 0 });
+    const b = point({ x: 50, y: 0 });
+    const seg = createLine("segment", { kind: "through", ends: [a.id, b.id] });
+    act(() => result.current.commit({ objects: [a, b, seg], selection: [] }));
+    expect(called(result.current.state.objects, a.id)).toBeUndefined();
+
+    // "m AB" is what the reading writes, so A and B are what it labels. The
+    // segment is not named: its own letter never reaches the reading.
+    const length = createMeasurement("length", [seg.id], { x: 0, y: 40 });
+    act(() =>
+      result.current.commit({
+        objects: [...result.current.state.objects, length],
+        selection: [],
+      }),
+    );
+    expect(showing(result.current.state.objects, a.id)).toBe(true);
+    expect(showing(result.current.state.objects, b.id)).toBe(true);
+    expect(called(result.current.state.objects, a.id)).toBe("A");
+    expect(called(result.current.state.objects, b.id)).toBe("B");
+    expect(called(result.current.state.objects, seg.id)).toBeUndefined();
+  });
+
+  it("hands back exactly what was there, names and all", () => {
+    const { result } = renderHook(() => useSketch());
+    const a = point({ x: 0, y: 0 });
+    act(() => result.current.commit({ objects: [a], selection: [] }));
+    act(() =>
+      result.current.commit({
+        objects: labelled(result.current.state.objects, a.id, true),
+        selection: [],
+      }),
+    );
+    act(() => result.current.undo());
+    expect(showing(result.current.state.objects, a.id)).toBe(false);
+    expect(called(result.current.state.objects, a.id)).toBeUndefined();
+
+    act(() => result.current.redo());
+    expect(called(result.current.state.objects, a.id)).toBe("A");
   });
 });

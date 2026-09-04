@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { canStartAt } from "../app/useRelabel";
+import { canStartAt } from "../sketch/model";
 import { DialogFrame } from "./DialogFrame";
 import "./RelabelDialog.css";
 
