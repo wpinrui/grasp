@@ -156,7 +156,11 @@ function nearWhole(value: number): number[] {
  * directions out of the start cross it. Only rings and directions either side of
  * where the pointer is, since the rest are too far away to have been meant.
  */
-function stepsAlong(along: PathGeometry, from: Position, at: Position, aiming: Aiming): Position[] {
+function stepsAlong(
+  run: { along: PathGeometry; from: Position; at: Position },
+  aiming: Aiming,
+): Position[] {
+  const { along, from, at } = run;
   const { snapping } = aiming;
   const spots: Position[] = [];
   if (snapping.length && snapping.lengthCm > 0) {
@@ -190,15 +194,14 @@ function stepsAlong(along: PathGeometry, from: Position, at: Position, aiming: A
  * both on offers more places to land rather than fewer.
  */
 function alongWithSteps(
-  found: Snap,
-  from: Position | undefined,
-  at: Position,
+  landing: { found: Snap; from: Position | undefined; at: Position },
   aiming: Aiming,
 ): Position {
+  const { found, from, at } = landing;
   if (found.kind !== "line" || !from) return found.at;
   const along = pathIn(aiming.settled, found.ids[0]);
   if (!along) return found.at;
-  const spots = stepsAlong(along, from, at, aiming);
+  const spots = stepsAlong({ along, from, at }, aiming);
   if (spots.length === 0) return found.at;
   return spots.reduce((near, spot) => (distance(spot, at) < distance(near, at) ? spot : near));
 }
@@ -237,7 +240,7 @@ export function aimAt(at: Position, aiming: Aiming): { found: Snap | null; spot:
   // What is already on the sheet comes first: a point, a path or a crossing
   // under the pointer is what a click lands on, whatever the steps are set to.
   const found = aiming.snapping.objects ? snapAt(at, aiming) : null;
-  if (found) return { found, spot: alongWithSteps(found, from, at, aiming) };
+  if (found) return { found, spot: alongWithSteps({ found, from, at }, aiming) };
   return { found: null, spot: from ? heldToSteps(from, at, aiming) : at };
 }
 
@@ -285,11 +288,10 @@ export function heldMove(ids: string[], by: Position, aiming: Aiming): Position 
  * nothing, the way it is held to no steps.
  */
 export function travelOf(
-  ids: string[],
-  from: Position[],
-  went: Position,
+  move: { ids: string[]; from: Position[]; went: Position },
   aiming: Aiming,
 ): Travel | null {
+  const { ids, from, went } = move;
   if (!carriesGeometry(ids, aiming)) return null;
   const start = from[0];
   return { from: start, to: { x: start.x + went.x, y: start.y + went.y } };

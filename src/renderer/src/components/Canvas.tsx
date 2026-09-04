@@ -115,13 +115,13 @@ import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
+import { dimensionOf } from "./canvas/dimensions";
 import { guideOf, markUnder } from "./canvas/guides";
 import {
   angleMarkOn,
   angleReadingSpot,
   angleWritten,
   arcsBetween,
-  dimensionOf,
   type Measuring,
   pointUnder,
   readingAlready,
@@ -1352,7 +1352,9 @@ export function Canvas({
         object.arms.every((arm) => mark.arms.includes(arm)),
     );
     const alone = readings.length === 1 && marked.length === 1 ? readings[0] : null;
-    const hangs = alone ? angleReadingSpot(alone, turned, reflex, measuringNow()) : null;
+    const hangs = alone
+      ? angleReadingSpot({ reading: alone, mark: turned, reflex }, measuringNow())
+      : null;
     const before = sketch.read();
     sketch.commit({
       ...before,
@@ -1493,7 +1495,7 @@ export function Canvas({
 
   /** Write the number for one angle, by the two arms it runs between. */
   function readAngle(corner: string, arms: [string, string]) {
-    const written = angleWritten({ corner, arms }, null, measuringNow(), true);
+    const written = angleWritten({ corner, arms, hit: null, named: true }, measuringNow());
     if (!written) return;
     const already = readingAlready(written, measuringNow());
     if (already) {
@@ -1726,7 +1728,7 @@ export function Canvas({
         aimingNow(),
       );
       moveBy({ ids: state.movingIds, from: state.moving }, went.x, went.y);
-      setTravel(travelOf(state.movingIds, state.moving, went, aimingNow()));
+      setTravel(travelOf({ ids: state.movingIds, from: state.moving, went }, aimingNow()));
       return;
     }
 
@@ -2362,7 +2364,9 @@ export function Canvas({
     if (!written.current) return;
     const went = heldMove(written.current.ids, by, aimingNow());
     moveBy(written.current, went.x, went.y);
-    setTravel(travelOf(written.current.ids, written.current.from, went, aimingNow()));
+    setTravel(
+      travelOf({ ids: written.current.ids, from: written.current.from, went }, aimingNow()),
+    );
   }
 
   function dropWriting() {
@@ -3057,16 +3061,17 @@ export function Canvas({
                   // The protractor already ghosts the marking it would lay, so
                   // this is only the Marker's business.
                   if (marking !== "angle") return null;
-                  return arcsBetween(overCorner, there[0].arms, false, measuringNow()).map(
-                    (stroke) => (
-                      <path
-                        key={stroke}
-                        className="canvas__mark-stroke canvas__mark-stroke--preview"
-                        d={stroke}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ),
-                  );
+                  return arcsBetween(
+                    { corner: overCorner, arms: there[0].arms, reflex: false },
+                    measuringNow(),
+                  ).map((stroke) => (
+                    <path
+                      key={stroke}
+                      className="canvas__mark-stroke canvas__mark-stroke--preview"
+                      d={stroke}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ));
                 }
                 return (
                   <circle
@@ -3104,16 +3109,17 @@ export function Canvas({
                         />
                       );
                     })}
-                    {arcsBetween(choosing.corner, showingArms, false, measuringNow()).map(
-                      (stroke) => (
-                        <path
-                          key={stroke}
-                          className="canvas__mark-stroke"
-                          d={stroke}
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      ),
-                    )}
+                    {arcsBetween(
+                      { corner: choosing.corner, arms: showingArms, reflex: false },
+                      measuringNow(),
+                    ).map((stroke) => (
+                      <path
+                        key={stroke}
+                        className="canvas__mark-stroke"
+                        d={stroke}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    ))}
                   </g>
                 );
               })()}

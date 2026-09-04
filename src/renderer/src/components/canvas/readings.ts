@@ -38,10 +38,6 @@ import {
 } from "../../sketch/model";
 import {
   ANGLE_READING_OFF,
-  ARROW_HEAD,
-  ARROW_WING,
-  BREAK_GAP,
-  LEADER_PAST,
   READING_CHAR,
   READING_HEIGHT,
   READING_OFF,
@@ -97,11 +93,10 @@ function shift(was: Position, to: Position, made: SketchMeasurement): Position {
  * where it was asked for instead of hanging down and to the right of there.
  */
 function newReading(
-  measure: MeasureKind,
-  of: string[],
-  at: Position,
+  taken: { measure: MeasureKind; of: string[]; at: Position },
   measuring: Measuring,
 ): SketchMeasurement {
+  const { measure, of, at } = taken;
   const made = { ...createMeasurement(measure, of, at), size: READING_POINTS, bare: true };
   const box = readingBox(made, measuring);
   const { scale } = measuring;
@@ -203,11 +198,10 @@ export function angleMarkOn(
  * other side of the corner, so turning one round moves its number over.
  */
 export function angleReadingSpot(
-  reading: SketchMeasurement,
-  mark: SketchMark,
-  reflex: boolean,
+  hung: { reading: SketchMeasurement; mark: SketchMark; reflex: boolean },
   measuring: Measuring,
 ): Position | null {
+  const { reading, mark, reflex } = hung;
   const { settled, scale } = measuring;
   const [one, corner, other] = reading.of;
   const spot = settled.points.get(corner);
@@ -234,12 +228,17 @@ export function angleReadingSpot(
  * named the arms itself.
  */
 export function angleWritten(
-  angle: { corner: string; arms: [string, string] },
-  hit: SketchObject | null,
+  angle: {
+    corner: string;
+    arms: [string, string];
+    /** Whatever was under the pointer, where a click is what asked. */
+    hit: SketchObject | null;
+    /** Set where a drag or the dialog named the arms itself. */
+    named?: boolean;
+  },
   measuring: Measuring,
-  named = false,
 ): Written | null {
-  const { corner, arms } = angle;
+  const { corner, arms, hit, named = false } = angle;
   const { objects, settled } = measuring;
   const at3 = [arms[0], corner, arms[1]];
   const spot = settled.points.get(corner);
@@ -266,8 +265,8 @@ export function angleWritten(
   // angles at that corner the number is about. One already there is used as it
   // is, and the number goes outside it.
   const mark = angleMarkOn({ corner, arms, reflex }, hit, measuring);
-  const made = { ...newReading("angle", at3, spot, measuring), reflex };
-  const hangs = angleReadingSpot(made, mark, reflex, measuring);
+  const made = { ...newReading({ measure: "angle", of: at3, at: spot }, measuring), reflex };
+  const hangs = angleReadingSpot({ reading: made, mark, reflex }, measuring);
   return {
     reading: hangs ? { ...made, ...hangs } : made,
     mark: objects.some((object) => object.id === mark.id) ? null : mark,
@@ -326,7 +325,7 @@ function lengthFrom(hit: SketchObject, measuring: Measuring): Written | null {
   const out = outwardOf(along, ends, measuring);
   // Far enough out that the whole of the number clears the segment, which is
   // further on a steep one, where the number lies across it rather than along it.
-  const made = newReading("length", [hit.id], mid, measuring);
+  const made = newReading({ measure: "length", of: [hit.id], at: mid }, measuring);
   const box = readingBox(made, measuring);
   const clear = READING_OFF + (Math.abs(out.x) * box.width + Math.abs(out.y) * box.height) / 2;
   const to = { x: mid.x + out.x * (clear / scale), y: mid.y + out.y * (clear / scale) };
@@ -347,12 +346,18 @@ function areaFrom(hit: SketchObject, measuring: Measuring): Written | null {
         }
       : round?.at;
     if (!middle) return null;
-    return { reading: newReading("area", [hit.id], middle, measuring), mark: null };
+    return {
+      reading: newReading({ measure: "area", of: [hit.id], at: middle }, measuring),
+      mark: null,
+    };
   }
   if (isCircle(hit)) {
     const round = settled.circles.get(hit.id);
     if (!round) return null;
-    return { reading: newReading("area", [hit.id], round.at, measuring), mark: null };
+    return {
+      reading: newReading({ measure: "area", of: [hit.id], at: round.at }, measuring),
+      mark: null,
+    };
   }
   return null;
 }
@@ -366,7 +371,7 @@ function angleFrom(hit: SketchObject, measuring: Measuring): Written | null {
       ? [hit.arms[0], corner, hit.arms[1]]
       : cornerArms(corner, measuring);
   if (!at3) return null;
-  return angleWritten({ corner, arms: [at3[0], at3[2]] }, hit, measuring);
+  return angleWritten({ corner, arms: [at3[0], at3[2]], hit }, measuring);
 }
 
 /**
@@ -387,11 +392,10 @@ export function readingFrom(at: Position, measuring: Measuring): Written | null 
 
 /** The arcs an angle would land as, drawn while it is being asked about. */
 export function arcsBetween(
-  corner: string,
-  arms: [string, string],
-  reflex: boolean,
+  angle: { corner: string; arms: [string, string]; reflex: boolean },
   measuring: Measuring,
 ): string[] {
+  const { corner, arms, reflex } = angle;
   const { settled, scale, lastMark } = measuring;
   const spot = settled.points.get(corner);
   const ends = arms.map((id) => settled.points.get(id));
@@ -412,81 +416,4 @@ export function arcsBetween(
     },
     scale,
   );
-}
-
-/** One arrowhead, drawn as the filled triangle it is rather than two strokes. */
-function arrowPath(tip: Position, back: Position, head: number, wing: number): string {
-  const spot = (at: Position) => `${at.x} ${at.y}`;
-  const point = { x: back.x - tip.x, y: back.y - tip.y };
-  const far = Math.hypot(point.x, point.y) || 1;
-  const runs = { x: (point.x / far) * head, y: (point.y / far) * head };
-  const side = { x: -runs.y / head, y: runs.x / head };
-  return `M ${spot(tip)} L ${spot({ x: tip.x + runs.x + side.x * wing, y: tip.y + runs.y + side.y * wing })} L ${spot({ x: tip.x + runs.x - side.x * wing, y: tip.y + runs.y - side.y * wing })} Z`;
-}
-
-/**
- * How a length is drawn out: the run between its ends with an arrowhead at
- * each, and the dotted lines back to the segment where it carries them. The
- * number either stands clear above the run or breaks it, and the run sits where
- * the number has been dragged to.
- */
-export function dimensionOf(
-  reading: SketchMeasurement,
-  measuring: Measuring,
-): { lines: string[]; heads: string[]; dotted: string[] } | null {
-  const { settled, scale, boxes } = measuring;
-  if (reading.measure !== "length" || !reading.bounds) return null;
-  const along = settled.lines.get(reading.of[0]);
-  if (!along) return null;
-  const way = { x: along.b.x - along.a.x, y: along.b.y - along.a.y };
-  const length = Math.hypot(way.x, way.y);
-  if (length === 0) return null;
-  const u = { x: way.x / length, y: way.y / length };
-  const across = { x: -u.y, y: u.x };
-  const box = boxes.get(reading.id) ?? readingBox(reading, measuring);
-  // Where the middle of the number sits, and how far off the segment that is.
-  const middle = { x: reading.x + box.width / 2 / scale, y: reading.y + box.height / 2 / scale };
-  const mid = { x: (along.a.x + along.b.x) / 2, y: (along.a.y + along.b.y) / 2 };
-  const number = (middle.x - mid.x) * across.x + (middle.y - mid.y) * across.y;
-  // The arrows run where the number does, except in the full form, where the
-  // number stands clear above them instead of being run through.
-  const stand =
-    reading.bounds === "full"
-      ? (Math.abs(across.x) * box.width + Math.abs(across.y) * box.height) / 2 / scale +
-        BREAK_GAP / scale
-      : 0;
-  const off = number - Math.sign(number || 1) * stand;
-  const from = { x: along.a.x + across.x * off, y: along.a.y + across.y * off };
-  const to = { x: along.b.x + across.x * off, y: along.b.y + across.y * off };
-  const head = ARROW_HEAD / scale;
-  const wing = ARROW_WING / scale;
-  const spot = (at: Position) => `${at.x} ${at.y}`;
-  const heads = [arrowPath(from, to, head, wing), arrowPath(to, from, head, wing)];
-  const lines: string[] = [];
-  if (reading.bounds === "full") {
-    lines.push(`M ${spot(from)} L ${spot(to)}`);
-  } else {
-    // Broken by the number: the runs stop either side of the room it takes
-    // along the dimension, so nothing is drawn under it.
-    const gap =
-      (Math.abs(u.x) * box.width + Math.abs(u.y) * box.height) / 2 / scale + BREAK_GAP / scale;
-    const at = (middle.x - along.a.x) * u.x + (middle.y - along.a.y) * u.y;
-    const stop = { x: from.x + u.x * (at - gap), y: from.y + u.y * (at - gap) };
-    const start = { x: from.x + u.x * (at + gap), y: from.y + u.y * (at + gap) };
-    if (at - gap > 0) lines.push(`M ${spot(from)} L ${spot(stop)}`);
-    if (at + gap < length) lines.push(`M ${spot(start)} L ${spot(to)}`);
-  }
-  // The dotted lines run a little past the arrows, the way a drawn dimension is,
-  // so the end of the line is clear of the head.
-  const past = {
-    x: across.x * Math.sign(off || 1) * (LEADER_PAST / scale),
-    y: across.y * Math.sign(off || 1) * (LEADER_PAST / scale),
-  };
-  const dotted = reading.leaders
-    ? [
-        `M ${spot(along.a)} L ${spot({ x: from.x + past.x, y: from.y + past.y })}`,
-        `M ${spot(along.b)} L ${spot({ x: to.x + past.x, y: to.y + past.y })}`,
-      ]
-    : [];
-  return { lines, heads, dotted };
 }

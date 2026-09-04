@@ -83,7 +83,11 @@ function alongText(from: Position, to: Position): GuideText {
 }
 
 /** One angle: the arc drawn in it, and its size written just outside that. */
-function cornerArc(corner: Position, from: number, to: number, scale: number): GuideAngle | null {
+function cornerArc(
+  wedge: { corner: Position; from: number; to: number },
+  scale: number,
+): GuideAngle | null {
+  const { corner, from, to } = wedge;
   const sweep = markSweep(from, to, false);
   if (!Number.isFinite(sweep) || Math.abs(sweep) < 1e-6) return null;
   const radius = GUIDE_RADIUS / scale;
@@ -108,11 +112,10 @@ function cornerArc(corner: Position, from: number, to: number, scale: number): G
 
 /** The angle a line being drawn makes with the nearest arm at its corner. */
 function wedgeOfArms(
-  corner: Position,
-  to: Position,
-  arms: number[],
+  aimed: { corner: Position; to: Position; arms: number[] },
   scale: number,
 ): GuideAngle | null {
+  const { corner, to, arms } = aimed;
   if (arms.length === 0 || (corner.x === to.x && corner.y === to.y)) return null;
   const bearing = angleBetween(corner, to);
   let nearest = arms[0];
@@ -121,7 +124,7 @@ function wedgeOfArms(
       nearest = arm;
     }
   }
-  return cornerArc(corner, nearest, bearing, scale);
+  return cornerArc({ corner, from: nearest, to: bearing }, scale);
 }
 
 /** The middle of a ring of corners, which is where its area is written. */
@@ -141,7 +144,7 @@ function middleOf(corners: Position[]): Position {
  * read out, so a free drag says nothing and simply moves.
  */
 function guideOfTravel(travel: Travel, scale: number): Guide {
-  const corner = wedgeOfArms(travel.from, travel.to, [0], scale);
+  const corner = wedgeOfArms({ corner: travel.from, to: travel.to, arms: [0] }, scale);
   return {
     length: alongText(travel.from, travel.to),
     corners: corner ? [corner] : [],
@@ -173,7 +176,10 @@ function guideOfCompass(pending: Pending): Guide {
 function guideOfStraightedge(pending: Pending, placing: Placing): Guide {
   const { objects, settled, scale } = placing;
   const arms = armsAt(pending.startId, objects, settled).map((arm) => arm.angle);
-  const corner = wedgeOfArms(pending.start, pending.at, arms.length > 0 ? arms : [0], scale);
+  const corner = wedgeOfArms(
+    { corner: pending.start, to: pending.at, arms: arms.length > 0 ? arms : [0] },
+    scale,
+  );
   return {
     length: alongText(pending.start, pending.at),
     corners: corner ? [corner] : [],
@@ -190,7 +196,8 @@ function guideOfStraightedge(pending: Pending, placing: Placing): Guide {
 function guideOfTracing(tracing: Tracing, scale: number): Guide {
   const last = tracing.spots[tracing.spots.length - 1];
   const ring = [...tracing.spots, tracing.at];
-  const first = ring.length < 3 ? wedgeOfArms(last, tracing.at, [0], scale) : null;
+  const first =
+    ring.length < 3 ? wedgeOfArms({ corner: last, to: tracing.at, arms: [0] }, scale) : null;
   return {
     length: alongText(last, tracing.at),
     datum: first ? last : undefined,
@@ -200,9 +207,7 @@ function guideOfTracing(tracing: Tracing, scale: number): Guide {
           const before = ring[(nth + ring.length - 1) % ring.length];
           const after = ring[(nth + 1) % ring.length];
           const wedge = cornerArc(
-            corner,
-            angleBetween(corner, before),
-            angleBetween(corner, after),
+            { corner, from: angleBetween(corner, before), to: angleBetween(corner, after) },
             scale,
           );
           return wedge ? [wedge] : [];
