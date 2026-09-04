@@ -14,7 +14,7 @@ import {
 } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
 import { useSketch } from "../../sketch/useSketch";
-import { type Held, placedBy, takeHold, whatMoves } from "./moving";
+import { type Held, moveBy, placedBy, takeHold, whatMoves } from "./moving";
 
 const A = { ...createPoint({ x: 0, y: 0 }, "medium"), id: "A" };
 const B = { ...createPoint({ x: 300, y: 0 }, "medium"), id: "B" };
@@ -104,24 +104,43 @@ describe("taking hold", () => {
     expect(sketch.current.state.selection).toEqual(["seg"]);
   });
 
+  /**
+   * Nothing to move means no gesture either. One left open would swallow
+   * whatever came next, so cancelling it would take that back as well.
+   */
   it("takes hold of nothing, and starts nothing, where nothing can move", () => {
     const sketch = page([]);
     expect(pressOn(sketch, "gone")).toBe(null);
     expect(sketch.current.state.selection).toEqual([]);
+    act(() => {
+      sketch.current.select(["A"]);
+      sketch.current.cancelGesture();
+    });
+    expect(sketch.current.state.selection).toEqual(["A"]);
   });
 });
 
+/** What a drag on those objects has hold of, which is what puts anything anywhere. */
+function holding(carried: string[]) {
+  const held = whatMoves(carried, FIGURE);
+  if (!held) throw new Error(`${carried.join(", ")} can move.`);
+  return held;
+}
+
 describe("where a drag puts things", () => {
-  it("puts a point where the pointer went", () => {
-    const held = whatMoves(["A"], FIGURE);
-    if (!held) throw new Error("A is a point and can move.");
-    expect(spot(placedBy(FIGURE, held, { x: 10, y: 20 }), "A")).toEqual({ x: 10, y: 20 });
+  /**
+   * Each point goes as far as the pointer came, counted from where that point
+   * started rather than from the pointer, so the figure keeps its shape.
+   */
+  it("moves every point it holds by the same amount, from where each began", () => {
+    const moved = placedBy(FIGURE, holding(["seg"]), { x: 10, y: 20 });
+    expect(spot(moved, "A")).toEqual({ x: 10, y: 20 });
+    expect(spot(moved, "B")).toEqual({ x: 310, y: 20 });
   });
 
   it("leaves alone what the drag has no hold of", () => {
-    const held = whatMoves(["A"], FIGURE);
-    if (!held) throw new Error("A is a point and can move.");
-    expect(spot(placedBy(FIGURE, held, { x: 10, y: 20 }), "B")).toEqual({ x: 300, y: 0 });
+    const moved = placedBy(FIGURE, holding(["A"]), { x: 10, y: 20 });
+    expect(spot(moved, "B")).toEqual({ x: 300, y: 0 });
   });
 
   /**
@@ -130,11 +149,22 @@ describe("where a drag puts things", () => {
    * it now sits rather than a place of its own.
    */
   it("slides a point on a path along it rather than off it", () => {
-    const held = whatMoves(["P"], FIGURE);
-    if (!held) throw new Error("P is a point and can move.");
-    const moved = placedBy(FIGURE, held, { x: 60, y: 40 }).find((object) => object.id === "P");
+    const moved = placedBy(FIGURE, holding(["P"]), { x: 60, y: 40 }).find(
+      (object) => object.id === "P",
+    );
     if (!moved || !isPoint(moved)) throw new Error("P is still on the sheet.");
     expect(moved.from?.kind === "on" ? moved.from.at : null).toBeCloseTo(0.7, 10);
+    // Its own x and y are stale until the figure settles: how far along it is
+    // is what it holds, and where that puts it is worked out from the path.
     expect({ x: moved.x, y: moved.y }).toEqual({ x: 150, y: 0 });
+  });
+
+  /** What the slide comes to once the page has settled, which is what is seen. */
+  it("leaves the slid point on the path, at where it slid to", () => {
+    const sketch = page([]);
+    const held = pressOn(sketch, "P");
+    if (!held) throw new Error("P is a point and can move.");
+    act(() => moveBy(held, { x: 60, y: 40 }, sketch.current));
+    expect(spot(sketch.current.state.objects, "P")).toEqual({ x: 210, y: 0 });
   });
 });

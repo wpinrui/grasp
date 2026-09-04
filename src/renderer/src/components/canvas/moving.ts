@@ -93,7 +93,9 @@ export function placedBy(objects: SketchObject[], held: Held, by: Position): Ske
       //
       // The second test means to leave it alone where its own path is being
       // dragged as well, but cannot: `held.ids` holds points and writing,
-      // never paths, so it never matches and such a point moves twice.
+      // never paths, so it never matches. Such a point then slides by as far
+      // as the drag went along the path, on top of riding the path itself, so
+      // the drag counts twice along it.
       const path = pathIn(geometry, from.path);
       if (!path || held.ids.includes(from.path)) return object;
       return { ...object, from: { ...from, at: alongPath(path, to) } };

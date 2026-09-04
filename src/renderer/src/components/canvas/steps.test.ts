@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
+  createArc,
   createCircle,
   createLocus,
   createMeasurement,
@@ -248,6 +249,11 @@ const MIDDLE = { ...createPoint({ x: 150, y: 0 }, "medium"), id: "M" };
 const ROUND = { ...createCircle({ kind: "through", centre: "A", edge: "M" }), id: "round" };
 const CROSSED: SketchObject[] = [...FIGURE, MIDDLE, ROUND];
 
+/** A quarter of that same circle, laid over it, so an arc is what is on top. */
+const NORTH = { ...createPoint({ x: 0, y: 150 }, "medium"), id: "N" };
+const ARC = { ...createArc({ kind: "centre", centre: "A", from: "M", to: "N" }), id: "arc" };
+const ARCED: SketchObject[] = [...CROSSED, NORTH, ARC];
+
 /** The figure a question about what is under the pointer is asked against. */
 function figure(objects: SketchObject[]) {
   return { objects, settled: settle(objects).settled, scale: 1 };
@@ -270,6 +276,12 @@ describe("what lies under the pointer", () => {
   it("passes over a circle to reach the straight object under it", () => {
     const found = lineUnder({ x: 150, y: 0 }, figure(CROSSED));
     expect(found?.object.id).toBe("seg");
+  });
+
+  /** An arc is a path like any other, and is passed over like any other. */
+  it("counts an arc among the paths, and passes over it to reach a line", () => {
+    expect(pathUnder({ x: 150, y: 0 }, figure(ARCED))?.object.id).toBe("arc");
+    expect(lineUnder({ x: 150, y: 0 }, figure(ARCED))?.object.id).toBe("seg");
   });
 
   it("finds nothing where the pointer is clear of everything", () => {
