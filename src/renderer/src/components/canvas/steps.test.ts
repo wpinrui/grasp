@@ -197,6 +197,12 @@ describe("the steps a move is held to", () => {
     expect(heldMove(["A"], { x: 0.2 * PX_PER_CM, y: 0 }, aiming(held)).x).toBeCloseTo(0);
   });
 
+  it("holds the bearing of a move to whole steps of angle", () => {
+    const stepped = { angle: true, angleDegrees: 45, moving: true };
+    const went = heldMove(["A"], { x: 100, y: 60 }, aiming(stepped));
+    expect(degreesOf(Math.atan2(went.y, went.x))).toBeCloseTo(45);
+  });
+
   it("leaves a move free while the steps are not asked to hold one", () => {
     const by = { x: 0.2 * PX_PER_CM, y: 0 };
     expect(heldMove(["A"], by, aiming({ ...held, moving: false }))).toEqual(by);
@@ -207,11 +213,13 @@ describe("the steps a move is held to", () => {
     expect(heldMove(["num"], by, aiming(held, withNote))).toEqual(by);
   });
 
+  // Started off the origin, so a travel that forgot where the drag began would
+  // come out at the pointer's own offset rather than at the point's.
   it("says how far a move carrying geometry has gone", () => {
-    const move = { ids: ["A"], from: [{ x: 0, y: 0 }], went: { x: 30, y: 40 } };
+    const move = { ids: ["A"], from: [{ x: 10, y: 20 }], went: { x: 30, y: 40 } };
     expect(travelOf(move, aiming(held))).toEqual({
-      from: { x: 0, y: 0 },
-      to: { x: 30, y: 40 },
+      from: { x: 10, y: 20 },
+      to: { x: 40, y: 60 },
     });
   });
 

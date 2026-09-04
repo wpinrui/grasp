@@ -20,8 +20,9 @@ import {
 
 /**
  * The figure anything on the sheet is worked out against: what is drawn, where
- * it all settled, and how far the sheet is zoomed. Every context below is this
- * plus whatever else that particular question needs.
+ * it all settled, and how far the sheet is zoomed. Most contexts below are this
+ * plus whatever else that particular question needs; one or two need only part
+ * of it and say so themselves.
  */
 export interface Figure {
   objects: SketchObject[];

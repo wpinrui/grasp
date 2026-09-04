@@ -1,7 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
-  createAngleMark,
   createPoint,
   createTick,
   lineThrough,
@@ -31,6 +30,15 @@ const CORNER: SketchObject[] = [A, B, C, EAST, SOUTH];
 
 function marking(objects: SketchObject[] = CORNER, angle = 2): Marking {
   return { settled: settle(objects).settled, scale: 1, lastMark: { angle, radius: 24 } };
+}
+
+/**
+ * How far out a mark is drawn, read back off where its path starts. A right
+ * angle comes out as a square corner rather than an arc, and both start the
+ * same way: out along the first arm by the radius.
+ */
+function reachOf(drawn: string): number {
+  return Number(drawn.split(" ")[1]);
 }
 
 /** The figure a mark is looked for on, which markUnder takes whole. */
@@ -78,20 +86,9 @@ describe("the arcs an angle would land as", () => {
     expect(arcsBetween({ corner: "gone", arms, reflex: false }, marking())).toEqual([]);
   });
 
-  /** An angle mark already on the corner says nothing about a new one. */
-  it("draws off the last mark rather than off what is already at the corner", () => {
-    const already = {
-      ...createAngleMark({
-        corner: "A",
-        arms,
-        sides: ["east", "south"],
-        strokes: 1,
-        reflex: false,
-        radius: 60,
-      }),
-      id: "already",
-    };
-    const drawn = arcsBetween({ corner: "A", arms, reflex: false }, marking([...CORNER, already]));
-    expect(drawn).toHaveLength(2);
+  /** How far out the arcs stand, which is what the last mark was left at. */
+  it("stands the arcs at the radius the last mark was set to", () => {
+    const [first] = arcsBetween({ corner: "A", arms, reflex: false }, marking());
+    expect(reachOf(first)).toBeCloseTo(24);
   });
 });

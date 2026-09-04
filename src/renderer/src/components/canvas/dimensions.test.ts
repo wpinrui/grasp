@@ -70,10 +70,10 @@ describe("drawing a length out", () => {
     const drawn = dimensionOf(reading({ bounds: "broken", x: 10 }), BOX, DRAWING);
     expect(drawn?.lines).toHaveLength(2);
     expect(drawn?.heads).toHaveLength(2);
-    // The number's middle, which is where the run has to be broken about.
-    const middle = 10 + BOX.width / 2;
-    expect(endX(drawn?.lines[0] ?? "")).toBeLessThan(middle);
-    expect(startX(drawn?.lines[1] ?? "")).toBeGreaterThan(middle);
+    // The number's own edges, so breaking about the segment's midpoint instead
+    // of about the number would fail rather than merely landing further out.
+    expect(endX(drawn?.lines[0] ?? "")).toBeLessThanOrEqual(10);
+    expect(startX(drawn?.lines[1] ?? "")).toBeGreaterThanOrEqual(10 + BOX.width);
   });
 
   it("draws the dotted lines only when it carries them", () => {
