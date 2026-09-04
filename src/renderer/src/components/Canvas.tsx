@@ -116,6 +116,7 @@ import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
 import { dimensionOf } from "./canvas/dimensions";
 import { guideOf } from "./canvas/guides";
+import { Dimensions } from "./canvas/layers/Dimensions";
 import { Fills } from "./canvas/layers/Fills";
 import { Guides } from "./canvas/layers/Guides";
 import { Holding } from "./canvas/layers/Holding";
@@ -3075,33 +3076,10 @@ export function Canvas({
                   vectorEffect="non-scaling-stroke"
                 />
               ))}
-              {readings.filter(isMeasurement).map((reading) => {
-                const drawn = dimensionOf(reading, boxOf(reading), { settled, scale });
-                if (!drawn) return null;
-                return (
-                  <g key={`dimension-${reading.id}`} data-id={reading.id}>
-                    {drawn.dotted.map((run) => (
-                      <path
-                        key={run}
-                        className="canvas__dimension canvas__dimension--dotted"
-                        d={run}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ))}
-                    {drawn.lines.map((run) => (
-                      <path
-                        key={run}
-                        className="canvas__dimension"
-                        d={run}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ))}
-                    {drawn.heads.map((run) => (
-                      <path key={run} className="canvas__dimension-head" d={run} />
-                    ))}
-                  </g>
-                );
-              })}
+              <Dimensions
+                readings={readings}
+                drawnFor={(reading) => dimensionOf(reading, boxOf(reading), { settled, scale })}
+              />
               <Guides guide={guide} />
               {marquee && (
                 <rect
