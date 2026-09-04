@@ -118,6 +118,7 @@ import { dimensionOf } from "./canvas/dimensions";
 import { guideOf } from "./canvas/guides";
 import { Fills } from "./canvas/layers/Fills";
 import { Guides } from "./canvas/layers/Guides";
+import { Holding } from "./canvas/layers/Holding";
 import { Paths } from "./canvas/layers/Paths";
 import { Points } from "./canvas/layers/Points";
 import { arcsBetween, type Marking, markUnder } from "./canvas/marks";
@@ -2986,34 +2987,7 @@ export function Canvas({
                   />
                 </g>
               )}
-              {marks.map((mark) => {
-                const point = ends.get(mark.id);
-                if (point) {
-                  return (
-                    <circle
-                      key={mark.id}
-                      className="canvas__mark"
-                      cx={point.x}
-                      cy={point.y}
-                      r={(radiusOf(point) + 7) / scale}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  );
-                }
-                const line = objects.find((object) => object.id === mark.id);
-                const span = line && isLine(line) ? spanOf(line) : null;
-                return span ? (
-                  <line
-                    key={mark.id}
-                    className="canvas__mark-band"
-                    x1={span[0].x}
-                    y1={span[0].y}
-                    x2={span[1].x}
-                    y2={span[1].y}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ) : null;
-              })}
+              <Holding marks={marks} ends={ends} spanOf={spanOf} />
               {preview.map((object) => {
                 if (isArc(object)) {
                   const arc = previewSettled.arcs.get(object.id);

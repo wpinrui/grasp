@@ -8,8 +8,7 @@
  */
 
 import { useSheet } from "../SheetContext";
-import type { Guide } from "../sheet";
-import { GUIDE_OFF, GUIDE_RADIUS } from "../sheet";
+import { GUIDE_OFF, GUIDE_RADIUS, type Guide } from "../sheet";
 
 interface GuidesProps {
   /** What is being placed, or nothing while nothing is. */
