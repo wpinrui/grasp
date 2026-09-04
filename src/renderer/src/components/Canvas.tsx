@@ -98,7 +98,6 @@ import {
   settle,
   slackAt,
   spotOnPath,
-  strokeLook,
   tangentOnPath,
   toSheet,
   union,
@@ -120,6 +119,7 @@ import { Holding } from "./canvas/layers/Holding";
 import { InteriorGlyph } from "./canvas/layers/Interior";
 import { Lit } from "./canvas/layers/Lit";
 import { Loci, Locus } from "./canvas/layers/Locus";
+import { MarkGhost, Marks } from "./canvas/layers/Marks";
 import { Paths } from "./canvas/layers/Paths";
 import { Points } from "./canvas/layers/Points";
 import { litWith } from "./canvas/lighting";
@@ -2543,51 +2543,8 @@ export function Canvas({
               ))}
               <Paths />
               <Drawing tracing={tracing} pending={pending} middle={middle} />
-              {objects.map((object) => {
-                if (!isMark(object)) return null;
-                const shape = markShape(object, { settled, objects, scale });
-                if (!shape) return null;
-                const strokes = markStrokes(shape, scale);
-                return (
-                  <g key={object.id} data-id={object.id}>
-                    {selection.includes(object.id) &&
-                      strokes.map((stroke, nth) => (
-                        <path
-                          // biome-ignore lint/suspicious/noArrayIndexKey: stateless paths in a fixed-length list, redrawn whole
-                          key={`halo-${object.id}-${nth}`}
-                          className="canvas__mark-halo"
-                          d={stroke}
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      ))}
-                    {strokes.map((stroke, nth) => (
-                      <path
-                        // biome-ignore lint/suspicious/noArrayIndexKey: stateless paths in a fixed-length list, redrawn whole
-                        key={`${object.id}-${nth}`}
-                        className="canvas__mark-stroke"
-                        style={strokeLook({ ...object, pattern: undefined })}
-                        d={stroke}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ))}
-                  </g>
-                );
-              })}
-              {/* An angle has to be marked before it can be read, so the arcs
-                that click would put on it are part of what it would do. */}
-              {previewReading?.mark &&
-                (() => {
-                  const shape = markShape(previewReading.mark, { settled, objects, scale });
-                  if (!shape) return null;
-                  return markStrokes(shape, scale).map((stroke) => (
-                    <path
-                      key={stroke}
-                      className="canvas__mark-stroke canvas__mark-stroke--preview"
-                      d={stroke}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ));
-                })()}
+              <Marks />
+              <MarkGhost mark={previewReading?.mark ?? null} />
               {arming && (
                 <g>
                   <line
