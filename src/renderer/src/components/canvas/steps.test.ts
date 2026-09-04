@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
+  createCircle,
   createLocus,
   createMeasurement,
   createPoint,
@@ -13,7 +14,17 @@ import {
   settle,
 } from "../../sketch/model";
 import type { Snapping } from "../SnapPanel";
-import { type Aiming, aimAt, handleAt, heldMove, snapAt, spanOfLocus, travelOf } from "./steps";
+import {
+  type Aiming,
+  aimAt,
+  handleAt,
+  heldMove,
+  lineUnder,
+  pathUnder,
+  snapAt,
+  spanOfLocus,
+  travelOf,
+} from "./steps";
 
 /**
  * Where a click lands is the one thing on the sheet with no second opinion: it
@@ -226,5 +237,45 @@ describe("the steps a move is held to", () => {
   it("says nothing about a move carrying no geometry", () => {
     const move = { ids: ["num"], from: [{ x: 0, y: 0 }], went: { x: 30, y: 40 } };
     expect(travelOf(move, aiming(held, withNote))).toBe(null);
+  });
+});
+
+/**
+ * A circle centred on A through the middle of the segment, so its rim crosses
+ * the segment at a spot both are under the pointer at. Newer than the segment,
+ * so it is the one on top there.
+ */
+const MIDDLE = { ...createPoint({ x: 150, y: 0 }, "medium"), id: "M" };
+const ROUND = { ...createCircle({ kind: "through", centre: "A", edge: "M" }), id: "round" };
+const CROSSED: SketchObject[] = [...FIGURE, MIDDLE, ROUND];
+
+/** The figure a question about what is under the pointer is asked against. */
+function figure(objects: SketchObject[]) {
+  return { objects, settled: settle(objects).settled, scale: 1 };
+}
+
+describe("what lies under the pointer", () => {
+  it("takes the newest of the paths there, the way picking does", () => {
+    const over = { ...lineThrough("segment", ["A", "B"]), id: "over" };
+    const found = pathUnder({ x: 150, y: 0 }, figure([...FIGURE, over]));
+    expect(found?.object.id).toBe("over");
+  });
+
+  /** The caller is handed the settled shape, so it does not settle it again. */
+  it("hands back the shape that path settled to", () => {
+    const found = pathUnder({ x: 150, y: 0 }, figure(CROSSED));
+    expect(found?.object.id).toBe("round");
+    expect(found && "radius" in found.along ? found.along.radius : null).toBe(150);
+  });
+
+  it("passes over a circle to reach the straight object under it", () => {
+    const found = lineUnder({ x: 150, y: 0 }, figure(CROSSED));
+    expect(found?.object.id).toBe("seg");
+  });
+
+  it("finds nothing where the pointer is clear of everything", () => {
+    const clear = { x: 150, y: 200 };
+    expect(pathUnder(clear, figure(CROSSED))).toBe(null);
+    expect(lineUnder(clear, figure(CROSSED))).toBe(null);
   });
 });
