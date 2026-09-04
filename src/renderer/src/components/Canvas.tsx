@@ -117,7 +117,9 @@ import { CaptionBox } from "./CaptionBox";
 import { dimensionOf } from "./canvas/dimensions";
 import { guideOf } from "./canvas/guides";
 import { Fills } from "./canvas/layers/Fills";
+import { Guides } from "./canvas/layers/Guides";
 import { Paths } from "./canvas/layers/Paths";
+import { Points } from "./canvas/layers/Points";
 import { arcsBetween, type Marking, markUnder } from "./canvas/marks";
 import {
   angleMarkOn,
@@ -140,8 +142,6 @@ import {
   DRAG_THRESHOLD,
   DRAW_HOLD,
   DRAW_REACH,
-  GUIDE_OFF,
-  GUIDE_RADIUS,
   type Handle,
   hasPanel,
   LEAST_SPAN,
@@ -2964,27 +2964,7 @@ export function Canvas({
                     </g>
                   );
                 })()}
-              {points.map((object) => (
-                <g key={object.id} data-id={object.id}>
-                  {selection.includes(object.id) && (
-                    <circle
-                      className="canvas__halo"
-                      cx={object.x}
-                      cy={object.y}
-                      r={(radiusOf(object) + 4.5) / scale}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  )}
-                  <circle
-                    className="canvas__point"
-                    style={fillLook(object, false)}
-                    cx={object.x}
-                    cy={object.y}
-                    r={radiusOf(object) / scale}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </g>
-              ))}
+              <Points />
               {spotlight && litWith(spotlight).map((id) => litPath(id))}
               {lit && lit !== spotlight && litWith(lit).map((id) => litPath(id))}
               {under &&
@@ -3148,54 +3128,7 @@ export function Canvas({
                   </g>
                 );
               })}
-              {guide && (
-                <g>
-                  {guide.travel && (
-                    <line
-                      className="canvas__guide-travel"
-                      x1={guide.travel.from.x}
-                      y1={guide.travel.from.y}
-                      x2={guide.travel.to.x}
-                      y2={guide.travel.to.y}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  )}
-                  {guide.datum && (
-                    <line
-                      className="canvas__guide-datum"
-                      x1={guide.datum.x}
-                      y1={guide.datum.y}
-                      x2={guide.datum.x + (GUIDE_RADIUS + GUIDE_OFF) / scale}
-                      y2={guide.datum.y}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  )}
-                  {guide.corners.map((corner) => (
-                    <path
-                      key={corner.arc}
-                      className="canvas__guide-arc"
-                      d={corner.arc}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ))}
-                  {[
-                    guide.length,
-                    ...guide.corners.map((corner) => corner.text),
-                    ...(guide.area ? [guide.area] : []),
-                  ].map((part, nth) => (
-                    <text
-                      // biome-ignore lint/suspicious/noArrayIndexKey: two corners of a figure can read the same
-                      key={nth}
-                      className="canvas__guide"
-                      textAnchor="middle"
-                      transform={`translate(${part.at.x} ${part.at.y}) rotate(${part.turn}) scale(${1 / scale})`}
-                      dy={part.dy}
-                    >
-                      {part.text}
-                    </text>
-                  ))}
-                </g>
-              )}
+              <Guides guide={guide} />
               {marquee && (
                 <rect
                   className="canvas__marquee"
