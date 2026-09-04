@@ -195,23 +195,9 @@ function drawn(container: HTMLElement): string {
 function put(
   objects: SketchObject[],
   tool: string,
-  more: {
-    selection?: string[];
-    report?: (state: SketchState) => void;
-    spotlight?: string | null;
-    marks?: { id: string; label: string }[];
-  } = {},
+  more: Omit<HarnessProps, "objects" | "tool"> = {},
 ) {
-  return render(
-    <Harness
-      objects={objects}
-      tool={tool}
-      selection={more.selection}
-      report={more.report}
-      spotlight={more.spotlight}
-      marks={more.marks}
-    />,
-  );
+  return render(<Harness objects={objects} tool={tool} {...more} />);
 }
 
 let unstub: () => void;
@@ -268,13 +254,15 @@ describe("the figure on the sheet", () => {
    */
   it("draws what the window is pointing at, lit and held", () => {
     const { container } = put(FIGURE, "arrow", {
-      spotlight: "circ",
+      spotlight: "ang",
       marks: [
         { id: "A", label: "1" },
         { id: "seg", label: "2" },
       ],
     });
     expect(container.querySelector(".canvas__snap-band")).not.toBe(null);
+    // The mark lights its two sides with it, which are straight objects.
+    expect(container.querySelectorAll("line.canvas__snap-band")).toHaveLength(2);
     expect(container.querySelector(".canvas__mark")).not.toBe(null);
     expect(container.querySelector(".canvas__mark-band")).not.toBe(null);
     expect(drawn(container)).toMatchSnapshot();

@@ -7,13 +7,11 @@
  * number came out once it was drawn. This lays out what that comes to.
  */
 
-import { isMeasurement, type SketchMeasurement, type SketchObject } from "../../../sketch/model";
+import { isMeasurement, type SketchMeasurement } from "../../../sketch/model";
 import { dimensionOf } from "../dimensions";
 import { useSheet } from "../SheetContext";
 
 interface DimensionsProps {
-  /** Everything written on the sheet; only the measurements are drawn out. */
-  readings: SketchObject[];
   /**
    * How big a reading came out once it was drawn, which the sheet measures off
    * the box it was drawn into rather than working out again here.
@@ -21,11 +19,11 @@ interface DimensionsProps {
   boxOf: (reading: SketchMeasurement) => { width: number; height: number };
 }
 
-export function Dimensions({ readings, boxOf }: DimensionsProps) {
-  const { settled, scale } = useSheet();
+export function Dimensions({ boxOf }: DimensionsProps) {
+  const { objects, settled, scale } = useSheet();
   return (
     <>
-      {readings.filter(isMeasurement).map((reading) => {
+      {objects.filter(isMeasurement).map((reading) => {
         const drawn = dimensionOf(reading, boxOf(reading), { settled, scale });
         if (!drawn) return null;
         return (

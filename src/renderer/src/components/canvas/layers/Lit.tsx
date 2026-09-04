@@ -10,6 +10,7 @@
 import { isArc, isCircle, isInterior, isLine, isPoint, radiusOf } from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
 import { arcPath, interiorShape } from "../shapes";
+import { InteriorGlyph } from "./Interior";
 
 interface LitProps {
   /** The ids to draw a band along. */
@@ -45,30 +46,7 @@ export function Lit({ ids }: LitProps) {
     }
     if (isInterior(object)) {
       const shape = interiorShape(object, settled);
-      if (!shape) return null;
-      if (shape.kind === "path") {
-        return <path key={id} className={ROUND} d={shape.d} vectorEffect="non-scaling-stroke" />;
-      }
-      if (shape.kind === "circle") {
-        return (
-          <circle
-            key={id}
-            className={ROUND}
-            cx={shape.at.x}
-            cy={shape.at.y}
-            r={shape.radius}
-            vectorEffect="non-scaling-stroke"
-          />
-        );
-      }
-      return (
-        <polygon
-          key={id}
-          className={ROUND}
-          points={shape.points}
-          vectorEffect="non-scaling-stroke"
-        />
-      );
+      return shape ? <InteriorGlyph key={id} shape={shape} className={ROUND} fixedStroke /> : null;
     }
     if (isPoint(object)) {
       const spot = ends.get(object.id);

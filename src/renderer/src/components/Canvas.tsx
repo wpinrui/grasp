@@ -117,6 +117,7 @@ import { Dimensions } from "./canvas/layers/Dimensions";
 import { Fills } from "./canvas/layers/Fills";
 import { Guides } from "./canvas/layers/Guides";
 import { Holding } from "./canvas/layers/Holding";
+import { InteriorGlyph } from "./canvas/layers/Interior";
 import { Lit } from "./canvas/layers/Lit";
 import { Paths } from "./canvas/layers/Paths";
 import { Points } from "./canvas/layers/Points";
@@ -2897,23 +2898,13 @@ export function Canvas({
                 }
                 if (isInterior(object)) {
                   const shape = interiorShape(object, previewSettled);
-                  if (!shape) return null;
-                  const ghost = "canvas__interior canvas__interior--preview";
-                  if (shape.kind === "path") {
-                    return <path key={object.id} className={ghost} d={shape.d} />;
-                  }
-                  if (shape.kind === "circle") {
-                    return (
-                      <circle
-                        key={object.id}
-                        className={ghost}
-                        cx={shape.at.x}
-                        cy={shape.at.y}
-                        r={shape.radius}
-                      />
-                    );
-                  }
-                  return <polygon key={object.id} className={ghost} points={shape.points} />;
+                  return shape ? (
+                    <InteriorGlyph
+                      key={object.id}
+                      shape={shape}
+                      className="canvas__interior canvas__interior--preview"
+                    />
+                  ) : null;
                 }
                 if (!isLine(object)) return null;
                 const span = spanOf(object, previewSettled);
@@ -2939,7 +2930,7 @@ export function Canvas({
                   vectorEffect="non-scaling-stroke"
                 />
               ))}
-              <Dimensions readings={readings} boxOf={boxOf} />
+              <Dimensions boxOf={boxOf} />
               <Guides guide={guide} />
               {marquee && (
                 <rect

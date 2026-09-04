@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
+  createFill,
   createInterior,
   createPoint,
   createWedge,
@@ -8,6 +9,14 @@ import {
   settle,
 } from "../../sketch/model";
 import { arcPath, arrowPoints, interiorShape, wedgePath } from "./shapes";
+import { ARROW_SIZE } from "./sheet";
+
+/** The two ends of an arc path, read back off the string it came out as. */
+function ends(path: string): [{ x: number; y: number }, { x: number; y: number }] {
+  const parts = path.split(" ");
+  const at = (nth: number) => ({ x: Number(parts[nth]), y: Number(parts[nth + 1]) });
+  return [at(1), at(parts.length - 2)];
+}
 
 /**
  * The path strings the sheet is drawn with. The sheet's own snapshot reaches
@@ -16,13 +25,7 @@ import { arcPath, arrowPoints, interiorShape, wedgePath } from "./shapes";
  */
 
 /** A quarter turn anticlockwise about the origin, radius 10. */
-const ARC = {
-  at: { x: 0, y: 0 },
-  radius: 10,
-  from: 0,
-  sweep: -Math.PI / 2,
-  ref: 0,
-};
+const ARC = { at: { x: 0, y: 0 }, radius: 10, from: 0, sweep: -Math.PI / 2 };
 
 /** The degenerate arc: three points in a line, which has no curve to draw. */
 const FLAT = {
@@ -40,9 +43,16 @@ describe("an arc as a path", () => {
 
   /** A sweep the positive way is clockwise on screen, which is SVG's flag. */
   it("says which way round it goes", () => {
-    expect(arcPath(ARC).endsWith(" 0 0 0 -10")).toBe(false);
     expect(arcPath(ARC)).toContain(" A 10 10 0 0 0 ");
     expect(arcPath({ ...ARC, sweep: Math.PI / 2 })).toContain(" A 10 10 0 0 1 ");
+  });
+
+  it("runs from one end of the sweep to the other", () => {
+    const [from, to] = ends(arcPath(ARC));
+    expect(from.x).toBeCloseTo(10);
+    expect(from.y).toBeCloseTo(0);
+    expect(to.x).toBeCloseTo(0);
+    expect(to.y).toBeCloseTo(-10);
   });
 
   it("says when it goes the long way round", () => {
@@ -83,11 +93,15 @@ describe("the arrowhead a locus is dragged by", () => {
     expect(close[1]).toBeCloseTo(wide[1] / 2);
   });
 
-  it("puts its tip where the handle is, and its back up the way it points", () => {
+  it("puts its tip where the handle is, and its back behind that", () => {
     const [tip, left, right] = arrowPoints(handle, 1).split(" ");
     expect(tip).toBe("0,0");
-    expect(left.split(",")[0]).toBe(right.split(",")[0]);
+    // The handle points east, so the two back corners sit west of the tip, the
+    // same distance back and the same distance either side of the line.
+    expect(Number(left.split(",")[0])).toBeCloseTo(-ARROW_SIZE);
+    expect(Number(right.split(",")[0])).toBeCloseTo(-ARROW_SIZE);
     expect(Number(left.split(",")[1])).toBeCloseTo(-Number(right.split(",")[1]));
+    expect(Number(left.split(",")[1])).not.toBeCloseTo(0);
   });
 });
 
@@ -108,6 +122,17 @@ describe("the shape a fill comes out as", () => {
   it("gives nothing where the figure has not settled", () => {
     const fill = { ...createInterior(["A", "gone"]), id: "empty" };
     expect(interiorShape(fill, settle([A, fill]).settled)).toBe(null);
+  });
+
+  it("gives a whole circle's fill the circle", () => {
+    const fill = { ...createFill("circ"), id: "round" };
+    const settled = settle([fill]).settled;
+    settled.circles.set("circ", { at: { x: 5, y: 5 }, radius: 10, ref: 0 });
+    expect(interiorShape(fill, settled)).toEqual({
+      kind: "circle",
+      at: { x: 5, y: 5 },
+      radius: 10,
+    });
   });
 
   it("cuts a wedge out of the arc it is the inside of", () => {

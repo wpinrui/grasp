@@ -10,8 +10,9 @@ import {
 import { litWith } from "./lighting";
 
 /**
- * Lighting an object up. Nothing in the sheet's own snapshot reaches this:
- * nothing is spotlit, hovered or pointed at in either figure it draws.
+ * Lighting an object up. The sheet's own snapshot reaches only the plain case,
+ * where what is lit is what was asked for; the marks, the angle readings and
+ * the ids that name nothing are covered here.
  */
 
 const A = { ...createPoint({ x: 0, y: 0 }, "medium"), id: "A" };
@@ -22,6 +23,8 @@ const D = { ...createPoint({ x: 100, y: 100 }, "medium"), id: "D" };
 const EAST = { ...lineThrough("segment", ["A", "B"]), id: "east" };
 const SOUTH = { ...lineThrough("segment", ["A", "C"]), id: "south" };
 const AWAY = { ...lineThrough("segment", ["B", "D"]), id: "away" };
+/** Out of the corner, but to neither arm, so it is not what the angle is about. */
+const OFF_ARM = { ...lineThrough("segment", ["A", "D"]), id: "off-arm" };
 
 const ANGLE = {
   ...createMeasurement("angle", ["B", "A", "C"], { x: 20, y: 20 }),
@@ -40,7 +43,7 @@ const MARK = {
   id: "mark",
 };
 
-const FIGURE: SketchObject[] = [A, B, C, D, EAST, SOUTH, AWAY, ANGLE, LENGTH, MARK];
+const FIGURE: SketchObject[] = [A, B, C, D, EAST, SOUTH, AWAY, OFF_ARM, ANGLE, LENGTH, MARK];
 
 describe("what lighting an object up should light", () => {
   it("lights an ordinary object and nothing else", () => {
@@ -68,7 +71,9 @@ describe("what lighting an object up should light", () => {
   });
 
   it("leaves out a line that misses the corner, or misses both arms", () => {
-    expect(litWith("reading", FIGURE)).not.toContain("away");
+    const lit = litWith("reading", FIGURE);
+    expect(lit).not.toContain("away");
+    expect(lit).not.toContain("off-arm");
   });
 
   it("lights a reading that is not an angle on its own", () => {

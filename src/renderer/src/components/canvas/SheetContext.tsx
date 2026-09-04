@@ -7,10 +7,10 @@
  * they came out of, so they are put here once and each layer reads what it
  * needs.
  *
- * What goes in is what more than one layer draws from, or would if it were
- * asked to. What one layer alone cares about stays a prop on that layer, and
- * anything a layer can work out from what is already here is worked out there
- * rather than added.
+ * What goes in is what more than one layer draws from, or what the sheet builds
+ * once and the layers must not build again: an index rebuilt per layer is an
+ * index that can come to disagree with the one the sheet is using. What one
+ * layer alone cares about stays a prop on that layer.
  */
 
 import { createContext, useContext } from "react";
