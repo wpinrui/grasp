@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createCircle,
   createInterior,
+  createLocus,
   createPoint,
   lineThrough,
   type SketchObject,
@@ -283,6 +284,32 @@ describe("the figure on the sheet", () => {
    * drawn that carries a stroke to keep at any zoom and no id to pick by.
    */
   /**
+   * A locus running along a ray is open at one end, so it carries an arrowhead
+   * there to drag it further. The figure above runs its locus along a segment,
+   * which fixes both ends, so nothing in it draws one.
+   */
+  it("draws the arrowhead an open locus is dragged by", () => {
+    const open = [
+      ...FIGURE,
+      { ...lineThrough("ray", ["A", "B"]), id: "open-dom" },
+      {
+        ...createLocus({ driver: "D", domain: "open-dom", driven: "M", span: [0, 1], samples: 4 }),
+        id: "open-loc",
+      },
+    ];
+    const { container } = put(open, "arrow");
+    expect(container.querySelectorAll("polygon.canvas__locus-arrow")).toHaveLength(1);
+  });
+
+  it("lights a fill as the shape it is", () => {
+    const { container } = put(FIGURE, "arrow", { spotlight: "fill" });
+    const band = container.querySelector("polygon.canvas__snap-band--round");
+    expect(band).not.toBe(null);
+    expect(band?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+    expect(band?.getAttribute("data-id")).toBe(null);
+  });
+
+  /**
    * The ghosts of what an open dialog would make. They settle against a page
    * that has them on it, which is not the page that is drawn, so nothing in the
    * figures above reaches them.
@@ -297,21 +324,18 @@ describe("the figure on the sheet", () => {
         { ...lineThrough("segment", ["P", "Q"]), id: "ghost-line" },
         { ...createCircle({ kind: "through", centre: "P", edge: "Q" }), id: "ghost-round" },
         { ...createInterior(["P", "Q", "A"]), id: "ghost-fill" },
+        {
+          ...createLocus({ driver: "P", domain: "ray", driven: "Q", span: [0, 1], samples: 4 }),
+          id: "ghost-locus",
+        },
       ],
     });
     expect(container.querySelector("line.canvas__line--preview")).not.toBe(null);
     expect(container.querySelector("circle.canvas__circle--preview")).not.toBe(null);
     expect(container.querySelector("polygon.canvas__interior--preview")).not.toBe(null);
     expect(container.querySelectorAll("circle.canvas__point--preview")).toHaveLength(2);
+    expect(container.querySelector(".canvas__locus--preview")).not.toBe(null);
     expect(drawn(container)).toMatchSnapshot();
-  });
-
-  it("lights a fill as the shape it is", () => {
-    const { container } = put(FIGURE, "arrow", { spotlight: "fill" });
-    const band = container.querySelector("polygon.canvas__snap-band--round");
-    expect(band).not.toBe(null);
-    expect(band?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
-    expect(band?.getAttribute("data-id")).toBe(null);
   });
 });
 

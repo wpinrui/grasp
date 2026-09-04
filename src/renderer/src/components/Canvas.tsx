@@ -111,7 +111,7 @@ import { type AngleDrag, Arms, Resting, Showing } from "./canvas/layers/Angles";
 import { Dimensions } from "./canvas/layers/Dimensions";
 import { Boxing, Drawing } from "./canvas/layers/Drawing";
 import { Fills } from "./canvas/layers/Fills";
-import { GhostCaption } from "./canvas/layers/Ghosts";
+import { GhostCaption, GhostReading } from "./canvas/layers/Ghosts";
 import { Guides } from "./canvas/layers/Guides";
 import { Holding, MarkCaptions } from "./canvas/layers/Holding";
 import { type LabelEdit, Labels } from "./canvas/layers/Labels";
@@ -2291,43 +2291,17 @@ export function Canvas({
     onEditing(next);
   }
 
-  /**
-   * A hidden caption, drawn faintly where it sits while the dock points at its
-   * row. A band round nothing would say nothing, so the caption itself comes
-   * back rather than an outline of it.
-   */
   /** The hidden caption the dock is pointing at, if that is what it is. */
   function ghostAt(id: string | null): SketchCaption | null {
     const found = id ? everything.find((object) => object.id === id) : null;
-    return found && isCaption(found) ? found : null;
+    return found && isCaption(found) && found.hidden === true ? found : null;
   }
 
-  /**
-   * A hidden measurement, drawn faintly where it sits while the dock points at
-   * its row, the way a hidden caption is.
-   */
-  function ghostReading(id: string | null) {
+  /** The hidden measurement the dock is pointing at, if that is what it is. */
+  function ghostReadingAt(id: string | null) {
     const found = id ? everything.find((object) => object.id === id) : null;
-    if (!found || !(isValue(found) || isFunction(found)) || found.hidden !== true) return null;
-    return (
-      <MeasurementBox
-        measurement={found}
-        reading={readingFor(found)}
-        view={view}
-        scale={scale}
-        selected={false}
-        tool="none"
-        ghost
-        linking={false}
-        onLink={() => {}}
-        onSelect={() => {}}
-        onGrab={() => {}}
-        onDrag={() => {}}
-        onDrop={() => {}}
-        onToggleLabel={() => {}}
-        onMeasure={() => {}}
-      />
-    );
+    if (!found || found.hidden !== true) return null;
+    return isValue(found) || isFunction(found) ? found : null;
   }
 
   /**
@@ -2679,29 +2653,28 @@ export function Canvas({
 
           {/* What the Measure tool would write from where the pointer is. */}
           {previewReading && (
-            <MeasurementBox
+            <GhostReading
               measurement={previewReading.reading}
               reading={readingFor(previewReading.reading)}
               view={view}
               scale={scale}
-              selected={false}
-              tool="none"
-              ghost
-              linking={false}
-              onLink={() => {}}
-              onSelect={() => {}}
-              onGrab={() => {}}
-              onDrag={() => {}}
-              onDrop={() => {}}
-              onToggleLabel={() => {}}
-              onMeasure={() => {}}
             />
           )}
 
           {/* Hidden writing pointed at in the dock. Nothing else says where it
             sits, since a hidden object is not drawn at all. */}
           <GhostCaption caption={ghostAt(spotlight)} names={linkNames} view={view} scale={scale} />
-          {ghostReading(spotlight)}
+          {(() => {
+            const hidden = ghostReadingAt(spotlight);
+            return hidden ? (
+              <GhostReading
+                measurement={hidden}
+                reading={readingFor(hidden)}
+                view={view}
+                scale={scale}
+              />
+            ) : null;
+          })()}
 
           <Boxing boxing={boxing} view={view} scale={scale} />
 

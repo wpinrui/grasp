@@ -242,7 +242,7 @@ export function snapRadius(
  * Where a spot on the page sits on screen, which is what places anything drawn
  * above the sheet rather than in it.
  */
-export function onScreen(at: Position, view: View, scale: number) {
+export function screenSpot(at: Position, view: View, scale: number) {
   return { left: `${(at.x - view.x) * scale}px`, top: `${(at.y - view.y) * scale}px` };
 }
 

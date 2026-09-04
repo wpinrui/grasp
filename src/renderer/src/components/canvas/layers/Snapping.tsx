@@ -50,7 +50,8 @@ export function Snapped({ snap }: { snap: Snap | null }) {
   );
 }
 
-/** The rectangle a marquee is being dragged out as, corners kept square. */
+/** The rectangle a marquee is being dragged out as, its corners rounded the
+ * same amount at any zoom. */
 export function Marquee({ rect }: { rect: Rect | null }) {
   const { scale } = useSheet();
   if (!rect) return null;

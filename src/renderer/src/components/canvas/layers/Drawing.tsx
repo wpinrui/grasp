@@ -1,7 +1,9 @@
 /**
  * What a tool has between its clicks: the band from where it started to where
  * the pointer is, the shape a polygon would close at, and the midpoint of a
- * path a marking tool would snap to, lit while the pointer is over it.
+ * path a marking tool would snap to, lit while the pointer is over it. The box
+ * a caption is dragged out to belongs here too, being the same kind of thing
+ * drawn above the sheet rather than in it.
  *
  * None of it is on the page. It is gone the moment the object lands, or the
  * moment the gesture is dropped.
@@ -10,7 +12,7 @@
 import { distance, type Position, type Rect, type View } from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
 import type { Pending, Tracing } from "../sheet";
-import { onScreen } from "../sheet";
+import { screenSpot } from "../sheet";
 
 interface DrawingProps {
   /** The polygon being traced out, its corners in the order they were clicked. */
@@ -119,7 +121,7 @@ export function Boxing({
     <div
       className="caption-box"
       style={{
-        ...onScreen(boxing, view, scale),
+        ...screenSpot(boxing, view, scale),
         width: `${boxing.width * scale}px`,
         height: `${boxing.height * scale}px`,
       }}

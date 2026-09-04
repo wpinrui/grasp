@@ -78,8 +78,9 @@ describe("the ring at a snap", () => {
   const ends = new Map([["A", A]]);
 
   it("takes its size from the dot it found", () => {
+    // A large point is drawn at radius 6.5, and the ring leaves 5.5 round it.
     const round = snapRadius({ kind: "point", ids: ["A"], at: A }, { scale: 1, ends });
-    expect(round).toBeGreaterThan(SNAP_RING);
+    expect(round).toBe(12);
   });
 
   it("is a fixed size on a path, there being no dot to be about", () => {
