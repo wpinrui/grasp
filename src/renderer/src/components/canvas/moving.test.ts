@@ -355,6 +355,28 @@ describe("where a drag pulls a path", () => {
   });
 
   /**
+   * An end that is itself placed by something else cannot be put anywhere, so
+   * there is nothing to pull and the point rides.
+   */
+  it("rides where the loose end is held up by something of its own", () => {
+    const onSegment = {
+      ...createPoint({ x: 270, y: 0 }, "medium", { kind: "on", path: "seg", at: 0.9 }),
+      id: "S",
+    };
+    const between = { ...lineThrough("segment", ["P", "S"]), id: "hang" };
+    const near = {
+      ...createPoint({ x: 210, y: 0 }, "medium", { kind: "on", path: "hang", at: 0.5 }),
+      id: "R",
+    };
+    const figure: SketchObject[] = [A, B, SEGMENT, ON, onSegment, between, near];
+    const held = whatMoves(["P", "R"], figure);
+    if (!held) throw new Error("P and R can move.");
+    const moved = spots(placedBy(figure, held, { x: 60, y: 0 }));
+    expect(moved.get("S")).toMatchObject({ x: 270, y: 0 });
+    expect(moved.get("R")).toMatchObject({ x: 240, y: 0 });
+  });
+
+  /**
    * Dragged on its own, a point on a path still only slides along it. Nothing
    * else in the drag moves that path, so nothing has to give for it.
    */
