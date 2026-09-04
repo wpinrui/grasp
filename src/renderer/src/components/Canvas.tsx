@@ -138,7 +138,6 @@ import {
   PAN_FINGERS,
   type Pending,
   type Snap,
-  sameReading,
   snapKey,
   stopAbove,
   stopBelow,
@@ -369,8 +368,6 @@ export function Canvas({
   const [snap, setSnap] = useState<Snap | null>(null);
   /** The label being typed into, and what has been typed so far. */
   const [naming, setNaming] = useState<LabelEdit | null>(null);
-  /** A label being dragged: where it started, and where the pointer did. */
-
   /** What a drag that began inside a caption or a measurement has hold of. */
   const written = useRef<Held | null>(null);
   /** The box the Text tool is dragging out for a caption that is not made yet. */
@@ -381,10 +378,6 @@ export function Canvas({
    * angles there is being asked for, the reflex one included.
    */
   const [arming, setArming] = useState<AngleDrag | null>(null);
-  /** The mark whose panel is open, or null with no panel showing. */
-
-  /** The reading whose panel is open, which only a length ever has. */
-
   /**
    * Which angle at a corner was meant. A corner with more than two sides
    * running out of it makes more than one angle, and a click on the point says
@@ -412,22 +405,6 @@ export function Canvas({
   const armFrom = useRef<string | null>(null);
   /** The midpoint a marking tool would snap to, lit while the pointer is near. */
   const [middle, setMiddle] = useState<Position | null>(null);
-  /**
-   * What the last mark of each kind was left as, so the next one comes out the
-   * same rather than starting from one stroke every time. `way` is the way the
-   * last arrowheads pointed, in sheet coordinates, so a second pair of parallel
-   * sides is marked the same way round as the first without being told.
-   */
-  /**
-   * What the Measure tool would write from where the pointer is, drawn as a
-   * ghost so the number can be seen before it is asked for. Null over anything
-   * the armed measure cannot be taken from.
-   */
-  /**
-   * The reading a click would go to rather than write, lit where it sits. Set
-   * instead of a ghost, since there is no new number to show.
-   */
-  const [previewHeld, setPreviewHeld] = useState<string | null>(null);
   /** Whether the Text tool is over something it could put a label on. */
   const [overNamed, setOverNamed] = useState(false);
   /** An object a Hot Text link is being pointed at, lit up where it sits. */
@@ -446,13 +423,6 @@ export function Canvas({
   const [, setMeasured] = useState(0);
   /** Set once a right-button pan has gone somewhere, so it is not a click. */
   const panMoved = useRef(false);
-  /**
-   * The scroll positions this component last put on the scrollbars, read back
-   * after writing so they are the rounded and clamped numbers the browser
-   * settled on. A scroll event reporting one of them is this component's own
-   * write echoing back, not the user moving anything, and moving the view on it
-   * would send the sheet drifting.
-   */
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [shiftHeld, setShiftHeld] = useState(false);
   const { objects: everything, selection } = sketch.state;
@@ -532,13 +502,14 @@ export function Canvas({
     setForm,
     setSquare,
     setStrokes,
-  } = useMarking({ sketch, objects, settled, scale, view, marking, measuring: measuringNow });
+  } = useMarking({ sketch, objects, settled, scale, view, marking });
 
   const {
     panel: readingPanel,
     setPanel: setReadingPanel,
-    preview: previewReading,
-    setPreview: setPreviewReading,
+    offering,
+    offer,
+    offerNothing,
     setBounds,
     setLeaders,
     setPlaces,
@@ -562,16 +533,8 @@ export function Canvas({
    */
   const area = union(drawn ? union(drawn, origin) : origin, onScreen);
 
-  const {
-    handleScrollX,
-    handleScrollY,
-    handleWheel,
-    positionOf,
-    scaleNow,
-    viewNow,
-    wrote,
-    zoomTo,
-  } = useView({ view, onView, sheet, viewport, area, zoomable });
+  const { handleScrollX, handleScrollY, handleWheel, positionOf, scaleNow, viewNow, zoomTo } =
+    useView({ view, onView, sheet, horizontal, vertical, viewport, area, zoomable });
 
   useLayoutEffect(() => {
     const element = sheet.current;
@@ -655,20 +618,6 @@ export function Canvas({
     setReadingPanel(null);
     setMiddle(null);
   }, [activeTool, sketch.cancelGesture]);
-
-  // Every render, because the area shifts under the view as well as with it.
-  useLayoutEffect(() => {
-    const across = horizontal.current;
-    const down = vertical.current;
-    if (across) {
-      across.scrollLeft = (view.x - area.x) * scale;
-      wrote.current.x = across.scrollLeft;
-    }
-    if (down) {
-      down.scrollTop = (view.y - area.y) * scale;
-      wrote.current.y = down.scrollTop;
-    }
-  });
 
   /**
    * What a drag on these objects actually moves, and where each of them starts,
@@ -1244,15 +1193,9 @@ export function Canvas({
       const over = positionOf(event);
       const would = over ? readingFrom(over, measuringNow()) : null;
       const already = would ? readingAlready(would, measuringNow()) : null;
-      // What is already there is lit rather than ghosted over: a click will go
-      // to it, and drawing a second copy of it on top would say otherwise.
-      setPreviewReading((was) =>
-        sameReading(was, already ? null : would) ? was : already ? null : would,
-      );
-      setPreviewHeld(already?.id ?? null);
-    } else if (previewReading || previewHeld) {
-      setPreviewReading(null);
-      setPreviewHeld(null);
+      offer(would, already?.id ?? null);
+    } else {
+      offerNothing();
     }
 
     // A plotting tool says what a click would land on: the point, the straight
@@ -1643,8 +1586,7 @@ export function Canvas({
   function handlePointerLeave() {
     setSnap(null);
     setOverNamed(false);
-    setPreviewReading(null);
-    setPreviewHeld(null);
+    offerNothing();
   }
 
   /**
@@ -1793,7 +1735,6 @@ export function Canvas({
 
   const { changeCaption, closeCaption, insertLink, makeCaption, settleCaption } = useCaptions({
     sketch,
-    captions,
     linkNames,
     editing,
     onEditing,
@@ -1946,7 +1887,7 @@ export function Canvas({
               <Paths />
               <Drawing tracing={tracing} pending={pending} middle={middle} />
               <Marks />
-              <MarkGhost mark={previewReading?.mark ?? null} />
+              <MarkGhost mark={offering.ghost?.mark ?? null} />
               <Arms arming={arming} arcs={armingArcs()} />
               <Resting
                 corner={choosing ? null : overCorner}
@@ -2008,7 +1949,7 @@ export function Canvas({
               at={panelSpot}
               onStrokes={setStrokes}
               onFlip={flipMark}
-              onReflex={flipReflex}
+              onReflex={(id) => flipReflex(id, measuringNow())}
               onSquare={setSquare}
               square={panelShape?.form === "angle" && panelShape.square}
               canSwap={canSwap(panelMark)}
@@ -2055,7 +1996,7 @@ export function Canvas({
               view={view}
               scale={scale}
               selected={selection.includes(measurement.id)}
-              lit={previewHeld === measurement.id}
+              lit={offering.held === measurement.id}
               tool={picking || !takesWriting ? "none" : tool}
               linking={editing !== null}
               onLink={insertLink}
@@ -2152,10 +2093,10 @@ export function Canvas({
           ))}
 
           {/* What the Measure tool would write from where the pointer is. */}
-          {previewReading && (
+          {offering.ghost && (
             <GhostReading
-              measurement={previewReading.reading}
-              reading={readingFor(previewReading.reading)}
+              measurement={offering.ghost.reading}
+              reading={readingFor(offering.ghost.reading)}
               view={view}
               scale={scale}
             />

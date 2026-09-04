@@ -1,6 +1,7 @@
 /**
- * Everything that changes a marking: laying a tick, dragging one along, turning
- * an angle round, and whatever its panel sets.
+ * The marking, and everything asked about it or done to it: laying a tick,
+ * dragging one along, turning an angle round, whatever its panel sets, and the
+ * questions the sheet asks before it does any of that.
  *
  * The last mark of each kind is remembered here rather than on the page, since
  * it is a thing about the tool rather than about the figure: a new tick comes
@@ -17,6 +18,7 @@ import {
   isMark,
   isMeasurement,
   LEAST_ANGLE_RADIUS,
+  type MarkForm,
   markAlong,
   markReach,
   markShape,
@@ -34,27 +36,42 @@ import type { Sketch } from "../../sketch/useSketch";
 import { angleReadingSpot, type Measuring } from "./readings";
 import { ANGLE_ROOM, type LastMark } from "./sheet";
 
+/**
+ * What the last mark of each kind was left as. `LastMark` is the narrow view of
+ * it the arcs are drawn from; this is the whole of what the tool remembers.
+ */
+export interface MarkMemory extends LastMark {
+  equal: number;
+  parallel: number;
+  /** The way the last arrowheads pointed, in sheet coordinates. */
+  way: Position | null;
+}
+
 /** What the sheet hands the marking: the figure, the zoom, and the tool that is up. */
 export interface Marked {
   sketch: Sketch;
   objects: SketchObject[];
   settled: Settled;
   scale: number;
+  /** Where the page sits on screen, which is where a mark's panel goes. */
   view: View;
   /** What the Marker would mark, or null while it is not the tool that is up. */
-  marking: string | null;
-  /** The figure as the readings read it, for the number that turns with a mark. */
-  measuring: () => Measuring;
+  marking: MarkForm | null;
 }
 
 /**
  * The marking, and the panel that is open on one. `panel` is the id of the mark
  * whose panel is up, which is a thing about the window rather than the page.
  */
-export function useMarking({ sketch, objects, settled, scale, view, marking, measuring }: Marked) {
+export function useMarking({ sketch, objects, settled, scale, view, marking }: Marked) {
   const [panel, setPanel] = useState<string | null>(null);
-  /** What the last mark of each kind was left at, which the next one takes. */
-  const lastMark = useRef<LastMark & { equal: number; parallel: number; way: Position | null }>({
+  /**
+   * What the last mark of each kind was left as, so the next one comes out the
+   * same rather than starting from one stroke every time. `way` is the way the
+   * last arrowheads pointed, in sheet coordinates, so a second pair of parallel
+   * sides is marked the same way round as the first without being told.
+   */
+  const lastMark = useRef<MarkMemory>({
     equal: 1,
     parallel: 1,
     angle: 1,
@@ -154,7 +171,15 @@ export function useMarking({ sketch, objects, settled, scale, view, marking, mea
     return shape && shape.form !== "angle" ? shape.way : null;
   }
 
-  /** What the panel does: the strokes, the direction, the form and the bin. */
+  /**
+   * What the panel does: the strokes, the direction, the form and the bin.
+   *
+   * Each commits through `reshape`, which reads the live page, and then reads
+   * the mark back out of this render's own list to remember what it was left
+   * at. That list is a render behind a mark laid in the same turn, which is
+   * harmless here: a panel only ever opens on a mark the sheet has already
+   * drawn once.
+   */
   function setStrokes(id: string, strokes: number) {
     reshape(id, (mark) => ({ ...mark, strokes }));
     const mark = objects.find((object) => object.id === id);
@@ -172,7 +197,11 @@ export function useMarking({ sketch, objects, settled, scale, view, marking, mea
     }
   }
 
-  function flipReflex(id: string) {
+  /**
+   * An angle marked the other way round. The number on it goes round too where
+   * that number is the only one, which is why the readings are handed in.
+   */
+  function flipReflex(id: string, measuring: Measuring) {
     const mark = objects.find((object) => object.id === id);
     if (!mark || !isMark(mark) || "path" in mark) return;
     // Turning it round would make it the mark the other side of these arms
@@ -210,7 +239,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking, mea
     );
     const alone = readings.length === 1 && marked.length === 1 ? readings[0] : null;
     const hangs = alone
-      ? angleReadingSpot({ reading: alone, mark: turned, reflex }, measuring())
+      ? angleReadingSpot({ reading: alone, mark: turned, reflex }, measuring)
       : null;
     const before = sketch.read();
     sketch.commit({

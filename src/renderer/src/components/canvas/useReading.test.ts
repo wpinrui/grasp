@@ -1,0 +1,159 @@
+import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import {
+  createAngleMark,
+  createMeasurement,
+  createPoint,
+  isMark,
+  isMeasurement,
+  lineThrough,
+  type SketchObject,
+} from "../../sketch/model";
+import { useSketch } from "../../sketch/useSketch";
+import { useReading } from "./useReading";
+
+/**
+ * What a reading's panel sets. None of it is reached by the sheet's own tests:
+ * a panel is open only once a reading has been clicked, and no test clicks one.
+ */
+
+const A = { ...createPoint({ x: 0, y: 0 }, "medium"), id: "A" };
+const B = { ...createPoint({ x: 100, y: 0 }, "medium"), id: "B" };
+const C = { ...createPoint({ x: 0, y: 100 }, "medium"), id: "C" };
+const EAST = { ...lineThrough("segment", ["A", "B"]), id: "east" };
+const SOUTH = { ...lineThrough("segment", ["A", "C"]), id: "south" };
+
+/** The angle at A, marked and read the one way round. */
+const MARK = {
+  ...createAngleMark({
+    corner: "A",
+    arms: ["B", "C"],
+    sides: ["east", "south"],
+    strokes: 1,
+    reflex: false,
+    radius: 24,
+  }),
+  id: "mark",
+};
+const READING = {
+  ...createMeasurement("angle", ["B", "A", "C"], { x: 30, y: 30 }),
+  id: "read",
+};
+/** The same angle read the other way round, which the first one is not alone with. */
+const OTHER = {
+  ...createMeasurement("angle", ["B", "A", "C"], { x: -30, y: -30 }),
+  id: "read-too",
+  reflex: true,
+};
+
+const FIGURE: SketchObject[] = [A, B, C, EAST, SOUTH, MARK, READING];
+
+/** The hook over a real page, and the page it is working on. */
+function open(objects: SketchObject[]) {
+  const sketch = renderHook(() => useSketch()).result;
+  act(() => sketch.current.commit({ objects, selection: [] }));
+  const reading = renderHook(() => useReading(sketch.current)).result;
+  return {
+    reading,
+    at: (id: string) => sketch.current.state.objects.find((object) => object.id === id),
+  };
+}
+
+describe("what a reading's panel sets", () => {
+  it("draws a length out, and stops drawing it out again", () => {
+    const length = { ...createMeasurement("length", ["east"], { x: 50, y: 20 }), id: "len" };
+    const { reading, at } = open([...FIGURE, length]);
+    act(() => reading.current.setBounds("len", "full"));
+    const drawn = at("len");
+    expect(drawn && isMeasurement(drawn) ? drawn.bounds : null).toBe("full");
+    act(() => reading.current.setBounds("len", undefined));
+    const bare = at("len");
+    expect(bare && isMeasurement(bare) ? bare.bounds : "still there").toBeUndefined();
+  });
+
+  it("pins how far one reading is written out", () => {
+    const { reading, at } = open(FIGURE);
+    act(() => reading.current.setPlaces("read", 4));
+    const found = at("read");
+    expect(found && isMeasurement(found) ? found.places : null).toBe(4);
+  });
+
+  it("gives a reading its dotted lines, and takes them away", () => {
+    const { reading, at } = open(FIGURE);
+    act(() => reading.current.setLeaders("read", true));
+    const led = at("read");
+    expect(led && isMeasurement(led) ? led.leaders : null).toBe(true);
+  });
+});
+
+/**
+ * An angle read the long way round. The mark on that angle is what says which
+ * of the angles at that corner the number is about, so the two cannot say
+ * different things.
+ */
+describe("reading an angle the other way round", () => {
+  it("turns the mark round with the number, where that number is the only one", () => {
+    const { reading, at } = open(FIGURE);
+    act(() => reading.current.setReflex("read", true));
+    const turned = at("read");
+    const mark = at("mark");
+    expect(turned && isMeasurement(turned) ? turned.reflex : null).toBe(true);
+    expect(mark && isMark(mark) && !("path" in mark) ? mark.reflex : null).toBe(true);
+  });
+
+  it("leaves the mark alone where both sizes of the angle are written", () => {
+    const { reading, at } = open([...FIGURE, OTHER]);
+    act(() => reading.current.setReflex("read", true));
+    const mark = at("mark");
+    expect(mark && isMark(mark) && !("path" in mark) ? mark.reflex : "gone").toBe(false);
+  });
+});
+
+/**
+ * What the Measure tool is offering is one thing with two faces, and never
+ * both at once: a ghost of a number that is not there, or a number that is.
+ */
+describe("what the Measure tool is offering", () => {
+  const ghost = { reading: READING, mark: null };
+
+  it("offers a ghost where there is no number there already", () => {
+    const { reading } = open(FIGURE);
+    act(() => reading.current.offer(ghost, null));
+    expect(reading.current.offering.ghost).toBe(ghost);
+    expect(reading.current.offering.held).toBe(null);
+  });
+
+  it("lights the number already there instead of ghosting over it", () => {
+    const { reading } = open(FIGURE);
+    act(() => reading.current.offer(ghost, "read"));
+    expect(reading.current.offering.ghost).toBe(null);
+    expect(reading.current.offering.held).toBe("read");
+  });
+
+  it("offers nothing where nothing can be taken", () => {
+    const { reading } = open(FIGURE);
+    act(() => reading.current.offer(ghost, null));
+    act(() => reading.current.offerNothing());
+    expect(reading.current.offering).toEqual({ ghost: null, held: null });
+  });
+
+  /** Held still over the same spot, the same offer is the offer already made. */
+  it("keeps the same offer rather than making it again", () => {
+    const { reading } = open(FIGURE);
+    act(() => reading.current.offer(ghost, null));
+    const was = reading.current.offering;
+    act(() => reading.current.offer({ reading: READING, mark: null }, null));
+    expect(reading.current.offering).toBe(was);
+  });
+});
+
+describe("the panel the window holds", () => {
+  it("opens on one reading at a time, and closes again", () => {
+    const { reading } = open(FIGURE);
+    expect(reading.current.panel).toBe(null);
+    act(() => reading.current.setPanel("read"));
+    expect(reading.current.panel).toBe("read");
+    act(() => reading.current.setPanel(null));
+    expect(reading.current.panel).toBe(null);
+  });
+});

@@ -1,15 +1,17 @@
 /**
- * Where the sheet is being looked at, and the three ways that changes:
- * scrolling, zooming, and reading a pointer's place off the element.
+ * Where the sheet is being looked at, the two ways that changes, scrolling and
+ * zooming, and how a pointer is placed against it.
  *
  * The scroll and wheel handlers fire outside the render that made them, so what
  * they need is read off refs rather than off a closure that has gone stale.
- * Scrolling is also reported back by the element it happens in, so a position
- * the sheet has just written is not read again as if a person had scrolled to it.
+ * Scrolling is also reported back by the element it happens in. A scroll event
+ * carrying a position this component itself last wrote is that write echoing
+ * back rather than a person moving anything, and moving the view on it would
+ * send the sheet drifting, so those are read once and ignored.
  */
 
 import type { MouseEvent, PointerEvent, RefObject, UIEvent, WheelEvent } from "react";
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { type Position, type Rect, toSheet, type View } from "../../sketch/model";
 import { clampScale, WHEEL_ZOOM } from "./sheet";
 
@@ -19,6 +21,9 @@ export interface Viewing {
   onView: (view: View) => void;
   /** The element the sheet is drawn in, which a pointer is placed against. */
   sheet: RefObject<HTMLDivElement | null>;
+  /** The two scrollbars, which the view is written onto and read back off. */
+  horizontal: RefObject<HTMLDivElement | null>;
+  vertical: RefObject<HTMLDivElement | null>;
   /** How much sheet is on screen, which is what the zoom buttons hold still. */
   viewport: { width: number; height: number };
   /** What the scrollbars run over. */
@@ -27,7 +32,16 @@ export interface Viewing {
   zoomable: boolean;
 }
 
-export function useView({ view, onView, sheet, viewport, area, zoomable }: Viewing) {
+export function useView({
+  view,
+  onView,
+  sheet,
+  horizontal,
+  vertical,
+  viewport,
+  area,
+  zoomable,
+}: Viewing) {
   const scale = view.scale;
   const areaNow = useRef(area);
   areaNow.current = area;
@@ -35,8 +49,28 @@ export function useView({ view, onView, sheet, viewport, area, zoomable }: Viewi
   viewNow.current = view;
   const scaleNow = useRef(scale);
   scaleNow.current = scale;
-  /** Where the sheet last put the scrollbars, so its own writes read as its own. */
+  /**
+   * The scroll positions this component last put on the scrollbars, read back
+   * after writing so they are the rounded and clamped numbers the browser
+   * settled on.
+   */
   const wrote = useRef({ x: 0, y: 0 });
+
+  // Every render, because the area shifts under the view as well as with it.
+  // Each write records itself, so the scroll event it causes is known for the
+  // echo it is rather than read as a person moving the sheet.
+  useLayoutEffect(() => {
+    const across = horizontal.current;
+    const down = vertical.current;
+    if (across) {
+      across.scrollLeft = (view.x - area.x) * scale;
+      wrote.current.x = across.scrollLeft;
+    }
+    if (down) {
+      down.scrollTop = (view.y - area.y) * scale;
+      wrote.current.y = down.scrollTop;
+    }
+  });
 
   /** A scroll position worth acting on, or nothing where the sheet wrote it. */
   function scrolledTo(at: number, axis: "x" | "y"): number | null {
@@ -98,7 +132,6 @@ export function useView({ view, onView, sheet, viewport, area, zoomable }: Viewi
     positionOf,
     scaleNow,
     viewNow,
-    wrote,
     zoomTo,
   };
 }

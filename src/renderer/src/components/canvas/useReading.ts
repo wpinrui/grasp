@@ -1,16 +1,26 @@
 /**
- * What a reading's panel sets: how far it is written out, how a length is drawn
- * out, and which way round an angle is read.
+ * A reading's panel and what it sets: how far the number is written out, how a
+ * length is drawn out, and which way round an angle is read. Each is one change
+ * to one reading, committed as one undo step.
  *
- * Each is one change to one reading, committed as one undo step, so a panel
- * press is a thing the page remembers rather than a thing the window holds.
+ * What the Measure tool is offering is kept here too, and it is one thing with
+ * two faces: over somewhere a number can be taken it is a ghost of that number,
+ * and over a number already on the sheet it is that number lit, since a click
+ * there goes to it rather than laying a second copy on top. Never both, which
+ * is why they are set together rather than one at a time.
  */
 
 import { useState } from "react";
 import { isMark, isMeasurement } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
 import { sameAngle } from "./readings";
-import type { Written } from "./sheet";
+import { sameReading, type Written } from "./sheet";
+
+/** What the Measure tool is offering: a ghost of a number, or one already there. */
+export interface Offering {
+  ghost: Written | null;
+  held: string | null;
+}
 
 /**
  * The readings, and the panel that is open on one. `panel` is the id of the
@@ -18,8 +28,28 @@ import type { Written } from "./sheet";
  */
 export function useReading(sketch: Sketch) {
   const [panel, setPanel] = useState<string | null>(null);
-  /** What the Measure tool would write from where the pointer is. */
-  const [preview, setPreview] = useState<Written | null>(null);
+  /** The ghost of a number, or the id of one already there, or neither. */
+  const [offering, setOffering] = useState<Offering>({ ghost: null, held: null });
+
+  /**
+   * What the Measure tool is offering from where the pointer is. A number
+   * already on the sheet is lit rather than ghosted over: a click will go to
+   * it, and drawing a second copy on top would say otherwise.
+   */
+  function offer(ghost: Written | null, held: string | null) {
+    setOffering((was) => {
+      const next = { ghost: held ? null : ghost, held };
+      const same = sameReading(was.ghost, next.ghost) && was.held === next.held;
+      return same ? was : next;
+    });
+  }
+
+  /** Nothing under the pointer to take a number off, so nothing is offered. */
+  function offerNothing() {
+    setOffering((was) =>
+      was.ghost === null && was.held === null ? was : { ghost: null, held: null },
+    );
+  }
 
   /** How a length is drawn out, and whether it carries its dotted lines. */
   function setBounds(id: string, bounds: "broken" | "full" | undefined) {
@@ -91,5 +121,15 @@ export function useReading(sketch: Sketch) {
       ),
     });
   }
-  return { panel, setPanel, preview, setPreview, setBounds, setLeaders, setPlaces, setReflex };
+  return {
+    offer,
+    offering,
+    offerNothing,
+    panel,
+    setBounds,
+    setLeaders,
+    setPanel,
+    setPlaces,
+    setReflex,
+  };
 }
