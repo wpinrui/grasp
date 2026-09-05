@@ -114,7 +114,6 @@ function Harness({
       labelPick={[]}
       onLabelPick={() => {}}
       onEditValue={() => {}}
-      onPressButton={() => {}}
       onCaptureRow={() => {}}
       onDropRow={() => {}}
       onMarkMirror={() => {}}

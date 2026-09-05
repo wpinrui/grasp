@@ -1,0 +1,75 @@
+/*
+  GRASP's own tooltip, in place of the browser's `title`.
+
+  On the window rather than in what it names, so a panel that clips its contents
+  cannot clip the chip with them.
+*/
+.tooltip {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px 0 10px;
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 6px;
+  box-shadow: var(--shadow-tooltip);
+  white-space: nowrap;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.tooltip__name {
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+
+.tooltip__key {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--color-key-bg);
+  border: 1px solid var(--color-key-border);
+  border-bottom-width: 2px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+/*
+  The wrapper that takes the hover. It shrinks to what it holds and generates no
+  box of its own beyond it, so a key inside a row sits exactly where it would
+  without one. It has to be a real box rather than `display: contents`: a box is
+  what the pointer can be over when the key inside is disabled and dispatching
+  nothing.
+*/
+.tooltip__of {
+  display: inline-flex;
+}
+
+/* The wrapper is the flex item now, so what it holds takes the box the wrapper
+   was given rather than shrinking inside it. */
+.tooltip__of > * {
+  flex: 1;
+}
+
+/*
+  A finger opens no tooltip, so the wrapper has no work to do and gives up its
+  box: what it holds goes back to being the flex or grid item it was, which is
+  what the rails and the menu bar place by on a touch screen.
+*/
+@media (pointer: coarse) {
+  .tooltip__of {
+    display: contents;
+  }
+
+  /* With no box of its own to fill, the rule above would reach past it and set
+     what it holds against the rail or the bar outside, which sizes its items
+     itself. */
+  .tooltip__of > * {
+    flex: initial;
+  }
+}

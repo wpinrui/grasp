@@ -18,10 +18,8 @@ import type {
 import type { PathGeometry, Position } from "./geometry";
 import { alongPath, spotOnPath } from "./paths";
 import type {
-  ButtonAction,
   MeasureKind,
   ParameterUnit,
-  SketchButton,
   SketchCalculation,
   SketchFunction,
   SketchMeasurement,
@@ -111,11 +109,6 @@ export function createParameter(wanted: ParameterWanted, at: Position): SketchPa
 /** A number worked out from the sketch's other numbers. */
 export function createCalculation(expression: Expr, at: Position): SketchCalculation {
   return { id: nextId("calc"), kind: "calculation", expression, x: at.x, y: at.y };
-}
-
-/** Something on the sheet to press, which does what it was made to do. */
-export function createButton(name: string, does: ButtonAction, at: Position): SketchButton {
-  return { id: nextId("button"), kind: "button", name, does, x: at.x, y: at.y };
 }
 
 /** A transform shown by example: a point, and what that point became. */

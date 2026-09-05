@@ -69,7 +69,6 @@ export function ReadingPanel({
     <>
       <PanelButton
         label="Move the number with the figure"
-        title="Move the number with the figure"
         on={reading.tied !== undefined}
         onClick={() => onTie(reading.id, reading.tied === undefined)}
       >
@@ -82,7 +81,7 @@ export function ReadingPanel({
     <>
       <PanelButton
         label="One fewer decimal place"
-        title={`One fewer decimal place (${places} now)`}
+        tip={`One fewer decimal place (${places} now)`}
         disabled={places <= least}
         onClick={() => onPlaces(reading.id, places - 1)}
       >
@@ -90,7 +89,7 @@ export function ReadingPanel({
       </PanelButton>
       <PanelButton
         label="One more decimal place"
-        title={`One more decimal place (${places} now)`}
+        tip={`One more decimal place (${places} now)`}
         disabled={places >= most}
         onClick={() => onPlaces(reading.id, places + 1)}
       >
@@ -106,7 +105,6 @@ export function ReadingPanel({
       <PanelShell at={at} colour={MEASURE_COLOUR}>
         <PanelButton
           label="Read the reflex angle instead"
-          title="Read the reflex angle instead"
           on={reading.reflex}
           onClick={() => onReflex(reading.id, reading.reflex !== true)}
         >
@@ -134,7 +132,6 @@ export function ReadingPanel({
     <PanelShell at={at} colour={MEASURE_COLOUR}>
       <PanelButton
         label="The number on its own"
-        title="The number on its own"
         on={bounds === undefined}
         onClick={() => onBounds(reading.id, undefined)}
       >
@@ -142,7 +139,6 @@ export function ReadingPanel({
       </PanelButton>
       <PanelButton
         label="Arrows broken by the number"
-        title="Arrows broken by the number"
         on={bounds === "broken"}
         onClick={() => onBounds(reading.id, "broken")}
       >
@@ -150,7 +146,6 @@ export function ReadingPanel({
       </PanelButton>
       <PanelButton
         label="Arrows running the whole way"
-        title="Arrows running the whole way"
         on={bounds === "full"}
         onClick={() => onBounds(reading.id, "full")}
       >
@@ -159,7 +154,6 @@ export function ReadingPanel({
       <PanelSplit />
       <PanelButton
         label="Dotted lines out to the segment"
-        title="Dotted lines out to the segment"
         on={reading.leaders}
         disabled={bounds === undefined}
         onClick={() => onLeaders(reading.id, reading.leaders !== true)}

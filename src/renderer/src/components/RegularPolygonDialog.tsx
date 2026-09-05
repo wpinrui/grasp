@@ -104,7 +104,7 @@ export function RegularPolygonDialog({ at, onApply, onCancel }: RegularPolygonDi
         <span className="ngon__of">Lock</span>
         <Switch name="Lock" on={locked} onChange={setLocked} />
         <span className="ngon__note">
-          {locked ? "Shape fixed as a regular polygon" : "Corners move freely"}
+          {locked ? "Shape is fixed as a regular polygon" : "Corners move freely"}
         </span>
       </div>
     </DialogFrame>

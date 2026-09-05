@@ -27,6 +27,7 @@ import {
   isLine,
   isLocus,
   isMark,
+  isWriting,
   type LabelState,
   type LinePattern,
   type LineWidth,
@@ -37,7 +38,6 @@ import {
 import type { Prefs } from "../sketch/prefs";
 import {
   inkAgreed,
-  isWritten,
   lookOf,
   lookOfLabel,
   marksOfLabels,
@@ -205,10 +205,10 @@ export function paletteState(context: PaletteContext) {
   /**
    * The writing among it: everything picked that carries a face and a size,
    * whatever kind of object it is. A reading, a parameter, a calculation, a
-   * function, a table and a button are all set the way a caption is, so the row
-   * reaches them all.
+   * function and a table are all set the way a caption is, so the row reaches
+   * them all.
    */
-  const writing = picked.filter(isWritten);
+  const writing = picked.filter(isWriting);
 
   /**
    * How whatever the palette is set on reads now, and what of it that writing
@@ -374,7 +374,7 @@ export function paletteState(context: PaletteContext) {
         if (chosenCaption && object.id === chosenCaption.id && isCaption(object)) {
           return { ...object, ...change };
         }
-        if (spread?.has(object.id) && isWritten(object)) return { ...object, ...look };
+        if (spread?.has(object.id) && isWriting(object)) return { ...object, ...look };
         return object;
       }),
     });

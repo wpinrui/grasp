@@ -59,11 +59,6 @@ export type MenuAction =
   | "bisector"
   | "segment"
   | "document-options"
-  | "button-hide-show"
-  | "button-link"
-  | "button-scroll"
-  | "button-present"
-  | `press-button:${string}`
   | "split-merge"
   | "edit-definition"
   | "define-custom"
@@ -173,15 +168,6 @@ export const MENUS: Menu[] = [
       { label: "Paste", shortcut: "Ctrl+V", action: "paste" },
       { label: "Clear", shortcut: "Del", action: "clear" },
       "separator",
-      {
-        label: "Action Buttons",
-        submenu: [
-          { label: "Hide/Show", action: "button-hide-show" },
-          { label: "Link...", action: "button-link" },
-          { label: "Scroll", action: "button-scroll" },
-          { label: "Presentation", action: "button-present" },
-        ],
-      },
       { label: "Select All", shortcut: "Ctrl+A", action: "select-all" },
       { label: "Select Parents", shortcut: "Alt+Up", action: "select-parents" },
       { label: "Select Children", shortcut: "Alt+Down", action: "select-children" },

@@ -1,20 +1,19 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CAPTION } from "../components/typeset";
-import type {
-  SketchButton,
-  SketchCalculation,
-  SketchCaption,
-  SketchFunction,
-  SketchLine,
-  SketchMeasurement,
-  SketchParameter,
-  SketchTable,
+import {
+  isWriting,
+  type SketchCalculation,
+  type SketchCaption,
+  type SketchFunction,
+  type SketchLine,
+  type SketchMeasurement,
+  type SketchParameter,
+  type SketchTable,
 } from "./model";
 import {
   drawnAs,
   inkAgreed,
-  isWritten,
   lookOf,
   lookOfLabel,
   marksOfLabels,
@@ -86,16 +85,6 @@ const table = (over: Partial<SketchTable> = {}): SketchTable => ({
   ...over,
 });
 
-const button = (over: Partial<SketchButton> = {}): SketchButton => ({
-  id: "b",
-  kind: "button",
-  name: "Show",
-  does: { form: "hide-show", of: ["a"], does: "toggle" },
-  x: 0,
-  y: 0,
-  ...over,
-});
-
 const inked = (colour?: string): SketchLine => ({ ...line, colour });
 
 const line: SketchLine = {
@@ -107,17 +96,16 @@ const line: SketchLine = {
 
 describe("what counts as writing", () => {
   it("takes every kind that carries a face and a size", () => {
-    expect(isWritten(caption())).toBe(true);
-    expect(isWritten(reading())).toBe(true);
-    expect(isWritten(parameter())).toBe(true);
-    expect(isWritten(calculation())).toBe(true);
-    expect(isWritten(graph())).toBe(true);
-    expect(isWritten(table())).toBe(true);
-    expect(isWritten(button())).toBe(true);
+    expect(isWriting(caption())).toBe(true);
+    expect(isWriting(reading())).toBe(true);
+    expect(isWriting(parameter())).toBe(true);
+    expect(isWriting(calculation())).toBe(true);
+    expect(isWriting(graph())).toBe(true);
+    expect(isWriting(table())).toBe(true);
   });
 
   it("leaves out what is drawn rather than written", () => {
-    expect(isWritten(line)).toBe(false);
+    expect(isWriting(line)).toBe(false);
   });
 });
 
@@ -172,7 +160,7 @@ describe("what a mixed pick agrees about", () => {
   });
 
   it("says what they share", () => {
-    const looks = [lookOf(reading()), lookOf(table()), lookOf(button())];
+    const looks = [lookOf(reading()), lookOf(table())];
     expect(textStyling(looks)).toEqual({
       font: DEFAULT_CAPTION.font,
       size: DEFAULT_CAPTION.size,

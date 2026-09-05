@@ -62,11 +62,7 @@ export function MarkPanel({
     <PanelShell at={at} colour={MARKER_COLOUR}>
       {turns && (
         <>
-          <PanelButton
-            label="Turn the mark round"
-            title="Turn the mark round"
-            onClick={() => onFlip(mark.id)}
-          >
+          <PanelButton label="Turn the mark round" onClick={() => onFlip(mark.id)}>
             <FlipIcon />
           </PanelButton>
           <PanelSplit />
@@ -76,7 +72,6 @@ export function MarkPanel({
         <>
           <PanelButton
             label="Mark the reflex angle instead"
-            title="Mark the reflex angle instead"
             on={"reflex" in mark && mark.reflex}
             onClick={() => onReflex(mark.id)}
           >
@@ -84,7 +79,6 @@ export function MarkPanel({
           </PanelButton>
           <PanelButton
             label="Draw it as a right angle"
-            title="Draw it as a right angle"
             on={square}
             onClick={() => onSquare(mark.id, !square)}
           >
@@ -97,6 +91,8 @@ export function MarkPanel({
         <PanelButton
           key={strokes}
           label={`${strokes}`}
+          // A count says what it is by the strokes drawn on it.
+          tip={null}
           on={mark.strokes === strokes}
           onClick={() => onStrokes(mark.id, strokes)}
         >
@@ -108,7 +104,6 @@ export function MarkPanel({
           <PanelSplit />
           <PanelButton
             label={swapTo}
-            title={swapTo}
             onClick={() => onForm(mark.id, form === "equal" ? "parallel" : "equal")}
           >
             {form === "equal" ? <ParallelMarkIcon /> : <EqualMarkIcon />}
@@ -116,12 +111,7 @@ export function MarkPanel({
         </>
       )}
       <PanelSplit />
-      <PanelButton
-        label="Delete the mark"
-        title="Delete the mark"
-        away
-        onClick={() => onDelete(mark.id)}
-      >
+      <PanelButton label="Delete the mark" away onClick={() => onDelete(mark.id)}>
         <BinIcon />
       </PanelButton>
     </PanelShell>

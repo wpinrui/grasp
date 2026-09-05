@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type MouseEvent, type PointerEvent, useRef, useState } from "react";
+import { Tooltip } from "./Tooltip";
 import "./PageBar.css";
 
 interface PageBarProps {
@@ -203,15 +204,11 @@ export function PageBar({
             </button>
           ),
         )}
-        <button
-          type="button"
-          className="pagebar__add"
-          aria-label="Add page"
-          title="Add page"
-          onClick={onAddPage}
-        >
-          +
-        </button>
+        <Tooltip says="Add page">
+          <button type="button" className="pagebar__add" aria-label="Add page" onClick={onAddPage}>
+            +
+          </button>
+        </Tooltip>
       </div>
       <div className="pagebar__spacer" />
       <div className="pagebar__readout">

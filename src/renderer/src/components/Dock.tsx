@@ -1,5 +1,6 @@
 import { Fragment, type PointerEvent, type ReactNode, useRef, useState } from "react";
 import { HiddenIcon, SnapIcon, TagIcon } from "./icons";
+import { Tooltip } from "./Tooltip";
 import "./Dock.css";
 
 /** How wide the pane can be dragged, in pixels. */
@@ -8,11 +9,6 @@ const MAX_WIDTH = 480;
 
 /** The least of the pane's height a panel can be left with, in pixels. */
 const MIN_HEIGHT = 90;
-
-/** Where a button sits down the rail, matching the toolbox on the other side. */
-const TOOL_PITCH = 50;
-const RAIL_PADDING = 6;
-const TOOLTIP_OFFSET = 3;
 
 interface Panel {
   id: string;
@@ -64,14 +60,12 @@ export function Dock({ open, onToggle, width, onWidth, panes }: DockProps) {
   const drag = useRef<{ from: number; width: number } | null>(null);
   const seam = useRef<{ from: number; above: number; total: number; at: number } | null>(null);
   const stack = useRef<HTMLDivElement>(null);
-  const [hovered, setHovered] = useState<number | null>(null);
   /**
    * What share of the pane each open panel has been dragged to, or null while
    * they share it evenly. Shares rather than heights, so the stack still fills
    * the pane when the window is resized or the pane is dragged wider.
    */
   const [shares, setShares] = useState<number[] | null>(null);
-  const tip = hovered === null ? null : PANELS[hovered];
   // What was remembered may name a panel this build no longer has, and the
   // rail's order is the stack's order however they were opened.
   const showing = PANELS.filter((panel) => open.includes(panel.id));
@@ -172,31 +166,21 @@ export function Dock({ open, onToggle, width, onWidth, panes }: DockProps) {
         </div>
       )}
       <div className="dock__rail">
-        {PANELS.map((panel, index) => (
-          <button
-            type="button"
-            key={panel.id}
-            className={`dock__tool${open.includes(panel.id) ? " dock__tool--open" : ""}`}
-            aria-label={panel.name}
-            aria-pressed={open.includes(panel.id)}
-            onClick={() => onToggle(panel.id)}
-            onMouseEnter={() => setHovered(index)}
-            onMouseLeave={() => setHovered(null)}
-          >
-            <panel.Icon />
-          </button>
+        {/* Off the other side of the rail, so it opens over the sheet rather
+            than off the edge of the window. */}
+        {PANELS.map((panel) => (
+          <Tooltip key={panel.id} says={panel.name} keys={panel.key} side="left">
+            <button
+              type="button"
+              className={`dock__tool${open.includes(panel.id) ? " dock__tool--open" : ""}`}
+              aria-label={panel.name}
+              aria-pressed={open.includes(panel.id)}
+              onClick={() => onToggle(panel.id)}
+            >
+              <panel.Icon />
+            </button>
+          </Tooltip>
         ))}
-
-        {/* The same tooltip the toolbox shows, on the other side of the rail. */}
-        {tip && hovered !== null && (
-          <div
-            className="tooltip tooltip--dock"
-            style={{ top: `${RAIL_PADDING + hovered * TOOL_PITCH + TOOLTIP_OFFSET}px` }}
-          >
-            <span className="tooltip__name">{tip.name}</span>
-            {tip.key && <span className="tooltip__key">{tip.key}</span>}
-          </div>
-        )}
       </div>
     </>
   );

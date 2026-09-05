@@ -15,7 +15,6 @@ import {
 } from "./geometry";
 import {
   isArc,
-  isButton,
   isCircle,
   isInterior,
   isLine,
@@ -211,8 +210,6 @@ export function objectsTouching(rect: Rect, page: Picking): SketchObject[] {
     }
     // Nothing on the sheet to catch: it is a relationship between two points.
     if (isTransform(object)) return false;
-    // A button is caught by what it covers, which is read off its box.
-    if (isButton(object)) return false;
     if (isLine(object)) {
       const along = settled.lines.get(object.id);
       return along ? clipToRect(along, rect) !== null : false;

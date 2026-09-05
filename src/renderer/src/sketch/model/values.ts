@@ -52,41 +52,6 @@ export interface SketchCalculation extends Labelled {
 }
 
 /**
- * What pressing an action button does. Each one is a thing you would otherwise
- * do through a menu, put on the sheet so it takes one press instead.
- */
-export type ButtonAction =
-  /**
-   * Puts objects away and brings them back. A toggle reads the objects rather
-   * than remembering: with all of them away it brings them back, and otherwise
-   * it puts them away, so it is never out of step with what the sheet shows.
-   */
-  | { form: "hide-show"; of: string[]; does: "toggle" | "hide" | "show" }
-  /** Goes to another page of this sketch. */
-  | { form: "link"; page: string }
-  /** Brings a point into view, in the middle of the window or at its corner. */
-  | { form: "scroll"; point: string; to: "centre" | "corner" }
-  /** Presses other buttons, all at once or one after another. */
-  | { form: "present"; of: string[]; order: "together" | "in-turn" };
-
-/**
- * An action button: a thing on the sheet you press to do something that would
- * otherwise take a menu. It sits where it is put and travels with the drawing,
- * the way a caption does.
- */
-export interface SketchButton extends Labelled {
-  id: string;
-  kind: "button";
-  /** What is written on it. */
-  name: string;
-  does: ButtonAction;
-  x: number;
-  y: number;
-  font?: string;
-  size?: number;
-}
-
-/**
  * A custom transform: a relationship shown by example rather than named. The
  * seed is the point it was shown on and the image is what that point became,
  * and applying it replays everything between them onto something else.
@@ -310,5 +275,4 @@ export type SketchObject =
   | SketchTable
   | SketchFunction
   | SketchTransform
-  | SketchButton
   | SketchMark;

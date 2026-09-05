@@ -1,6 +1,6 @@
 /**
  * Every modal the window can put up, and nothing else. Each one is its own
- * question: what a number holds, what a button does, what a page prints on.
+ * question: what a number holds, what a transform moves, what a page prints on.
  *
  * They are gathered here rather than in the window because none of them draws
  * anything until it is opened, and what each one needs is already gathered into
@@ -8,7 +8,6 @@
  */
 
 import { AboutDialog } from "../components/AboutDialog";
-import { ButtonDialog } from "../components/ButtonDialog";
 import { CalculatorDialog } from "../components/CalculatorDialog";
 import { DefineTransformDialog, EditTransformsDialog } from "../components/CustomTransformDialog";
 import { DocumentOptionsDialog } from "../components/DocumentOptionsDialog";
@@ -25,7 +24,6 @@ import { AddTableDataDialog, RemoveTableDataDialog } from "../components/TableDa
 import { TransformDialog } from "../components/TransformDialog";
 import type { Sheet } from "../sketch/expression";
 import type { Sketch } from "../sketch/useSketch";
-import type { Buttons } from "./buttons";
 import type { Custom } from "./customs";
 import { pagePicture, printPage } from "./printing";
 import type { Dialogs as DialogState } from "./useDialogs";
@@ -40,7 +38,6 @@ interface DialogsProps {
   numbers: Numbers;
   relabel: Relabelling;
   regular: Regular;
-  buttons: Buttons;
   custom: Custom;
   settings: Settings;
   moves: Moves;
@@ -60,7 +57,6 @@ export function Dialogs({
   numbers,
   relabel,
   regular,
-  buttons,
   custom,
   settings,
   moves,
@@ -125,16 +121,6 @@ export function Dialogs({
             }
           }}
           onCancel={() => dialogs.setDocOptions(false)}
-        />
-      )}
-
-      {dialogs.buttonDialog && (
-        <ButtonDialog
-          form={dialogs.buttonDialog}
-          count={buttons.buttonWants(dialogs.buttonDialog).length}
-          pages={sketch.pages}
-          onApply={buttons.landButton}
-          onCancel={() => dialogs.setButtonDialog(null)}
         />
       )}
 

@@ -17,7 +17,6 @@
 
 export {
   createArc,
-  createButton,
   createCalculation,
   createCaption,
   createCircle,
@@ -123,7 +122,6 @@ export {
   EMPTY_SKETCH,
   familyOf,
   isArc,
-  isButton,
   isCalculation,
   isCaption,
   isCircle,
@@ -186,12 +184,10 @@ export {
 export { endsById, objectAt, objectsTouching, rectBetween } from "./pick";
 export { contentBounds, readValuesWith, resolve, settle, withDependents } from "./settle";
 export type {
-  ButtonAction,
   MarkForm,
   MeasureKind,
   ParameterUnit,
   ReadingSpot,
-  SketchButton,
   SketchCalculation,
   SketchFunction,
   SketchMark,

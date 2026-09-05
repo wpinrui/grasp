@@ -35,7 +35,6 @@ import {
   edgesRound,
   endsById,
   isArc,
-  isButton,
   isCaption,
   isCircle,
   isFunction,
@@ -88,7 +87,6 @@ import { demotedUnder } from "../sketch/overlaps";
 import { togglePick } from "../sketch/picking";
 import type { Sketch } from "../sketch/useSketch";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
-import { ButtonBox } from "./ButtonBox";
 import { CaptionBox } from "./CaptionBox";
 import { guideOf } from "./canvas/guides";
 import { handlesOn } from "./canvas/handles";
@@ -164,6 +162,7 @@ import { MeasurementBox } from "./MeasurementBox";
 import { ReadingPanel } from "./ReadingPanel";
 import type { Snapping } from "./SnapPanel";
 import { TableBox } from "./TableBox";
+import { Tooltip } from "./Tooltip";
 import { armedForWriting } from "./tools";
 import "./Canvas.css";
 
@@ -204,8 +203,6 @@ interface CanvasProps {
   onLabelPick: (id: string | null, additive?: boolean) => void;
   /** Double-clicking a parameter or a calculation, which reopens what made it. */
   onEditValue: (id: string) => void;
-  /** Pressing an action button, which does whatever it was made to do. */
-  onPressButton: (id: string) => void;
   /** Double-clicking a table, which takes a row, and Shift, which gives one back. */
   onCaptureRow: (id: string) => void;
   onDropRow: (id: string) => void;
@@ -292,7 +289,6 @@ export function Canvas({
   onEditValue,
   onCaptureRow,
   onDropRow,
-  onPressButton,
   onMarkMirror,
   snapping,
   measureKind,
@@ -1611,7 +1607,6 @@ export function Canvas({
   const quantities = quantitiesOf(settled);
 
   const tables = objects.filter(isTable);
-  const buttons = objects.filter(isButton);
 
   /** What one of them says, worked out afresh as the figure moves. */
   const readingFor = (
@@ -1630,7 +1625,7 @@ export function Canvas({
     const caught = objectsTouching(rect, { objects: pickable, scale, settled }).map(
       (object) => object.id,
     );
-    for (const writing of takesWriting ? [...captions, ...readings, ...tables, ...buttons] : []) {
+    for (const writing of takesWriting ? [...captions, ...readings, ...tables] : []) {
       const box = boxes.current.get(writing.id);
       if (!box) continue;
       const covers = {
@@ -2003,25 +1998,6 @@ export function Canvas({
             />
           ))}
 
-          {buttons.map((button) => (
-            <ButtonBox
-              key={button.id}
-              button={button}
-              view={view}
-              scale={scale}
-              selected={selection.includes(button.id)}
-              tool={picking || !takesWriting ? "none" : tool}
-              onPress={onPressButton}
-              // A button is pressed rather than dragged, so a plain click adds it
-              // to the selection instead of replacing it.
-              onSelect={(id) => sketch.select(togglePick(sketch.read().selection, id, true))}
-              onGrab={grabWriting}
-              onDrag={dragWriting}
-              onDrop={dropWriting}
-              onMeasure={measureWriting}
-            />
-          ))}
-
           {/* Hovering a Measure entry writes the number it would take, as a
             ghost, where it would land. */}
           {preview.filter(isMeasurement).map((measurement) => (
@@ -2074,15 +2050,16 @@ export function Canvas({
               >
                 −
               </button>
-              <button
-                type="button"
-                className="canvas__zoom-level"
-                aria-label="Zoom to 100%"
-                title="Zoom to 100%"
-                onClick={() => zoomTo(1)}
-              >
-                {Math.round(scale * 100)}%
-              </button>
+              <Tooltip says="Zoom to 100%">
+                <button
+                  type="button"
+                  className="canvas__zoom-level"
+                  aria-label="Zoom to 100%"
+                  onClick={() => zoomTo(1)}
+                >
+                  {Math.round(scale * 100)}%
+                </button>
+              </Tooltip>
               <button
                 type="button"
                 className="canvas__zoom-button"

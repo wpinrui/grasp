@@ -52,7 +52,7 @@ export function AngleChoiceDialog({
     <DialogFrame
       title={`Which angle at ${nameOf(corner)}?`}
       at={at}
-      action={way === "mark" ? "Mark it" : "Measure it"}
+      action={way === "mark" ? "Mark" : "Measure"}
       canApply={found !== undefined}
       onApply={() => found && onPick(found.arms)}
       onCancel={onCancel}

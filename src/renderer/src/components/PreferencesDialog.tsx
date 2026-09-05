@@ -10,6 +10,7 @@ import {
   SHEETS,
 } from "../sketch/prefs";
 import { DialogFrame } from "./DialogFrame";
+import { Tooltip } from "./Tooltip";
 import { FONTS, INKS, SIZES } from "./typeset";
 import "./PreferencesDialog.css";
 
@@ -267,15 +268,15 @@ function Swatches({
   return (
     <div className="prefs__swatches">
       {options.map((one) => (
-        <button
-          type="button"
-          key={one.token}
-          className={`prefs__swatch${value === one.token ? " prefs__swatch--on" : ""}`}
-          style={{ background: `var(${one.token})` }}
-          aria-label={one.name}
-          title={one.name}
-          onClick={() => onPick(one.token)}
-        />
+        <Tooltip key={one.token} says={one.name}>
+          <button
+            type="button"
+            className={`prefs__swatch${value === one.token ? " prefs__swatch--on" : ""}`}
+            style={{ background: `var(${one.token})` }}
+            aria-label={one.name}
+            onClick={() => onPick(one.token)}
+          />
+        </Tooltip>
       ))}
     </div>
   );

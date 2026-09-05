@@ -303,36 +303,6 @@ function isCustomTransform(value: unknown): value is SketchObject {
   return isNames(held, "id", "name", "seed", "image");
 }
 
-/** What pressing a button does, checked before any of it is trusted. */
-function isDoes(value: unknown): boolean {
-  const does = value as Record<string, unknown> | null;
-  if (typeof does !== "object" || does === null) return false;
-  const ids = (of: unknown) => Array.isArray(of) && of.every((one) => typeof one === "string");
-  if (does.form === "hide-show") {
-    return ids(does.of) && ["toggle", "hide", "show"].includes(does.does as string);
-  }
-  if (does.form === "link") return typeof does.page === "string";
-  if (does.form === "scroll") {
-    return typeof does.point === "string" && ["centre", "corner"].includes(does.to as string);
-  }
-  return (
-    does.form === "present" &&
-    ids(does.of) &&
-    ["together", "in-turn"].includes(does.order as string)
-  );
-}
-
-function isButton(value: unknown): value is SketchObject {
-  const held = value as { kind?: string; does?: unknown } | null;
-  if (typeof held !== "object" || held === null || held.kind !== "button") return false;
-  return (
-    isNames(held, "id", "name") &&
-    isDoes(held.does) &&
-    typeof (held as { x?: unknown }).x === "number" &&
-    typeof (held as { y?: unknown }).y === "number"
-  );
-}
-
 function isMark(value: unknown): value is SketchObject {
   const mark = value as { kind?: string; form?: unknown; strokes?: unknown } | null;
   if (typeof mark !== "object" || mark === null) return false;
@@ -373,7 +343,6 @@ function isObject(value: unknown): value is SketchObject {
     isTable(value) ||
     isFunction(value) ||
     isCustomTransform(value) ||
-    isButton(value) ||
     isMark(value)
   );
 }

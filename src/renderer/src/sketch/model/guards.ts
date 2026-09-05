@@ -16,7 +16,6 @@ import {
 } from "./figures";
 import type { Position } from "./geometry";
 import type {
-  SketchButton,
   SketchCalculation,
   SketchFunction,
   SketchMark,
@@ -78,10 +77,6 @@ export function isTransform(object: SketchObject): object is SketchTransform {
   return object.kind === "transform";
 }
 
-export function isButton(object: SketchObject): object is SketchButton {
-  return object.kind === "button";
-}
-
 /**
  * What a function works out, whether it was typed or differentiated. A
  * derivative is worked out here rather than stored, so it follows whatever it
@@ -138,17 +133,10 @@ export type SketchWriting =
   | SketchParameter
   | SketchCalculation
   | SketchTable
-  | SketchFunction
-  | SketchButton;
+  | SketchFunction;
 
 export function isWriting(object: SketchObject): object is SketchWriting {
-  return (
-    isCaption(object) ||
-    isValue(object) ||
-    isTable(object) ||
-    isFunction(object) ||
-    isButton(object)
-  );
+  return isCaption(object) || isValue(object) || isTable(object) || isFunction(object);
 }
 
 /**
@@ -215,14 +203,6 @@ export function familyOf(object: SketchObject): string[] | undefined {
   // A custom transform is the two points it was shown on, so it goes when
   // either of them does.
   if (isTransform(object)) return [object.seed, object.image];
-  // A button goes when what it acts on goes: there is nothing left to press it
-  // for. A link acts on a page rather than an object, so it hangs off nothing.
-  if (isButton(object)) {
-    const does = object.does;
-    if (does.form === "link") return [];
-    if (does.form === "scroll") return [does.point];
-    return does.of;
-  }
   // A mark goes with what it marks: the path a tick rides, or the corner and
   // the two sides an angle mark sits between.
   if (isMark(object)) {

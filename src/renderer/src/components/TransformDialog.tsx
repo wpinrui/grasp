@@ -255,7 +255,7 @@ export function TransformDialog({
           <p className="dialog__picked">
             {centred
               ? "Across the object marked MIRROR on the sheet"
-              : "Choose a straight object to use as the mirror"}
+              : "Click a straight object to use as the mirror"}
           </p>
         </fieldset>
       )}
@@ -264,7 +264,7 @@ export function TransformDialog({
         <p className="dialog__about">
           {centred
             ? "About the point marked CENTER on the sheet"
-            : `Choose a point to use as the ${kind === "rotate" ? "rotation" : "dilation"} center`}
+            : `Click a point to use as the ${kind === "rotate" ? "rotation" : "dilation"} center`}
         </p>
       )}
     </DialogFrame>

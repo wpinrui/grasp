@@ -9,7 +9,6 @@
  */
 
 import { useRef, useState } from "react";
-import type { ButtonForm } from "../components/ButtonDialog";
 import type { ExportTo } from "../components/ExportDialog";
 import { NEW_PAGE, type ScriptWay } from "../components/ScriptDialog";
 
@@ -51,8 +50,6 @@ export function useDialogs() {
   const [tableDialog, setTableDialog] = useState<"add" | "remove" | null>(null);
   /** Which of the two custom transform dialogs is open. */
   const [customDialog, setCustomDialog] = useState<"define" | "edit" | null>(null);
-  /** The kind of action button being made, while its dialog is open. */
-  const [buttonDialog, setButtonDialog] = useState<ButtonForm | null>(null);
   const [docOptions, setDocOptions] = useState(false);
   /** Which export is open, and so where its picture goes. */
   const [exportTo, setExportTo] = useState<ExportTo | null>(null);
@@ -84,7 +81,6 @@ export function useDialogs() {
     parameterDialog !== null ||
     tableDialog !== null ||
     customDialog !== null ||
-    buttonDialog !== null ||
     scriptWay !== null ||
     docOptions;
 
@@ -99,8 +95,6 @@ export function useDialogs() {
     setTableDialog,
     customDialog,
     setCustomDialog,
-    buttonDialog,
-    setButtonDialog,
     docOptions,
     setDocOptions,
     exportTo,
