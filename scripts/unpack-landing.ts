@@ -60,6 +60,7 @@ const SUFFIX: Record<string, string> = {
   "image/jpeg": ".jpg",
   "font/woff2": ".woff2",
   "text/javascript": ".js",
+  "video/mp4": ".mp4",
 };
 
 /**
