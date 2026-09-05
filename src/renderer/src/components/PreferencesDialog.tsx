@@ -153,8 +153,8 @@ export function PreferencesDialog({
           <label className="dialog__radio">
             <input
               type="checkbox"
-              checked={prefs.linkReadings === true}
-              onChange={(event) => onChange({ ...prefs, linkReadings: event.target.checked })}
+              checked={prefs.tieReadings === true}
+              onChange={(event) => onChange({ ...prefs, tieReadings: event.target.checked })}
             />
             <span>Move a new reading's number with the figure</span>
           </label>

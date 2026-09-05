@@ -32,9 +32,9 @@ export {
   BoundsBrokenIcon,
   BoundsFullIcon,
   BoundsNoneIcon,
+  ChainIcon,
   FewerPlacesIcon,
   LeadersIcon,
-  LinkIcon,
   MorePlacesIcon,
 } from "./readings";
 export {

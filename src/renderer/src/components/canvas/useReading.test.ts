@@ -121,9 +121,9 @@ describe("tying a number to its figure", () => {
 
   it("takes the spot the number is at already, so nothing jumps", () => {
     const { reading, at } = open([...FIGURE, LENGTH]);
-    act(() => reading.current.setLinked("len", true));
+    act(() => reading.current.setTied("len", true));
     const tied = at("len");
-    const held = tied && isMeasurement(tied) ? tied.linked : null;
+    const held = tied && isMeasurement(tied) ? tied.tied : null;
     // Over the middle of the segment, which is no way along it, and 20 clear.
     expect(held?.along).toBeCloseTo(0);
     expect(held?.across).toBeCloseTo(20);
@@ -132,7 +132,7 @@ describe("tying a number to its figure", () => {
 
   it("carries the number as the figure moves under it", () => {
     const { reading, at, sketch } = open([...FIGURE, LENGTH]);
-    act(() => reading.current.setLinked("len", true));
+    act(() => reading.current.setTied("len", true));
     stretched(sketch, 300);
     // Over the middle of the longer segment, and the same 20 clear of it.
     expect(spot(at("len"))?.x).toBeCloseTo(150);
@@ -147,11 +147,11 @@ describe("tying a number to its figure", () => {
 
   it("lets the number loose where the figure had carried it to", () => {
     const { reading, at, sketch } = open([...FIGURE, LENGTH]);
-    act(() => reading.current.setLinked("len", true));
+    act(() => reading.current.setTied("len", true));
     stretched(sketch, 300);
-    act(() => reading.current.setLinked("len", false));
+    act(() => reading.current.setTied("len", false));
     const loose = at("len");
-    expect(loose && isMeasurement(loose) ? loose.linked : "still tied").toBeUndefined();
+    expect(loose && isMeasurement(loose) ? loose.tied : "still tied").toBeUndefined();
     // Left where the figure had brought it, and it goes no further.
     stretched(sketch, 500);
     expect(spot(at("len"))?.x).toBeCloseTo(150);

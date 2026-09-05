@@ -125,7 +125,7 @@ function read(): Settings {
       captionSize: number(stored.captionSize, DEFAULT_SETTINGS.captionSize),
       // A number written by the tool stays where it was put from a fresh
       // install, so this is a thing to turn on rather than one to turn off.
-      linkReadings: stored.linkReadings === true,
+      tieReadings: stored.tieReadings === true,
       printPoints: stored.printPoints === true,
       printFill: oneOf(
         stored.printFill,

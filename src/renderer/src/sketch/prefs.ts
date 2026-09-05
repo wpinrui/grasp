@@ -59,7 +59,7 @@ export interface Prefs {
    * to, since where a number has been put is not Preferences' to undo. Absent
    * on a sketch saved before there was a choice, which reads as off.
    */
-  linkReadings?: boolean;
+  tieReadings?: boolean;
   /**
    * Whether the page bar shows its tabs, which Document Options sets. It
    * belongs to the sketch rather than to the window, since a sketch handed to
@@ -109,7 +109,7 @@ export const DEFAULT_PREFS: Prefs = {
     sheet: "--color-sheet-white",
   },
   text: { font: "Times New Roman", size: 14 },
-  linkReadings: false,
+  tieReadings: false,
   pageTabs: true,
   zoom: false,
 };

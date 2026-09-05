@@ -123,16 +123,16 @@ export function useReading(sketch: Sketch) {
    * spot it is at now, so nothing jumps as the chain goes on; letting it loose
    * leaves it where the figure had carried it to.
    */
-  function setLinked(id: string, on: boolean) {
+  function setTied(id: string, on: boolean) {
     const before = sketch.read();
     const reading = before.objects.find((object) => object.id === id);
     if (!reading || !isMeasurement(reading)) return;
     if (!on) {
-      change(id, { linked: undefined });
+      change(id, { tied: undefined });
       return;
     }
     const frame = frameOf(reading, before.objects, settle(before.objects).settled);
-    if (frame) change(id, { linked: spotOf(frame, reading) });
+    if (frame) change(id, { tied: spotOf(frame, reading) });
   }
 
   function setLeaders(id: string, leaders: boolean) {
@@ -145,7 +145,7 @@ export function useReading(sketch: Sketch) {
     panel,
     setBounds,
     setLeaders,
-    setLinked,
+    setTied,
     setPanel,
     setPlaces,
     setReflex,

@@ -13,20 +13,20 @@ function panel(part: Partial<SketchMeasurement>) {
     ...createMeasurement("length", ["seg"], { x: 0, y: 0 }),
     ...part,
   } as SketchMeasurement;
-  const onLink = vi.fn();
+  const onTie = vi.fn();
   render(
     <ReadingPanel
       reading={reading}
       at={{ x: 0, y: 0 }}
       onBounds={() => {}}
       onLeaders={() => {}}
-      onLink={onLink}
+      onTie={onTie}
       onReflex={() => {}}
       places={2}
       onPlaces={() => {}}
     />,
   );
-  return { reading, onLink };
+  return { reading, onTie };
 }
 
 /**
@@ -57,10 +57,10 @@ describe("the chain on a reading's panel", () => {
   it("ties a loose number and lets a tied one go", () => {
     const loose = panel({ bare: true });
     fireEvent.click(screen.getByRole("button", { name: CHAIN }));
-    expect(loose.onLink).toHaveBeenCalledWith(loose.reading.id, true);
+    expect(loose.onTie).toHaveBeenCalledWith(loose.reading.id, true);
     cleanup();
-    const tied = panel({ bare: true, linked: { along: 0, across: 20 } });
+    const tied = panel({ bare: true, tied: { along: 0, across: 20 } });
     fireEvent.click(screen.getByRole("button", { name: CHAIN }));
-    expect(tied.onLink).toHaveBeenCalledWith(tied.reading.id, false);
+    expect(tied.onTie).toHaveBeenCalledWith(tied.reading.id, false);
   });
 });

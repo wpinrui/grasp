@@ -213,14 +213,14 @@ export function placedBy(objects: SketchObject[], held: Held, by: Position): Ske
       if (!path || movesWith(objects, held, from.path)) return object;
       return { ...object, from: { ...from, at: alongPath(path, to) } };
     }
-    if (isMeasurement(object) && object.linked) {
-      // A linked number rides its figure. Where the drag is moving that figure
+    if (isMeasurement(object) && object.tied) {
+      // A tied number rides its figure. Where the drag is moving that figure
       // too the number is already being carried by it, and moving it again
       // would count the drag twice; dragged on its own, where it is dropped is
       // where it hangs from then on.
       if (object.of.some((id) => movesWith(objects, held, id))) return object;
       const frame = frameOf(object, objects, geometry);
-      if (frame) return { ...object, linked: spotOf(frame, to) };
+      if (frame) return { ...object, tied: spotOf(frame, to) };
     }
     return { ...object, x: to.x, y: to.y };
   });

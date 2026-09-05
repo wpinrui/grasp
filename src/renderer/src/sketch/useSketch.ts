@@ -1,6 +1,5 @@
 import { useCallback, useRef } from "react";
 import { type Arming, armedOnto } from "./armed";
-import { readingsLinked, readingsPlaced } from "./linked";
 import {
   namedWhereShown,
   type PointSize,
@@ -12,6 +11,7 @@ import {
 import { demotedUnder } from "./overlaps";
 import { type PageContent, usePages } from "./pages";
 import { spelledOutNamed } from "./spelled";
+import { readingsPlaced, readingsTied } from "./tied";
 
 /**
  * The sketch: what a tool does to the page that is up.
@@ -35,7 +35,7 @@ export function useSketch() {
   /** What the palette has armed for the tool that is up, or null under one that draws nothing. */
   const arming = useRef<Arming | null>(null);
   /** Whether a number the Measure tool writes comes out tied to what it reads. */
-  const linking = useRef(false);
+  const tying = useRef(false);
 
   /** The ids already on the page, so a pass can tell what has just landed. */
   const alreadyThere = useCallback(
@@ -81,8 +81,8 @@ export function useSketch() {
     naming.current = on;
   }, []);
 
-  const linkNewReadings = useCallback((on: boolean) => {
-    linking.current = on;
+  const tieNewReadings = useCallback((on: boolean) => {
+    tying.current = on;
   }, []);
 
   /** A name on whatever a reading that has just landed has to spell out. */
@@ -94,7 +94,7 @@ export function useSketch() {
   /**
    * Every change goes through here, so nothing is ever left behind by what it
    * hangs off: settling puts every image where its point has got to, and a
-   * linked reading where its figure has got to, before anything is shown.
+   * tied reading where its figure has got to, before anything is shown.
    */
   const apply = useCallback(
     (next: SketchState, arm = true) => {
@@ -112,8 +112,8 @@ export function useSketch() {
       // Moving a number moves no geometry, so nothing has to settle again.
       const page = settle(objects);
       const tied =
-        arm && linking.current
-          ? readingsLinked(page.objects, page.settled, alreadyThere())
+        arm && tying.current
+          ? readingsTied(page.objects, page.settled, alreadyThere())
           : page.objects;
       write({ ...next, objects: readingsPlaced(tied, page.settled) });
     },
@@ -243,7 +243,7 @@ export function useSketch() {
     commit,
     beginGesture,
     labelNewPoints,
-    linkNewReadings,
+    tieNewReadings,
     armStyle,
     updateGesture: apply,
     endGesture,

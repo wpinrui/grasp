@@ -151,7 +151,7 @@ export interface SketchTable extends Labelled {
 }
 
 /**
- * Where a linked reading's number hangs, in the frame of what it reads: how far
+ * Where a tied reading's number hangs, in the frame of what it reads: how far
  * along that frame runs, and how far off it. Along is a share of the frame's
  * span, so a segment stretched out keeps its number over the same part of it;
  * off is in sheet units, so the gap between the number and the figure is the
@@ -209,12 +209,12 @@ export interface SketchMeasurement extends Labelled {
   bare?: boolean;
   /**
    * Where the number hangs in the frame of what it reads, set on a reading that
-   * is linked to its figure. Absent on one that stays where it was put, which
-   * is what `x` and `y` alone mean. On a linked one `x` and `y` are worked out
+   * is tied to its figure. Absent on one that stays where it was put, which
+   * is what `x` and `y` alone mean. On a tied one `x` and `y` are worked out
    * from this every time the page settles, so the number goes wherever the
    * figure goes.
    */
-  linked?: ReadingSpot;
+  tied?: ReadingSpot;
   /**
    * How the segment a length is taken off is drawn out as a dimension: arrows
    * from end to end, broken by the number in the middle or running the whole

@@ -96,7 +96,7 @@ export function LeadersIcon() {
  * the figure goes. Two links meeting over the run between them, which is the
  * one shape everybody already reads as a link.
  */
-export function LinkIcon() {
+export function ChainIcon() {
   return (
     <ToolSvg>
       <g {...STRAIGHT}>

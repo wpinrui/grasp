@@ -78,8 +78,8 @@ export function asPasted(taken: SketchObject[], step: number): SketchObject[] {
     // figure the original is tied to, so it would work its way straight back
     // on top of the original and the step would come to nothing. Copied along
     // with its figure it stays tied, and the copied figure carries it.
-    if (isMeasurement(object) && object.linked && !object.of.every((id) => copied.has(id))) {
-      object.linked = undefined;
+    if (isMeasurement(object) && object.tied && !object.of.every((id) => copied.has(id))) {
+      object.tied = undefined;
     }
     if (isPoint(object) || isCaption(object) || isMeasurement(object)) {
       object.x += off;

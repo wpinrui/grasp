@@ -12,7 +12,7 @@ import {
 import { frameOf, spotIn, spotOf } from "./frame";
 
 /**
- * The frame a linked number hangs in. It is built out of the settled figure, so
+ * The frame a tied number hangs in. It is built out of the settled figure, so
  * turning or stretching the figure turns and stretches the frame, and a number
  * holding its place in one rides along instead of being left behind.
  */

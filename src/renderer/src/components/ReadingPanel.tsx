@@ -4,9 +4,9 @@ import {
   BoundsBrokenIcon,
   BoundsFullIcon,
   BoundsNoneIcon,
+  ChainIcon,
   FewerPlacesIcon,
   LeadersIcon,
-  LinkIcon,
   MorePlacesIcon,
   ReflexIcon,
 } from "./icons";
@@ -21,7 +21,7 @@ interface ReadingPanelProps {
   onBounds: (id: string, bounds: "broken" | "full" | undefined) => void;
   onLeaders: (id: string, leaders: boolean) => void;
   /** The number tied to what it reads, so it goes wherever the figure goes. */
-  onLink: (id: string, linked: boolean) => void;
+  onTie: (id: string, tied: boolean) => void;
   /** An angle read the long way round instead of the short way. */
   onReflex: (id: string, reflex: boolean) => void;
   /** How many places this reading is written to now, its kind's default included. */
@@ -54,7 +54,7 @@ export function ReadingPanel({
   at,
   onBounds,
   onLeaders,
-  onLink,
+  onTie,
   onReflex,
   places,
   onPlaces,
@@ -70,10 +70,10 @@ export function ReadingPanel({
       <PanelButton
         label="Move the number with the figure"
         title="Move the number with the figure"
-        on={reading.linked !== undefined}
-        onClick={() => onLink(reading.id, reading.linked === undefined)}
+        on={reading.tied !== undefined}
+        onClick={() => onTie(reading.id, reading.tied === undefined)}
       >
-        <LinkIcon />
+        <ChainIcon />
       </PanelButton>
       <PanelSplit />
     </>

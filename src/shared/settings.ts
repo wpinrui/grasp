@@ -63,7 +63,7 @@ export interface Settings {
   captionFont: string;
   captionSize: number;
   /** Whether a number the Measure tool writes comes out tied to what it reads. */
-  linkReadings: boolean;
+  tieReadings: boolean;
   /** The sketches opened or saved most recently, newest first. */
   recent: string[];
 }
@@ -106,6 +106,6 @@ export const DEFAULT_SETTINGS: Settings = {
   colourSheet: "--color-sheet-white",
   captionFont: "Times New Roman",
   captionSize: 14,
-  linkReadings: false,
+  tieReadings: false,
   recent: [],
 };

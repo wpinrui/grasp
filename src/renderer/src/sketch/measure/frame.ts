@@ -1,9 +1,9 @@
 /**
- * The frame a linked reading's number hangs in.
+ * The frame a tied reading's number hangs in.
  *
  * A number left to itself sits at a spot on the sheet and stays there, so
  * moving the figure leaves it behind while the arrows and arcs that mark the
- * same measurement follow along. A linked one holds its place in a frame built
+ * same measurement follow along. A tied one holds its place in a frame built
  * out of what it reads instead: a spot to measure from, a way along, and how
  * much one whole way along is worth. Turn the figure and the frame turns with
  * it, stretch the figure and the frame stretches, and the number rides both.
@@ -39,7 +39,7 @@ import {
 import { cornerOf, find } from "./shape";
 
 /**
- * Where a linked number is measured from, and the way the two offsets run. The
+ * Where a tied number is measured from, and the way the two offsets run. The
  * way across is the way along turned a quarter turn, so it is not held here.
  */
 export interface Frame {

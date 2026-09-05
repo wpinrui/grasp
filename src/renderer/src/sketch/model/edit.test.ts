@@ -13,7 +13,7 @@ function measured() {
   const length = {
     ...createMeasurement("length", [seg.id], { x: 50, y: -20 }),
     bare: true,
-    linked: { along: 0, across: 20 },
+    tied: { along: 0, across: 20 },
   };
   return { figure: [a, b, seg] as SketchObject[], length };
 }
@@ -33,7 +33,7 @@ describe("pasting a reading tied to its figure", () => {
   it("cuts the copy loose where the figure did not come with it", () => {
     const { length } = measured();
     const copy = pastedReading([length]);
-    expect(copy.linked).toBeUndefined();
+    expect(copy.tied).toBeUndefined();
     expect(copy.x).toBe(50 + PASTE_STEP);
     expect(copy.y).toBe(-20 + PASTE_STEP);
   });
@@ -43,14 +43,14 @@ describe("pasting a reading tied to its figure", () => {
     const copy = pastedReading([...figure, length]);
     // The copied reading reads the copied segment, so the copied figure is
     // what carries it and the tie is worth keeping.
-    expect(copy.linked).toEqual({ along: 0, across: 20 });
+    expect(copy.tied).toEqual({ along: 0, across: 20 });
     expect(copy.of[0]).not.toBe(length.of[0]);
   });
 
   it("leaves a reading that was never tied exactly as it was", () => {
     const { length } = measured();
-    const copy = pastedReading([{ ...length, linked: undefined }]);
-    expect(copy.linked).toBeUndefined();
+    const copy = pastedReading([{ ...length, tied: undefined }]);
+    expect(copy.tied).toBeUndefined();
     expect(copy.x).toBe(50 + PASTE_STEP);
   });
 });

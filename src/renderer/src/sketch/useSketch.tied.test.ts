@@ -33,13 +33,13 @@ describe("tying a new reading to its figure", () => {
 
   function tied(objects: SketchObject[], id: string) {
     const found = objects.find((object) => object.id === id);
-    return found && isMeasurement(found) ? found.linked : undefined;
+    return found && isMeasurement(found) ? found.tied : undefined;
   }
 
   it("ties a number the tool has just written where Preferences asks", () => {
     const { result } = renderHook(() => useSketch());
     const { figure, length } = measured();
-    act(() => result.current.linkNewReadings(true));
+    act(() => result.current.tieNewReadings(true));
     act(() => result.current.commit({ objects: [...figure, length], selection: [] }));
     expect(tied(result.current.state.objects, length.id)?.across).toBeCloseTo(20);
   });
@@ -55,7 +55,7 @@ describe("tying a new reading to its figure", () => {
     const { result } = renderHook(() => useSketch());
     const { figure, length, b } = measured();
     act(() => result.current.commit({ objects: [...figure, length], selection: [] }));
-    act(() => result.current.linkNewReadings(true));
+    act(() => result.current.tieNewReadings(true));
     // Some later change, which is when the pass would reach the old reading.
     act(() =>
       result.current.commit({
@@ -73,7 +73,7 @@ describe("tying a new reading to its figure", () => {
     const { figure, length } = measured();
     act(() => result.current.commit({ objects: figure, selection: [] }));
     act(() => result.current.commit({ objects: [...figure, length], selection: [] }));
-    act(() => result.current.linkNewReadings(true));
+    act(() => result.current.tieNewReadings(true));
     act(() => result.current.undo());
     act(() => result.current.redo());
     // Undo and redo hand back a state that was arrived at once already, so the
