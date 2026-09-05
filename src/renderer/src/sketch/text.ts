@@ -41,11 +41,15 @@ export function lookOfLabel(label: LabelState, ink: string): TextLook {
   };
 }
 
-/** A mark a run of writing can carry, which the palette sets and reads. */
-export type Mark = "bold" | "italic" | "underline";
+/**
+ * A mark a run of writing can carry, which the palette sets and reads. Named
+ * apart from the geometry `SketchMark`, which is what `Mark` means elsewhere
+ * under `sketch/`.
+ */
+export type TextMark = "bold" | "italic" | "underline";
 
 /** How a label is marked up, which is the whole of it: a label holds no runs. */
-export type LabelMarks = Record<Mark, boolean>;
+export type LabelMarks = Record<TextMark, boolean>;
 
 /**
  * The three style keys over the picked labels. A key they do not all carry

@@ -2,7 +2,7 @@ import { type MouseEvent, type RefObject, useEffect, useReducer } from "react";
 import { insertAtCaret } from "../sketch/captions";
 import type { CaptionAlign, LinePattern, LineWidth, SketchCaption } from "../sketch/model";
 import { LINE_PATTERNS, LINE_WIDTHS } from "../sketch/model";
-import { type LabelMarks, type Mark, type TextStyling, textBoxes } from "../sketch/text";
+import { type LabelMarks, type TextMark, type TextStyling, textBoxes } from "../sketch/text";
 import { PATTERN_SAMPLE, Picker, Popout, Rule, WEIGHT_SAMPLE } from "./PalettePicker";
 import { caretLook, caretMarks, chosenRun, wrapRun } from "./paletteCaret";
 import { Tooltip } from "./Tooltip";
@@ -22,7 +22,7 @@ const WEIGHT_NAMES: Record<LineWidth, string> = {
  * also what names its modifier class, and the letter it is drawn as.
  */
 const MARK_KEYS: {
-  mark: Mark;
+  mark: TextMark;
   says: string;
   keys: string;
   shown: string;
@@ -77,7 +77,7 @@ interface PaletteProps {
    * picked labels do not agree on reads off.
    */
   labelMarks: LabelMarks | null;
-  onLabelMark: (mark: Mark, on: boolean) => void;
+  onLabelMark: (mark: TextMark, on: boolean) => void;
   /**
    * How the tool that is up is armed to write, or null where it writes nothing
    * that carries marks. With no caption open and no label picked there is still
@@ -157,7 +157,7 @@ export function Palette({
     onStyle({ colour: token });
   }
 
-  function style(command: Mark) {
+  function style(command: TextMark) {
     if (labelMarks) {
       onLabelMark(command, !labelMarks[command]);
       return;

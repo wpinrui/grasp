@@ -114,8 +114,8 @@ export function Tooltip({ says, keys, side = "top", quiet, children }: TooltipPr
    * chip the press just took down.
    */
   const pressed = useRef(false);
-  // Asked at each render rather than subscribed to: the answer is wanted on
-  // the hover, and a hover is a render.
+  // Asked at each render rather than subscribed to: the answer is wanted on the
+  // hover, and a hover is a render.
   const phone = onAPhone();
   const shown = (hovered || focused) && !quiet && !phone;
 
@@ -141,22 +141,18 @@ export function Tooltip({ says, keys, side = "top", quiet, children }: TooltipPr
       <span
         ref={of}
         className="tooltip__of"
-        onMouseEnter={
-          phone
-            ? undefined
-            : () => {
-                pressed.current = false;
-                setHovered(true);
-              }
-        }
-        onMouseLeave={
-          phone
-            ? undefined
-            : () => {
-                pressed.current = false;
-                setHovered(false);
-              }
-        }
+        // Listening whatever the pointer, so that the hover is a render and the
+        // read above is taken again: a device that turns out to have a mouse
+        // after all is answered by the next hover rather than never. `shown`
+        // is what keeps the chip down under a finger.
+        onMouseEnter={() => {
+          pressed.current = false;
+          setHovered(true);
+        }}
+        onMouseLeave={() => {
+          pressed.current = false;
+          setHovered(false);
+        }}
         // The keyboard reaches it too: a tooltip only a pointer can open is one
         // half the people using GRASP never see. A press focuses as well, and
         // that focus is not the keyboard asking for anything.

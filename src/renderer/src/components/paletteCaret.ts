@@ -1,4 +1,5 @@
 import type { TextLook } from "../sketch/model";
+import type { TextMark } from "../sketch/text";
 
 /**
  * The stretch of the caption being typed into that is selected, or null when
@@ -57,7 +58,7 @@ export function caretLook(editor: HTMLDivElement | null): Partial<TextLook> {
 }
 
 /** Whether the caret is in bold, italic or underlined text right now. */
-export function caretMarks(): Record<"bold" | "italic" | "underline", boolean> {
+export function caretMarks(): Record<TextMark, boolean> {
   const read = (command: string) => {
     try {
       return document.queryCommandState(command);

@@ -65,4 +65,11 @@
   .tooltip__of {
     display: contents;
   }
+
+  /* With no box of its own to fill, the rule above would reach past it and set
+     what it holds against the rail or the bar outside, which sizes its items
+     itself. */
+  .tooltip__of > * {
+    flex: initial;
+  }
 }
