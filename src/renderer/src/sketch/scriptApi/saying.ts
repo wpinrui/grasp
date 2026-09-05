@@ -18,21 +18,26 @@
  * it can say where each point sits. Nothing here has been settled: a derived
  * point is still at the origin until the run returns and the host resolves what
  * came back, so its position would be a lie.
+ *
+ * `kindOf` in `app/labels.ts` is a third near neighbour, and stays apart for a
+ * plainer reason: it feeds a sentence about names clashing, so a point there is
+ * "another point", which is nonsense in a message about what a call was handed.
  */
 
 import { isArc, isCircle, isInterior, isLine, isMark, isPoint, type SketchObject } from "../model";
 
 /** A handle the page does not answer to, said back as the script wrote it. */
-function quoted(id: unknown): string {
+export function quoted(id: unknown): string {
   return typeof id === "string" ? JSON.stringify(id) : String(id);
 }
 
-function round(value: number): string {
+/** A number said to a reader rather than held, which wants no decimals on it. */
+export function round(value: number): string {
   return `${Math.round(value)}`;
 }
 
 /** What one kind of thing is called where there is no name and no room to say more. */
-export function kindOf(object: SketchObject): string {
+export function nounFor(object: SketchObject): string {
   if (isPoint(object)) return "a point";
   if (isLine(object)) return `a ${object.form}`;
   if (isCircle(object)) return "a circle";
@@ -50,8 +55,12 @@ export function kindOf(object: SketchObject): string {
  */
 function part(held: SketchObject[], id: string): string {
   const object = held.find((candidate) => candidate.id === id);
-  if (!object) return "something no longer on the page";
-  return object.label?.name ?? kindOf(object);
+  // Said back as it was written rather than described. Nothing that was on the
+  // page can go: `remove` takes the dependents with it, so an id here that
+  // answers to nothing was never a handle in the first place, and calling it
+  // gone would send the reader looking for a removal that never happened.
+  if (!object) return quoted(id);
+  return object.label?.name ?? nounFor(object);
 }
 
 /** How an object was built, which is what a script recognises where a name is missing. */
@@ -71,7 +80,8 @@ function built(held: SketchObject[], object: SketchObject): string {
     if (from.kind === "reflect") return `${said(from.of)} mirrored in ${said(from.mirror)}`;
     if (from.kind === "translate") return `${said(from.of)} moved`;
     if (from.kind === "rotate") return `${said(from.of)} turned about ${said(from.centre)}`;
-    return `${said(from.of)} scaled about ${said(from.centre)}`;
+    if (from.kind === "dilate") return `${said(from.of)} scaled about ${said(from.centre)}`;
+    return nounFor(object);
   }
   if (isLine(object)) {
     const span = object.span;
@@ -84,7 +94,7 @@ function built(held: SketchObject[], object: SketchObject): string {
     return `the ${object.form} through ${said(span.at)}, ${span.kind} to ${said(span.to)}`;
   }
   if (isCircle(object)) return `the circle about ${said(object.span.centre)}`;
-  return kindOf(object);
+  return nounFor(object);
 }
 
 /**

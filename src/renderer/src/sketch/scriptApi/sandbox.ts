@@ -1,5 +1,6 @@
 import { DEFAULT_POINT_SIZE, type PointSize, resolve, type SketchObject } from "../model";
-import { apiFor, apiNames, ScriptError, type ScriptSheet } from "./calls";
+import { apiFor, apiNames, type ScriptSheet } from "./calls";
+import { PREAMBLE, said } from "./trouble";
 /**
  * What a script may reach, and the run itself.
  *
@@ -36,11 +37,15 @@ const SHADOWED = [
  * The words of the language itself, which are not calls however much they look
  * like one. `if (a)`, `for (;;)` and `return (x)` all read as a name followed by
  * a bracket, so without this a script that branches or loops is turned away for
- * calling something GRASP does not have. Every reserved word is listed rather
- * than the handful that are usually written with a bracket after them, because
- * the ones that are not are only ever missing from this list by oversight.
+ * calling something GRASP does not have. Every word that may be written with a
+ * bracket after it is listed, along with several that may not, because a word
+ * listed needlessly costs nothing and a word missed turns a good script away.
+ *
+ * `import` is the one word deliberately left out. `import(...)` really is a
+ * call, and the one thing on this page that reaches the network on its own.
  */
 const KEYWORDS = new Set([
+  "async",
   "await",
   "break",
   "case",
@@ -59,7 +64,6 @@ const KEYWORDS = new Set([
   "for",
   "function",
   "if",
-  "import",
   "in",
   "instanceof",
   "let",
@@ -96,78 +100,6 @@ const ALLOWED_GLOBALS = new Set([
   "parseFloat",
   "parseInt",
 ]);
-
-/**
- * Put above every script. It is one line, and the line numbers a failure is
- * reported at have to be told about it.
- */
-const PREAMBLE = '"use strict";\n';
-
-/** How many lines of the body are the preamble rather than the script. */
-const PREAMBLE_LINES = PREAMBLE.split("\n").length - 1;
-
-/**
- * The line an error says it came from, read out of its stack. A body handed to
- * `new Function` has no file of its own, so its frames carry a bare line and
- * column where every other frame carries a path as well. The first such frame
- * is the innermost, which is where the call that failed was written.
- */
-function reportedLine(error: Error): number | null {
-  const found = (error.stack ?? "")
-    .split("\n")
-    .map((frame) => frame.match(/<anonymous>:(\d+):\d+/))
-    .find((match) => match !== null);
-  return found ? Number(found[1]) : null;
-}
-
-/** What `headerLines` worked out, once, since the answer cannot change. */
-let header: number | null | undefined;
-
-/**
- * How many lines an engine writes above the body it is handed. V8 writes two,
- * being the parameter list and the brace that opens the body; nothing says
- * another engine must, so it is measured with a probe that throws from the
- * first line of a body of its own rather than assumed.
- */
-function headerLines(): number | null {
-  if (header !== undefined) return header;
-  header = null;
-  try {
-    new Function('throw new Error("where");')();
-  } catch (error) {
-    const at = reportedLine(error as Error);
-    if (at !== null) header = at - 1;
-  }
-  return header;
-}
-
-/** Which line of the script a failure came from, where the engine will say. */
-function scriptLine(error: Error): number | null {
-  const at = reportedLine(error);
-  const above = headerLines();
-  if (at === null || above === null) return null;
-  const line = at - above - PREAMBLE_LINES;
-  return line >= 1 ? line : null;
-}
-
-/**
- * Where in the script a failure was, as closely as the run can say. The line is
- * what whoever wrote it will look for; failing that, which call of that name it
- * was still narrows a script down to one place in it.
- */
-function whereFrom(error: Error): string | null {
-  const call = error instanceof ScriptError ? error.call : undefined;
-  const line = scriptLine(error);
-  if (line !== null) return call ? `Line ${line}, ${call}` : `Line ${line}`;
-  if (!call) return null;
-  return `${call} call ${(error as ScriptError).nth}`;
-}
-
-/** A failed call, said the way whoever wrote the script will look for it. */
-function said(error: Error): string {
-  const where = whereFrom(error);
-  return where ? `${where}: ${error.message}` : error.message;
-}
 
 /** The source with its comments and its string literals blanked out. */
 function bareSource(source: string): string {

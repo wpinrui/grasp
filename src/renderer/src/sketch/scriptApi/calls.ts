@@ -22,7 +22,8 @@ import {
   type SketchObject,
   withDependents,
 } from "../model";
-import { called, kindOf } from "./saying";
+import { called } from "./saying";
+import { missing, notAPoint, ScriptError, told } from "./trouble";
 /**
  * The API a script is run with: every call it can make, and the list of objects
  * those calls build.
@@ -53,37 +54,6 @@ const CAPTION_WIDTH = 160;
 
 /** What a caption written by a script is set in. */
 const CAPTION_LOOK = { font: "Times New Roman", size: 14, colour: "--color-ink-black" };
-
-/**
- * What a script asks for that the sketch has no answer to.
- *
- * `call` and `nth` are filled in on the way out by the wrapper every call is
- * given, so a message can say which call it came from without every throw
- * having to name itself. They are left off here rather than passed in because
- * a call knows what went wrong and does not know what it is called.
- */
-export class ScriptError extends Error {
-  /** The call it was thrown from. */
-  call?: string;
-  /** Which call of that name it was in this run, counting from one. */
-  nth?: number;
-}
-
-/**
- * What was passed where a point was wanted. Where the thing has no name of its
- * own, `called` already leads with what kind of thing it is, and naming the
- * kind again would have it say that a segment is a segment.
- */
-function notAPoint(held: SketchObject[], id: string, found: SketchObject): string {
-  const name = found.label?.name;
-  const said = name ? `${name} is ${kindOf(found)}` : `${called(held, id)} was passed`;
-  return `${said}, and a point was wanted.`;
-}
-
-/** A handle nothing on the page answers to, which is usually a variable never set. */
-function missing(held: SketchObject[], id: string): string {
-  return `${called(held, id)} is not a handle from this page. Pass back what a call handed you.`;
-}
 
 /**
  * The straight object running from a corner out to one of its arms. An angle
@@ -120,20 +90,20 @@ function pageOps(held: SketchObject[]): PageOps {
 
   const find = (id: string): SketchObject => {
     const found = held.find((object) => object.id === id);
-    if (!found) throw new ScriptError(missing(held, id));
+    if (!found) throw new ScriptError(missing(id));
     return found;
   };
 
   const point = (id: string): string => {
     const found = find(id);
-    if (!isPoint(found)) throw new ScriptError(notAPoint(held, id, found));
+    if (!isPoint(found)) throw new ScriptError(notAPoint(held, found));
     return id;
   };
 
   /** Change what an object carries, leaving the rest of it alone. */
   const change = (id: string, part: Partial<SketchObject>) => {
     const at = held.findIndex((object) => object.id === id);
-    if (at === -1) throw new ScriptError(missing(held, id));
+    if (at === -1) throw new ScriptError(missing(id));
     held[at] = { ...held[at], ...part } as SketchObject;
   };
 
@@ -317,7 +287,7 @@ function reading({ held, find }: PageOps) {
     /** Where a point sits. Only a plotted point has a place of its own. */
     at: (id: string) => {
       const found = find(id);
-      if (!isPoint(found)) throw new ScriptError(notAPoint(held, id, found));
+      if (!isPoint(found)) throw new ScriptError(notAPoint(held, found));
       return { x: found.x, y: found.y };
     },
     /** What something is called, whether the name was typed or handed out. */
@@ -357,45 +327,6 @@ export function apiFor(held: SketchObject[], sheet: ScriptSheet, size: PointSize
     ...naming(ops),
     ...reading(ops),
   });
-}
-
-/**
- * Every call, told its own name and counting how often it has been reached.
- *
- * A call knows what went wrong and does not know what it is called, and the
- * name is the word the script actually wrote, so it is worth more in a message
- * than anything the call itself could say. The count is what stands in for a
- * line number where the engine will not give one: the third `angleMark` is
- * still something to look for.
- */
-function told<T extends object>(api: T): T {
-  const said: Record<string, unknown> = {};
-  for (const [name, value] of Object.entries(api)) {
-    if (typeof value !== "function") {
-      said[name] = value;
-      continue;
-    }
-    const call = value as (...args: unknown[]) => unknown;
-    let reached = 0;
-    said[name] = (...args: unknown[]) => {
-      reached += 1;
-      const nth = reached;
-      try {
-        return call(...args);
-      } catch (error) {
-        // Left alone where it is already set, so the call the script wrote is
-        // named rather than whatever it reached on the way down.
-        if (error instanceof ScriptError && error.call === undefined) {
-          error.call = name;
-          error.nth = nth;
-        }
-        throw error;
-      }
-    };
-  }
-  // The shape is untouched: every key is kept and every function keeps what it
-  // takes and what it hands back. Only the types cannot see that.
-  return said as T;
 }
 
 /** Every name a script may call. */
