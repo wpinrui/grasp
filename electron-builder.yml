@@ -35,3 +35,10 @@ mac:
   icon: resources/icon.png
 linux:
   icon: resources/icon.png
+  target:
+    - AppImage
+    - deb
+  category: Education
+  synopsis: A geometry sketchpad for the classroom
+  maintainer: wpinrui
+  artifactName: ${productName}-${version}-${arch}.${ext}

@@ -4,6 +4,7 @@
   "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
   "author": "wpinrui",
+  "homepage": "https://github.com/wpinrui/grasp",
   "private": true,
   "scripts": {
     "dev": "yarn ensure-electron && electron-vite dev",
@@ -19,7 +20,8 @@
     "prepare": "husky",
     "build:web": "vite build --config vite.config.web.ts",
     "dev:web": "vite --config vite.config.web.ts",
-    "package:win": "yarn build && electron-builder --win",
+    "package:win": "yarn build && electron-builder --win --x64 --publish never",
+    "package:linux": "yarn build && electron-builder --linux --x64 --publish never",
     "package": "yarn build && electron-builder"
   },
   "dependencies": {

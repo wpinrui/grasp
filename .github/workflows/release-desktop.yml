@@ -1,0 +1,97 @@
+name: Release desktop
+run-name: Release desktop ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write # Required to read an unpublished draft release.
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: node scripts/desktop-release.mjs check
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  build:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-22.04
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install Yarn
+        run: npm install --global yarn@1.22.22
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Typecheck
+        run: yarn typecheck
+      - name: Test
+        run: yarn test
+      - name: Test release guards
+        run: node --test scripts/desktop-release.test.mjs
+      - name: Package desktop
+        run: yarn package:${{ matrix.platform }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: GRASP-${{ matrix.platform }}-x64
+          path: |
+            dist/desktop/*.exe
+            dist/desktop/*.AppImage
+            dist/desktop/*.deb
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  publish:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: GRASP-*-x64
+          merge-multiple: true
+          path: dist/desktop
+      - name: Attach packages and publish draft
+        run: node scripts/desktop-release.mjs publish
+        env:
+          GH_TOKEN: ${{ github.token }}
