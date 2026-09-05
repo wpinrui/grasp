@@ -86,14 +86,25 @@ describe("landing page bundle", () => {
    * a hero showing both.
    */
   it("shows the still instead of the clip where less motion was asked for", () => {
+    const clip = page().querySelector("video.r-hero-clip");
     const still = page().querySelector("img.r-hero-still");
-    expect(still?.getAttribute("src")).toMatch(UUID);
-    expect(still?.getAttribute("style")).toContain("display: none");
-    expect(page().querySelector("video")?.getAttribute("src")).not.toBe(still?.getAttribute("src"));
-    const opened = styles().split("@media (prefers-reduced-motion: reduce)")[1] ?? "";
-    const rules = opened.split("@media")[0] as string;
-    expect(rules).toContain(".r-hero-clip { display: none; }");
-    expect(rules).toContain(".r-hero-still { display: block; }");
+    // The still is the clip's own poster, so showing it costs no second download.
+    expect(still?.getAttribute("src")).toBe(clip?.getAttribute("poster"));
+
+    // Neither may set `display` inline: an inline declaration outranks any
+    // rule a stylesheet can write, so the swap below would never fire.
+    expect(clip?.getAttribute("style")).not.toContain("display");
+    expect(still?.getAttribute("style")).not.toContain("display");
+
+    const shown = (source: string, handle: string): string | undefined =>
+      new RegExp(`\.${handle} \{ display: ([a-z]+); \}`).exec(source)?.[1];
+    const reduced = styles().split("@media (prefers-reduced-motion: reduce)")[1] ?? "";
+    const base = styles().split("@media (prefers-reduced-motion: reduce)")[0] as string;
+    expect([shown(base, "r-hero-clip"), shown(base, "r-hero-still")]).toEqual(["block", "none"]);
+    expect([shown(reduced, "r-hero-clip"), shown(reduced, "r-hero-still")]).toEqual([
+      "none",
+      "block",
+    ]);
   });
 });
 

@@ -1,16 +1,17 @@
 /**
  * The landing page bundle, read the way the build reads it.
  *
- * The page is authored as one packed file, so every check on it starts by
- * decoding the same island the build decodes and parsing what comes out.
- * That reading is shared rather than repeated: two suites asking the file
- * two different questions must not come to disagree about where an island
- * begins, and the file is 9MB, so it is read once per run.
+ * This is `landing.test.ts`'s reading of the authored page, kept apart from
+ * the cases so that suite stays under the file cap. The page is 9MB and
+ * cannot change under a run, so it is read and parsed once.
+ *
+ * The parsed tree is handed out as it is. Nothing here writes to it, and a
+ * caller that did would change what every later case sees.
  */
 import { readFileSync } from "node:fs";
 import { islandText } from "../../../scripts/unpack-landing";
 
-export const BUNDLE = "grasp-landing.html";
+const BUNDLE = "grasp-landing.html";
 
 /** What an asset is called in the payload, before the build gives it a path. */
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
