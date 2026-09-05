@@ -93,11 +93,13 @@ function marksOf(glyph: Cursor, badge: Cursor | undefined): Drawn[] {
       transform: `${SHIFT} ${GLYPH_TRANSFORM}${turn}`,
       ink: glyph.ink,
     })),
-    ...(badge?.marks ?? []).map((mark) => ({
-      mark,
-      transform: `${SHIFT} ${BADGE_TRANSFORM}`,
-      ink: badge?.ink ?? glyph.ink,
-    })),
+    ...(badge
+      ? badge.marks.map((mark) => ({
+          mark,
+          transform: `${SHIFT} ${BADGE_TRANSFORM}`,
+          ink: badge.ink,
+        }))
+      : []),
   ];
 }
 

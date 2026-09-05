@@ -4,7 +4,8 @@
  * crosshair's centre.
  *
  * Every glyph is the tool's own icon, read from `components/icons/tools.tsx`
- * rather than copied, so a cursor and its key in the rail cannot come apart.
+ * (and `icons/frame.tsx` for the Arrow, which the chrome shares) rather than
+ * copied, so a cursor and its key in the rail cannot come apart.
  * Measure is the one that is not the tool's own icon: it takes its Length
  * variant's ruler, turned 45 degrees, the ruler-and-protractor having too much
  * in it to read at 20 units across.
@@ -13,7 +14,7 @@
  * where the icon's own proportions would be a smudge.
  */
 
-import { ARROW_PATH } from "../icons/frame";
+import { ARROW_PATH, STRAIGHT, TOOL_STROKE } from "../icons/frame";
 import {
   COMPASS_HUB,
   COMPASS_RING,
@@ -38,30 +39,29 @@ export interface Stroke {
 
 /** A circle, which several icons are drawn with rather than a path. */
 export interface Dot {
-  cx: number;
-  cy: number;
-  r: number;
+  readonly cx: number;
+  readonly cy: number;
+  readonly r: number;
   /** Stroked at this width, or filled where it is left off. */
   w?: number;
 }
 
 /** A letter set the way GRASP sets a label, rather than a shape. */
 export interface Letter {
-  ch: string;
-  x: number;
-  y: number;
-  size: number;
+  readonly ch: string;
+  readonly x: number;
+  readonly y: number;
+  readonly size: number;
 }
 
 export type Mark = Stroke | Dot | Letter;
 
 /**
- * The stroke widths the marks are traced at. The glyphs keep their icon's own
- * width; only the crosshair is chosen here, drawn finer so that it points
- * without competing with the glyph beside it.
+ * The stroke widths the marks are drawn at. The glyphs keep their icon's own,
+ * read from the icons rather than repeated here; only the crosshair is chosen
+ * here, drawn finer so that it points without competing with the glyph.
  */
-const ICON_STROKE = 1.6;
-const RULER_STROKE = 1.5;
+const RULER_STROKE = Number(STRAIGHT.strokeWidth);
 const ANCHOR_STROKE = 1.2;
 
 /** The box a cursor is drawn on. */
@@ -85,7 +85,7 @@ export const GLYPH_TRANSFORM = "translate(16 14) scale(0.85)";
 export const BADGE_TRANSFORM = "translate(30.4 30.4) scale(0.45)";
 
 /** The anchor: a gapped crosshair, its arms stopping short of the hotspot. */
-export const ANCHOR: Mark[] = [
+export const ANCHOR: Stroke[] = [
   { d: "M11 1 L11 7", w: ANCHOR_STROKE },
   { d: "M11 15 L11 21", w: ANCHOR_STROKE },
   { d: "M1 11 L7 11", w: ANCHOR_STROKE },
@@ -108,26 +108,23 @@ export const CURSORS: Record<string, Cursor> = {
     ink: "var(--color-tool-arrow)",
   },
   point: {
-    marks: [{ ...POINT_DOT }],
+    marks: [POINT_DOT],
     ink: "var(--color-tool-point)",
   },
   compass: {
-    marks: [{ ...COMPASS_RING, w: ICON_STROKE }, { ...COMPASS_HUB }],
+    marks: [{ ...COMPASS_RING, w: TOOL_STROKE }, COMPASS_HUB],
     ink: "var(--color-tool-compass)",
   },
   straightedge: {
-    marks: [
-      { d: STRAIGHTEDGE_RULE, w: ICON_STROKE },
-      ...STRAIGHTEDGE_ENDS.map((end) => ({ ...end })),
-    ],
+    marks: [{ d: STRAIGHTEDGE_RULE, w: TOOL_STROKE }, ...STRAIGHTEDGE_ENDS],
     ink: "var(--color-tool-straightedge)",
   },
   polygon: {
-    marks: [{ d: TRAPEZIUM, w: ICON_STROKE }],
+    marks: [{ d: TRAPEZIUM, w: TOOL_STROKE }],
     ink: "var(--color-tool-polygon)",
   },
   text: {
-    marks: [{ ...TEXT_T }],
+    marks: [TEXT_T],
     ink: "var(--color-tool-text)",
   },
   measure: {
@@ -140,8 +137,8 @@ export const CURSORS: Record<string, Cursor> = {
   },
   marker: {
     marks: [
-      { d: MARKER_BODY, w: ICON_STROKE },
-      { d: MARKER_NIB, w: ICON_STROKE },
+      { d: MARKER_BODY, w: TOOL_STROKE },
+      { d: MARKER_NIB, w: TOOL_STROKE },
     ],
     ink: "var(--color-tool-marker)",
   },

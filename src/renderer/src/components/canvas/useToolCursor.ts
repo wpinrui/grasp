@@ -12,14 +12,6 @@ import { type PointerEvent, useLayoutEffect, useRef, useState } from "react";
 import type { Position } from "../../sketch/model";
 import { cursorDrawnFor, HOTSPOT } from "./cursorGeometry";
 
-/**
- * What GRASP draws its cursor over: the paper itself, and the figure drawn on
- * it. Everything else with a box on the sheet carries a cursor of its own that
- * says what it is for, a caption's I-beam or a label's move, and two cursors at
- * once is worse than either.
- */
-const DRAWING = ".canvas__objects";
-
 export function useToolCursor(
   tool: string,
   screenOf: (event: { clientX: number; clientY: number }) => Position | null,
@@ -31,7 +23,8 @@ export function useToolCursor(
    * pan began.
    */
   const spot = useRef<Position | null>(null);
-  const [showing, setShowing] = useState(false);
+  /** Whether the pointer is on paper GRASP would draw a cursor over. */
+  const [onPaper, setOnPaper] = useState(false);
   const hasCursor = cursorDrawnFor(tool);
 
   /** Put the box where the pointer is. Runs on every move, so it does no work. */
@@ -55,32 +48,35 @@ export function useToolCursor(
      * own. A tool with none keeps the stylesheet's, and so does a pointer that
      * has not reached the sheet yet.
      */
-    showing: hasCursor && showing,
+    showing: hasCursor && onPaper,
     /**
      * The pointer moved. A finger is not a pointer with a cursor, so it draws
-     * none, and neither does a pointer over something carrying a cursor of its
-     * own.
+     * none.
+     *
+     * Neither does anything but bare paper. The figure is drawn in a layer that
+     * takes no pointer events, so the only thing on the sheet the pointer can
+     * be over is the sheet itself; everything else with a box there, a caption,
+     * a reading, a label, a panel, carries a cursor of its own saying what it
+     * is for, and two cursors at once says less than either.
      */
     follow(event: PointerEvent<HTMLDivElement>) {
       if (event.pointerType === "touch") return;
-      const over = event.target;
-      const own = over instanceof Element && over !== event.currentTarget && !over.closest(DRAWING);
       const at = screenOf(event);
-      if (own || !at) {
-        setShowing(false);
+      if (event.target !== event.currentTarget || !at) {
+        setOnPaper(false);
         return;
       }
       // Kept even where this tool draws nothing, so the next one that does
       // starts where the pointer actually is.
       spot.current = at;
       place();
-      if (!showing) setShowing(true);
+      if (!onPaper) setOnPaper(true);
     },
     /** The pointer left the sheet, and the cursor goes with it. */
     away(event?: PointerEvent<HTMLDivElement>) {
       // A finger lifting off a hybrid screen is not the mouse leaving.
       if (event?.pointerType === "touch") return;
-      setShowing(false);
+      setOnPaper(false);
     },
   };
 }

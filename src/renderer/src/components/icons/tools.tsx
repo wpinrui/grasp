@@ -1,6 +1,6 @@
 /** One icon per tool in the Toolbox, and one per variant its flyout offers. */
 
-import { ARROW_PATH, STRAIGHT, ToolSvg } from "./frame";
+import { ARROW_PATH, STRAIGHT, TOOL_STROKE, ToolSvg } from "./frame";
 
 export function SegmentIcon() {
   return (
@@ -88,7 +88,7 @@ export function PointIcon() {
 export function CompassIcon() {
   return (
     <ToolSvg>
-      <circle {...COMPASS_RING} stroke="currentColor" strokeWidth="1.6" />
+      <circle {...COMPASS_RING} stroke="currentColor" strokeWidth={TOOL_STROKE} />
       <circle {...COMPASS_HUB} fill="currentColor" />
     </ToolSvg>
   );
@@ -97,7 +97,12 @@ export function CompassIcon() {
 export function StraightedgeIcon() {
   return (
     <ToolSvg>
-      <path d={STRAIGHTEDGE_RULE} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d={STRAIGHTEDGE_RULE}
+        stroke="currentColor"
+        strokeWidth={TOOL_STROKE}
+        strokeLinecap="round"
+      />
       {STRAIGHTEDGE_ENDS.map((end) => (
         <circle key={end.cx} {...end} fill="currentColor" />
       ))}
@@ -204,8 +209,13 @@ export function RelabelIcon() {
 export function MarkerIcon() {
   return (
     <ToolSvg>
-      <path d={MARKER_BODY} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-      <path d={MARKER_NIB} stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d={MARKER_BODY}
+        stroke="currentColor"
+        strokeWidth={TOOL_STROKE}
+        strokeLinejoin="round"
+      />
+      <path d={MARKER_NIB} stroke="currentColor" strokeWidth={TOOL_STROKE} />
     </ToolSvg>
   );
 }

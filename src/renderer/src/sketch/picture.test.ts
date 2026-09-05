@@ -61,6 +61,30 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
+describe("what a picture leaves out", () => {
+  it("leaves the pointer behind, cursor and all", () => {
+    // The drawn cursor sits on the sheet like anything else, so a picture taken
+    // while it is up would carry it and crop to it.
+    document.body.innerHTML = [
+      '<div class="app__canvas">',
+      '<div class="canvas__sheet">',
+      `<svg class="canvas__objects" width="${SHEET.width}" height="${SHEET.height}">`,
+      '<line class="canvas__line" x1="0" y1="0" x2="9" y2="9"/>',
+      "</svg>",
+      '<div class="tool-cursor"><svg class="tool-cursor__layer">',
+      '<path d="M11 1 L11 7"/>',
+      "</svg></div>",
+      "</div></div>",
+    ].join("");
+    const drawn = pictureSvg(DEFAULT_PICTURE, null);
+    expect(drawn).not.toBe(null);
+    expect(drawn?.svg).not.toContain("tool-cursor");
+    // And it is not the whole picture that went missing.
+    expect(drawn?.svg).toContain("canvas__line");
+    expect(drawn?.svg).not.toContain("M11 1 L11 7");
+  });
+});
+
 describe("the colours a picture comes out in", () => {
   it("holds a path to the ink, the way it holds everything else drawn", () => {
     const css = styleOf({ ink: "black" });

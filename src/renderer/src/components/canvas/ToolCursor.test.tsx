@@ -6,9 +6,9 @@
  * rail key's are the same value.
  */
 
-import { render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { createRef } from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { TOOLS } from "../tools";
 import {
   ANCHOR,
@@ -21,6 +21,8 @@ import {
   SHIFT,
 } from "./cursorGeometry";
 import { ToolCursor } from "./ToolCursor";
+
+afterEach(cleanup);
 
 function drawn(tool: string, arrowKind?: string) {
   return render(<ToolCursor tool={tool} arrowKind={arrowKind} box={createRef()} showing />)
@@ -59,15 +61,20 @@ describe("the geometry every cursor is built from", () => {
     const arm = ANCHOR[0];
     const widest = ("w" in arm ? (arm.w ?? 0) : 0) + OUTLINE_WIDEN;
     const shift = Number(/translate\((\d+)/.exec(SHIFT)?.[1]);
-    // Half the stroke hangs outside the arm's own end, at 1 on the icons' box.
-    expect(shift).toBeGreaterThanOrEqual(widest / 2);
-    expect(shift + 21).toBeLessThanOrEqual(CURSOR_BOX);
+    // Half the stroke hangs outside the arm's own end, at 1 near the box's
+    // corner and at 21 at the far one, so the halo has to clear both.
+    expect(shift + 1).toBeGreaterThanOrEqual(widest / 2);
+    expect(shift + 21 + widest / 2).toBeLessThanOrEqual(CURSOR_BOX);
   });
 
-  it("gives every badge an arming of the Arrow to belong to", () => {
+  it("badges every arming of the Arrow but the plain one, and nothing else", () => {
     const armings = TOOLS.find((one) => one.id === "arrow")?.variants ?? [];
+    expect(armings.length).toBeGreaterThan(1);
+    for (const arming of armings) {
+      // The plain Arrow picks up anything, so it has nothing to say.
+      expect(`arrow.${arming.id}` in BADGES).toBe(arming.id !== "all");
+    }
     for (const key of Object.keys(BADGES)) {
-      expect(key.startsWith("arrow.")).toBe(true);
       expect(armings.some((one) => `arrow.${one.id}` === key)).toBe(true);
     }
   });
@@ -130,7 +137,15 @@ describe("the cursor on the sheet", () => {
     );
   });
 
-  it("draws each tool in its own hue, so the cursor and the rail key match", () => {
+  it("draws each tool in the hue its rail key is drawn in", () => {
+    // Toolbox.tsx colours a key `var(--color-tool-<id>)`, so this is the same
+    // value rather than merely the one the cursor was built from.
+    for (const tool of TOOLS) {
+      expect(CURSORS[tool.id].ink).toBe(`var(--color-tool-${tool.id})`);
+    }
+  });
+
+  it("hands that hue to every mark it draws", () => {
     for (const tool of ["point", "compass", "marker"]) {
       const first = glyphLayer(tool).querySelector("path, text, circle") as SVGElement;
       expect(first.getAttribute("stroke")).toBe(CURSORS[tool].ink);
