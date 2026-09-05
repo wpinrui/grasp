@@ -84,14 +84,20 @@ function markOf({ mark, transform, ink }: Drawn, widen: number, key: number) {
   );
 }
 
-/** Every mark of a cursor, the crosshair first and the badge last. */
+/**
+ * Every mark of a cursor, the crosshair first and the badge last.
+ *
+ * A glyph that points with its own outline is drawn without the crosshair and
+ * at its own place in the box, since the crosshair is only there to point for
+ * the glyphs that cannot.
+ */
 function marksOf(glyph: Cursor, badge: Cursor | undefined): Drawn[] {
   const turn = glyph.turn ? ` ${glyph.turn}` : "";
   return [
-    ...ANCHOR.map((mark) => ({ mark, transform: SHIFT, ink: glyph.ink })),
+    ...(glyph.points ? [] : ANCHOR.map((mark) => ({ mark, transform: SHIFT, ink: glyph.ink }))),
     ...glyph.marks.map((mark) => ({
       mark,
-      transform: `${SHIFT} ${GLYPH_TRANSFORM}${turn}`,
+      transform: glyph.points ? glyph.points.transform : `${SHIFT} ${GLYPH_TRANSFORM}${turn}`,
       ink: glyph.ink,
     })),
     ...(badge

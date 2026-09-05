@@ -17,35 +17,52 @@ import {
   useState,
 } from "react";
 import type { Position } from "../../sketch/model";
-import { cursorDrawnFor, HOTSPOT } from "./cursorGeometry";
+import { cursorDrawnFor, type Hotspot, hotspotFor } from "./cursorGeometry";
 
-/** Put the layers where the pointer is. Runs on every move, so it does no work. */
-function place(layers: SVGSVGElement[], at: Position | null) {
-  if (!at) return;
-  const put = `translate(${at.x - HOTSPOT.x}px, ${at.y - HOTSPOT.y}px)`;
-  for (const layer of layers) layer.style.transform = put;
-}
+/** What the sheet answers when asked what is under a point in the window. */
+type Reader = (event: { clientX: number; clientY: number }) => Position | null;
 
-export function useToolCursor(
-  tool: string,
-  screenOf: (event: { clientX: number; clientY: number }) => Position | null,
-) {
+/** What the cursor is following, all of it written rather than rendered. */
+interface Following {
   /** The layers on the sheet, however many the cursor is drawn in. */
-  const layers = useRef<SVGSVGElement[]>([]);
+  layers: SVGSVGElement[];
   /**
    * Where the pointer last was. Kept whatever the tool in hand, so that letting
    * go of the space bar after a pan does not bring the cursor back where the
    * pan began.
    */
-  const spot = useRef<Position | null>(null);
+  spot: Position | null;
+  /** The latest reading of the sheet. */
+  read: Reader;
+  /** Where the tool in hand takes its click from. */
+  hotspot: Hotspot;
+}
+
+/** What a cursor follows before the pointer has been anywhere. */
+function nothingYet(read: Reader, hotspot: Hotspot): Following {
+  return { layers: [], spot: null, read, hotspot };
+}
+
+/** Put the layers where the pointer is. Runs on every move, so it does no work. */
+function place(one: Following, at: Position | null) {
+  if (!at) return;
+  const put = `translate(${at.x - one.hotspot.x}px, ${at.y - one.hotspot.y}px)`;
+  for (const layer of one.layers) layer.style.transform = put;
+}
+
+export function useToolCursor(tool: string, screenOf: Reader) {
   /** Whether the pointer is on paper GRASP would draw a cursor over. */
   const [onPaper, setOnPaper] = useState(false);
   const hasCursor = cursorDrawnFor(tool);
 
+  const following = useRef<Following>(nothingYet(screenOf, hotspotFor(tool)));
+  following.current.read = screenOf;
+  following.current.hotspot = hotspotFor(tool);
+
   // A tool that had no cursor a moment ago has one now, so its layers are new
   // and have yet to be put anywhere. Before the paint, so they are never seen
   // at the sheet's corner on the way.
-  useLayoutEffect(() => place(layers.current, spot.current));
+  useLayoutEffect(() => place(following.current, following.current.spot));
 
   /**
    * Takes each layer as it mounts and lets it go as it unmounts, so `place`
@@ -54,9 +71,9 @@ export function useToolCursor(
    */
   const hold = useCallback<RefCallback<SVGSVGElement>>((element) => {
     if (!element) return;
-    layers.current.push(element);
+    following.current.layers.push(element);
     return () => {
-      layers.current = layers.current.filter((one) => one !== element);
+      following.current.layers = following.current.layers.filter((one) => one !== element);
     };
   }, []);
 
@@ -87,8 +104,8 @@ export function useToolCursor(
       }
       // Kept even where this tool draws nothing, so the next one that does
       // starts where the pointer actually is.
-      spot.current = at;
-      place(layers.current, at);
+      following.current.spot = at;
+      place(following.current, at);
       if (!onPaper) setOnPaper(true);
     },
     /** The pointer left the sheet, and the cursor goes with it. */

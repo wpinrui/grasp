@@ -82,6 +82,23 @@ const ANCHOR_CENTRE = 11;
 export const HOTSPOT = { x: ANCHOR_CENTRE + SHIFT_BY, y: ANCHOR_CENTRE + SHIFT_BY } as const;
 
 export const GLYPH_TRANSFORM = "translate(16 14) scale(0.85)";
+
+/**
+ * The Arrow is drawn at cursor size from near the corner of the box, since it
+ * is the one glyph that is already a cursor: an arrow beside a crosshair says
+ * the same thing twice, and the crosshair is the louder of the two.
+ *
+ * Its point is the first point of `ARROW_PATH`, so the tip of the drawn arrow
+ * is where the click lands, the way an arrow cursor has always worked.
+ */
+const ARROW_SCALE = 1.3;
+const ARROW_FROM = 4;
+const ARROW_POINT = { x: 5, y: 2.5 };
+export const ARROW_AT = `translate(${ARROW_FROM} ${ARROW_FROM}) scale(${ARROW_SCALE})`;
+export const ARROW_TIP: Hotspot = {
+  x: ARROW_FROM + ARROW_POINT.x * ARROW_SCALE,
+  y: ARROW_FROM + ARROW_POINT.y * ARROW_SCALE,
+};
 export const BADGE_TRANSFORM = "translate(30.4 30.4) scale(0.45)";
 
 /** The anchor: a gapped crosshair, its arms stopping short of the hotspot. */
@@ -92,6 +109,12 @@ export const ANCHOR: Stroke[] = [
   { d: "M15 11 L21 11", w: ANCHOR_STROKE },
 ];
 
+/** Where in the box the click lands. */
+export interface Hotspot {
+  readonly x: number;
+  readonly y: number;
+}
+
 /** One cursor: what it is drawn from, in what ink, and any turn of its own. */
 export interface Cursor {
   marks: Mark[];
@@ -99,6 +122,12 @@ export interface Cursor {
   ink: string;
   /** Applied after the glyph transform. Measure's ruler is the only one. */
   turn?: string;
+  /**
+   * For a glyph that points with its own outline: where it sits, and where its
+   * point is. A cursor with this is drawn without the crosshair, the crosshair
+   * being what points for the ones without.
+   */
+  points?: { transform: string; hotspot: Hotspot };
 }
 
 /** One per tool. A tool absent from here keeps whatever cursor the sheet gives it. */
@@ -106,6 +135,7 @@ export const CURSORS: Record<string, Cursor> = {
   arrow: {
     marks: [{ d: ARROW_PATH, w: 0, fill: true }],
     ink: "var(--color-tool-arrow)",
+    points: { transform: ARROW_AT, hotspot: ARROW_TIP },
   },
   point: {
     marks: [POINT_DOT],
@@ -189,4 +219,9 @@ export function cursorDrawnFor(tool: string): boolean {
   // Its own key, not an inherited one: `"toString" in CURSORS` is true, and
   // what it answers with is a function rather than a cursor.
   return Object.hasOwn(CURSORS, tool);
+}
+
+/** Where a tool's click lands: its own point, or the crosshair's centre. */
+export function hotspotFor(tool: string): Hotspot {
+  return CURSORS[tool]?.points?.hotspot ?? HOTSPOT;
 }

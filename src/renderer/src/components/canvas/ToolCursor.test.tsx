@@ -8,14 +8,17 @@
 
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { ARROW_PATH } from "../icons/frame";
 import { TOOLS } from "../tools";
 import {
   ANCHOR,
+  ARROW_TIP,
   BADGES,
   CURSOR_BOX,
   CURSORS,
   cursorDrawnFor,
   HOTSPOT,
+  hotspotFor,
   OUTLINE_WIDEN,
   SHIFT,
 } from "./cursorGeometry";
@@ -63,6 +66,44 @@ describe("the geometry every cursor is built from", () => {
     // corner and at 21 at the far one, so the halo has to clear both.
     expect(shift + 1).toBeGreaterThanOrEqual(widest / 2);
     expect(shift + 21 + widest / 2).toBeLessThanOrEqual(CURSOR_BOX);
+  });
+
+  it("points the Arrow with its own tip rather than with a crosshair", () => {
+    // An arrow beside a crosshair says the same thing twice, and an arrow
+    // cursor has always clicked at its tip.
+    const arrow = glyphLayer("arrow");
+    const paths = [...arrow.querySelectorAll("path")];
+    expect(paths).toHaveLength(1);
+    expect(paths[0]?.getAttribute("d")).toBe(ARROW_PATH);
+    expect(hotspotFor("arrow")).toBe(ARROW_TIP);
+    expect(hotspotFor("arrow")).not.toEqual(HOTSPOT);
+  });
+
+  it("puts the Arrow's hotspot where its drawn tip is, and the whole arrow in the box", () => {
+    const at = CURSORS.arrow?.points;
+    const [, from, scale] = /translate\((\d+(?:\.\d+)?) \d+\) scale\((\d+(?:\.\d+)?)\)/.exec(
+      at?.transform ?? "",
+    ) as RegExpExecArray;
+    // The first point of the path is the tip, which is what the click lands on.
+    const [tipX, tipY] = /M([\d.]+) ([\d.]+)/.exec(ARROW_PATH)?.slice(1) ?? [];
+    expect(at?.hotspot.x).toBeCloseTo(Number(from) + Number(tipX) * Number(scale));
+    expect(at?.hotspot.y).toBeCloseTo(Number(from) + Number(tipY) * Number(scale));
+
+    // Every point of the path, drawn, plus the outline's own width.
+    const far = Math.max(
+      ...[...ARROW_PATH.matchAll(/([\d.]+) ([\d.]+)/g)].flatMap((point) => [
+        Number(point[1]),
+        Number(point[2]),
+      ]),
+    );
+    expect(Number(from) + far * Number(scale) + OUTLINE_WIDEN / 2).toBeLessThanOrEqual(CURSOR_BOX);
+  });
+
+  it("keeps the crosshair for every tool that does not point for itself", () => {
+    for (const tool of Object.keys(CURSORS)) {
+      const arms = glyphLayer(tool).querySelectorAll(`path[d="${ANCHOR[0]?.d}"]`);
+      expect([tool, arms.length]).toEqual([tool, CURSORS[tool]?.points ? 0 : 1]);
+    }
   });
 
   it("badges every arming of the Arrow but the plain one, and nothing else", () => {
