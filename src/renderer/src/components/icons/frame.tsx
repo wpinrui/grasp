@@ -77,20 +77,21 @@ export const GLYPH_AT: Record<string, string> = {
   marker: `translate(${PAD + 16.38} ${PAD + 11.89}) scale(0.75) rotate(-15 9.9 10.1)`,
 };
 
+/** How much of an icon's box the arming fit takes. */
+const FIT = 0.657;
+
 /**
  * The same drawing, fitted into an icon's own 20-unit box, so a flyout key and
- * the cursor it stands for are one drawing rather than two that have to be
- * kept in step by hand. One fit for every arming, so the keys are a row of the
- * same size rather than each fitted to its own glyph.
+ * the cursor it stands for are one drawing rather than two that have to be kept
+ * in step by hand. One fit for every arming, so the keys are a row of the same
+ * size rather than each fitted to its own glyph.
+ *
+ * It starts at the arrow's own left edge and at the highest glyph, both said in
+ * terms of the inset rather than written out, so moving the inset moves the
+ * keys with the cursors.
  */
-/**
- * How much of the icon's box the fit takes, and where it starts. The content
- * runs from the arrow's left edge to the far side of the widest glyph, and
- * from the highest glyph down, so it is measured off `PAD` rather than written
- * out: moving the inset moves the keys with the cursors.
- */
-const FIT = 0.657;
-export const ARMING_FIT = `translate(${(1 - 18 * FIT).toFixed(2)} ${(1 - (PAD - 0.4) * FIT).toFixed(2)}) scale(${FIT})`;
+const FIT_FROM = { x: ARROW_FROM + ARROW_POINT.x, y: PAD - 0.4 };
+export const ARMING_FIT = `translate(${(1 - FIT_FROM.x * FIT).toFixed(2)} ${(1 - FIT_FROM.y * FIT).toFixed(2)}) scale(${FIT})`;
 
 export const STRAIGHT = {
   fill: "none",

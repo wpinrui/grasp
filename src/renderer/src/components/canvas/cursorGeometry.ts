@@ -7,6 +7,10 @@
  * sits beside the arrow is read from there too, since the flyout keys are drawn
  * from the same placings.
  *
+ * Measure is the one that is not the tool's own icon: it takes its Length
+ * variant's ruler, the ruler-and-protractor having too much in it to read at
+ * cursor size.
+ *
  * What the Arrow is armed to pick up is said with the whole cursor of the tool
  * that makes that kind of thing, rather than with a motif of its own.
  */

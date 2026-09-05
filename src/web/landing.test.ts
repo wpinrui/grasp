@@ -321,6 +321,24 @@ describe("landing page embeds", () => {
    * the joint session history, so every crossing of the breakpoint would cost
    * the reader a Back press that re-fits an embed instead of leaving the page.
    */
+  it("navigates a loaded frame by replacing, never by the src attribute", () => {
+    const Component = embedder();
+    at("desktop", Component);
+    const { frames, replaced } = loaded();
+    const fitter = fitterFor(Component);
+    fitter.initEmbeds();
+    const before = frames.map((frame) => frame.getAttribute("src"));
+
+    at("phone", Component);
+    fitter.fitEmbeds(frames);
+
+    expect(replaced).toHaveLength(1);
+    expect(replaced[0].endsWith("/launch/?sketch=sketches/rosette.grasp&locked&chrome=none")).toBe(
+      true,
+    );
+    expect(frames.map((frame) => frame.getAttribute("src"))).toEqual(before);
+  });
+
   /**
    * A frame moves on screen as the page scrolls and nothing inside it hears,
    * so GRASP's own cursor would be left drawn where the pointer no longer is.
@@ -351,24 +369,6 @@ describe("landing page embeds", () => {
     window.dispatchEvent(new Event("scroll"));
     await frame();
     expect(posted).toEqual([]);
-  });
-
-  it("navigates a loaded frame by replacing, never by the src attribute", () => {
-    const Component = embedder();
-    at("desktop", Component);
-    const { frames, replaced } = loaded();
-    const fitter = fitterFor(Component);
-    fitter.initEmbeds();
-    const before = frames.map((frame) => frame.getAttribute("src"));
-
-    at("phone", Component);
-    fitter.fitEmbeds(frames);
-
-    expect(replaced).toHaveLength(1);
-    expect(replaced[0].endsWith("/launch/?sketch=sketches/rosette.grasp&locked&chrome=none")).toBe(
-      true,
-    );
-    expect(frames.map((frame) => frame.getAttribute("src"))).toEqual(before);
   });
 
   /**

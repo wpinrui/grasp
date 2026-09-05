@@ -8,6 +8,8 @@
  */
 
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ARROW_AT, ARROW_PATH } from "../icons/frame";
@@ -89,10 +91,15 @@ describe("the geometry every cursor is built from", () => {
       const at = CURSORS[tool]?.at;
       if (!at) continue;
       const [, x, y, size] = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\(([\d.]+)\)/.exec(at) ?? [];
-      // The icons' own box, which is the widest a glyph can be.
-      const near = Math.min(Number(x), Number(y)) - (OUTLINE_WIDEN * Number(size)) / 2;
-      const far =
-        Math.max(Number(x), Number(y)) + 20 * Number(size) + (OUTLINE_WIDEN * Number(size)) / 2;
+      // The icons' own box, which is the widest a glyph can be, and as far as a
+      // turn about its middle can throw a corner, which is its half-diagonal
+      // less its half-width.
+      const reach = /rotate/.test(at) ? 10 * Number(size) * (Math.SQRT2 - 1) : 0;
+      // The halo is widened by the glyph's own scale, so its bleed is the same
+      // on screen for every glyph rather than shrinking with it.
+      const bleed = OUTLINE_WIDEN / 2;
+      const near = Math.min(Number(x), Number(y)) - reach - bleed;
+      const far = Math.max(Number(x), Number(y)) + 20 * Number(size) + reach + bleed;
       if (near < 0 || far > CURSOR_BOX) outside.push(tool);
     }
     expect(outside).toEqual([]);
@@ -137,7 +144,10 @@ describe("the cursor on the sheet", () => {
    * out, so the stylesheet is read rather than measured.
    */
   it("holds the layers to the window, since that is what they are placed in", () => {
-    const css = readFileSync("src/renderer/src/components/canvas/ToolCursor.css", "utf8");
+    // Beside this file rather than off the working directory, so the test does
+    // not depend on where the run was started.
+    const here = dirname(fileURLToPath(import.meta.url));
+    const css = readFileSync(join(here, "ToolCursor.css"), "utf8");
     const rule = css.slice(css.indexOf(".tool-cursor {"));
     expect(rule.slice(0, rule.indexOf("}"))).toContain("position: fixed");
   });
@@ -273,7 +283,16 @@ describe("the key that stands for an arming", () => {
         (one) => one.getAttribute("d") !== ARROW_PATH,
       );
       expect([arming, glyph.length]).toEqual([arming, badge?.marks.length]);
-      for (const one of glyph) {
+      for (const [nth, one] of glyph.entries()) {
+        // The very shape the cursor draws, not merely one of the same arity.
+        const mark = badge?.marks[nth];
+        if (mark && "d" in mark) expect([arming, one.getAttribute("d")]).toEqual([arming, mark.d]);
+        if (mark && "r" in mark) {
+          expect([arming, one.getAttribute("r")]).toEqual([arming, String(mark.r)]);
+        }
+        if (mark && "ch" in mark) {
+          expect([arming, one.textContent]).toEqual([arming, mark.ch]);
+        }
         // A mark carries its placing and its ink itself, or takes them from the
         // group it is drawn in, which is how the multi-part glyphs are written.
         const of = (name: string) =>

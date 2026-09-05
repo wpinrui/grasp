@@ -26,7 +26,7 @@ type Reader = (event: { clientX: number; clientY: number }) => Position | null;
 
 /** What the cursor is following, all of it written rather than rendered. */
 interface Following {
-  /** The layers on the sheet, however many the cursor is drawn in. */
+  /** The layers, wherever they are drawn, however many the cursor takes. */
   layers: SVGSVGElement[];
   /**
    * Where in the window the pointer last was, which is where the layers go.
