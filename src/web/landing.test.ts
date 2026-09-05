@@ -149,6 +149,10 @@ describe("landing page bundle", () => {
     expect(hero?.getAttribute("src")).toMatch(UUID);
     expect(hero?.getAttribute("width")).toBe("1440");
     expect(hero?.getAttribute("height")).toBe("860");
+    // The attributes are a ratio, not a size: `height` is a presentational
+    // hint, so left unopposed it fixes the hero at 860px and letterboxes the
+    // clip inside it at every width.
+    expect(hero?.getAttribute("style")).toContain("height: auto");
   });
 });
 
