@@ -11,7 +11,7 @@ import {
 import { demotedUnder } from "./overlaps";
 import { type PageContent, usePages } from "./pages";
 import { spelledOutNamed } from "./spelled";
-import { readingsPlaced, readingsTied } from "./tied";
+import { readingsPlaced } from "./tied";
 
 /**
  * The sketch: what a tool does to the page that is up.
@@ -34,8 +34,6 @@ export function useSketch() {
   const naming = useRef(false);
   /** What the palette has armed for the tool that is up, or null under one that draws nothing. */
   const arming = useRef<Arming | null>(null);
-  /** Whether a number the Measure tool writes comes out tied to what it reads. */
-  const tying = useRef(false);
 
   /** The ids already on the page, so a pass can tell what has just landed. */
   const alreadyThere = useCallback(
@@ -81,10 +79,6 @@ export function useSketch() {
     naming.current = on;
   }, []);
 
-  const tieNewReadings = useCallback((on: boolean) => {
-    tying.current = on;
-  }, []);
-
   /** A name on whatever a reading that has just landed has to spell out. */
   const spelledOut = useCallback(
     (objects: SketchObject[]): SketchObject[] => spelledOutNamed(objects, alreadyThere()),
@@ -106,18 +100,14 @@ export function useSketch() {
       const objects = arm
         ? armed(namedWhereShown(spelledOut(namedIfWanted(next.objects))))
         : next.objects;
-      // The readings are worked out off the settled geometry, so they come
-      // after it: a new one is tied to its figure where Preferences has asked
-      // for that, and then every tied one is put where its figure has got to.
-      // Moving a number moves no geometry, so nothing has to settle again.
+      // A tied reading is placed off the settled geometry, so it comes after
+      // it. Moving a number moves no geometry, so nothing has to settle again,
+      // and undo and redo go through it too: what they hand back was arrived at
+      // with the figure where it is, so it lands in the same place.
       const page = settle(objects);
-      const tied =
-        arm && tying.current
-          ? readingsTied(page.objects, page.settled, alreadyThere())
-          : page.objects;
-      write({ ...next, objects: readingsPlaced(tied, page.settled) });
+      write({ ...next, objects: readingsPlaced(page.objects, page.settled) });
     },
-    [write, armed, spelledOut, namedIfWanted, alreadyThere],
+    [write, armed, spelledOut, namedIfWanted],
   );
 
   const select = useCallback(
@@ -243,7 +233,6 @@ export function useSketch() {
     commit,
     beginGesture,
     labelNewPoints,
-    tieNewReadings,
     armStyle,
     updateGesture: apply,
     endGesture,

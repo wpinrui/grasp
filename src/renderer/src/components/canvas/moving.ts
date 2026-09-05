@@ -4,7 +4,10 @@
  * Only a point has a place of its own. Everything else is dragged by whatever
  * holds it: a line by its ends, a circle by its centre and its radius point, a
  * fill by its corners, and so on down. Writing is the exception, since it sits
- * where it was put and what it quotes is not what holds it there.
+ * where it was put and what it quotes is not what holds it there. A reading
+ * tied to its figure is the exception to that: what it reads is exactly what
+ * holds it, so a drag sets where it hangs off the figure rather than where it
+ * sits on the sheet.
  */
 
 import { endsOf, frameOf, spotOf } from "../../sketch/measure";
@@ -213,18 +216,30 @@ export function placedBy(objects: SketchObject[], held: Held, by: Position): Ske
       if (!path || movesWith(objects, held, from.path)) return object;
       return { ...object, from: { ...from, at: alongPath(path, to) } };
     }
-    if (isMeasurement(object) && object.tied) {
-      // A tied number rides its figure. Where the drag is moving that figure
-      // too the number is already being carried by it, and moving it again
-      // would count the drag twice; dragged on its own, where it is dropped is
-      // where it hangs from then on.
-      if (object.of.some((id) => movesWith(objects, held, id))) return object;
-      const frame = frameOf(object, objects, geometry);
-      if (frame) return { ...object, tied: spotOf(frame, to) };
-    }
     return { ...object, x: to.x, y: to.y };
   });
-  return pulled(placed, held, by);
+  return retied(pulled(placed, held, by), held, by);
+}
+
+/**
+ * The tied readings the drag has hold of, hung where the pointer left them.
+ *
+ * A tied number holds where it hangs off its figure rather than where it sits
+ * on the sheet, so the drop has to be read in the frame the figure has ended up
+ * in, not the one it started in. Read in the old frame, a drag that moves the
+ * figure as well would count itself twice, and one that moves only part of the
+ * figure would count itself by however much that part shifted the frame.
+ */
+function retied(after: SketchObject[], held: Held, by: Position): SketchObject[] {
+  const dragged = after.filter((object) => isMeasurement(object) && object.tied);
+  if (dragged.every((object) => !held.ids.includes(object.id))) return after;
+  const geometry = settle(after).settled;
+  return after.map((object) => {
+    const index = held.ids.indexOf(object.id);
+    if (index === -1 || !isMeasurement(object) || !object.tied) return object;
+    const frame = frameOf(object, after, geometry);
+    return frame ? { ...object, tied: spotOf(frame, wantedAt(held, index, by)) } : object;
+  });
 }
 
 /** Put everything a drag has hold of where it has got to, as the gesture runs. */

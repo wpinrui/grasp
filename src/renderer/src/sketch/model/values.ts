@@ -152,10 +152,9 @@ export interface SketchTable extends Labelled {
 
 /**
  * Where a tied reading's number hangs, in the frame of what it reads: how far
- * along that frame runs, and how far off it. Along is a share of the frame's
- * span, so a segment stretched out keeps its number over the same part of it;
- * off is in sheet units, so the gap between the number and the figure is the
- * gap however big the figure grows.
+ * along that frame runs, and how far off it, both in sheet units. Where a
+ * number sits beside a figure is a drawing convention rather than a part of the
+ * figure, so the offset holds as the figure grows rather than growing with it.
  */
 export interface ReadingSpot {
   along: number;

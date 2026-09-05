@@ -160,9 +160,6 @@ export function useSettings({ sketch, phone, setSpotlight }: SettingsContext) {
   const showing = drafted ?? prefs;
   // Every reading is written in this sketch's units, so they are set as it draws.
   writeIn(showing.units);
-  // And whether a new one comes out tied to its figure, which the sketch asks
-  // as each reading lands.
-  sketch.tieNewReadings(showing.tieReadings === true);
   // Save reads what the sketch is on now, not what it was on when it rendered.
   const prefsAt = useRef(prefs);
   prefsAt.current = prefs;

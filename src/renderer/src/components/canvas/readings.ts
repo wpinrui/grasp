@@ -7,7 +7,7 @@
  * all of that is handed in rather than read off the window.
  */
 
-import { armsAt, endsOf } from "../../sketch/measure";
+import { armsAt, endsOf, frameOf, spotOf } from "../../sketch/measure";
 import {
   createAngleMark,
   createMeasurement,
@@ -53,6 +53,13 @@ export interface Measuring extends Figure {
   lastMark: LastMark;
   /** How far out a new angle mark sits, clear of what is at the corner already. */
   clearOf: (corner: string) => number;
+  /**
+   * Whether a number this tool writes comes out tied to what it reads, which
+   * Preferences says. It is settled here rather than by a pass over the page
+   * because only this knows a number was written by the tool just now: a pasted
+   * copy of one carries every mark of having been, fresh id and all.
+   */
+  tieReadings: boolean;
 }
 
 /** About how big a reading comes out on screen, before it has been drawn. */
@@ -85,6 +92,24 @@ function newReading(
   const box = readingBox(made, measuring);
   const { scale } = measuring;
   return { ...made, x: at.x - box.width / 2 / scale, y: at.y - box.height / 2 / scale };
+}
+
+/**
+ * The same reading, tied to what it reads where Preferences asks for that. It
+ * is tied where it has been hung, so the number comes out where it was asked
+ * for and goes wherever the figure goes from there.
+ *
+ * It happens here, at the last moment before the reading is handed back, rather
+ * than as a pass over the page: only the tool knows a reading was written by
+ * the tool just now, since a pasted copy of one carries every other mark of
+ * having been, and only here has every kind finished moving its number.
+ */
+export function tiedToFigure(written: Written | null, measuring: Measuring): Written | null {
+  if (!written || !measuring.tieReadings) return written;
+  const { objects, settled } = measuring;
+  const frame = frameOf(written.reading, objects, settled);
+  if (!frame) return written;
+  return { ...written, reading: { ...written.reading, tied: spotOf(frame, written.reading) } };
 }
 
 /** The two straight objects at a corner, as the three points of its angle. */
@@ -362,8 +387,8 @@ export function readingFrom(at: Position, measuring: Measuring): Written | null 
   const { objects, settled, scale, measure } = measuring;
   const hit = objectAt(at, { objects, scale, settled });
   if (!hit) return null;
-  if (measure === "length") return lengthFrom(hit, measuring);
-  if (measure === "area") return areaFrom(hit, measuring);
-  if (measure === "angle") return angleFrom(hit, measuring);
+  if (measure === "length") return tiedToFigure(lengthFrom(hit, measuring), measuring);
+  if (measure === "area") return tiedToFigure(areaFrom(hit, measuring), measuring);
+  if (measure === "angle") return tiedToFigure(angleFrom(hit, measuring), measuring);
   return null;
 }

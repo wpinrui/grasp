@@ -4,15 +4,23 @@
  * A number left to itself sits at a spot on the sheet and stays there, so
  * moving the figure leaves it behind while the arrows and arcs that mark the
  * same measurement follow along. A tied one holds its place in a frame built
- * out of what it reads instead: a spot to measure from, a way along, and how
- * much one whole way along is worth. Turn the figure and the frame turns with
- * it, stretch the figure and the frame stretches, and the number rides both.
+ * out of what it reads instead: a spot to measure from and a way along. Move
+ * the figure and the frame moves with it, turn the figure and the frame turns,
+ * and the number rides both.
  *
- * There is such a frame for every kind of reading, since a number left behind
- * by its shape is no better than one left behind by its segment. What each is
- * built from is whatever the settled geometry gives: the ends of a segment, the
- * corner and the bisector of an angle, a circle's centre and the way its
- * reference runs, the corners of a shape.
+ * The offset itself stays in sheet units. Where a number sits beside a figure
+ * is a drawing convention rather than a part of the figure: a dimension stands
+ * a set distance clear of its segment and an angle's number stands clear of its
+ * arc, and neither of those gaps is meant to double because the figure did.
+ *
+ * There is a frame for everything the Measure tool can be pointed at, since a
+ * number left behind by its shape is no better than one left behind by its
+ * segment: a length off a segment, an area off a shape or a circle or an arc's
+ * fill, an angle off a corner. Those are the only readings a chain is offered
+ * on, so those are the only frames there are. Each is built out of whatever the
+ * settled geometry gives: the ends of a segment, the corner and the bisector of
+ * an angle, a circle's centre and the way its reference runs, the corners of a
+ * shape, the middle of an arc.
  */
 
 import {
@@ -24,17 +32,14 @@ import {
   isCircle,
   isInterior,
   isLine,
-  isMeasurement,
-  isPoint,
   type Position,
-  pathIn,
   type ReadingSpot,
   type Settled,
+  type SketchInterior,
   type SketchMeasurement,
   type SketchObject,
   spotOnPath,
   TINY,
-  tangentOnPath,
 } from "../model";
 import { cornerOf, find } from "./shape";
 
@@ -47,8 +52,6 @@ export interface Frame {
   at: Position;
   /** Which way along runs, as a unit vector. */
   along: Position;
-  /** What one whole `along` is worth in sheet units, and never nought. */
-  span: number;
 }
 
 /** A unit vector that way, or null where there is no way to speak of. */
@@ -60,7 +63,7 @@ function unit(x: number, y: number): Position | null {
 /** A frame measured from one spot and running towards another. */
 function towards(at: Position, to: Position): Frame | null {
   const along = unit(to.x - at.x, to.y - at.y);
-  return along ? { at, along, span: Math.hypot(to.x - at.x, to.y - at.y) } : null;
+  return along ? { at, along } : null;
 }
 
 /** The three points of an angle: an arm either side, and the corner between. */
@@ -71,10 +74,10 @@ function cornerPoints(reading: SketchMeasurement, objects: SketchObject[]): stri
 }
 
 /**
- * An angle's frame: measured from the corner, running out along the bisector,
- * with one whole way along the mean of the two arms. That is where the arc
- * marking the angle sits, so a number hung in this frame opens and closes with
- * the arc instead of being left inside or outside it.
+ * An angle's frame: measured from the corner, running out along the bisector.
+ * That is the line the arc marking the angle is drawn about, so a number hung
+ * in this frame swings with the arc as the arms open and close instead of
+ * being left inside it or out on its own.
  */
 function angleFrame(
   reading: SketchMeasurement,
@@ -93,15 +96,7 @@ function angleFrame(
   // corner and its number belongs there too.
   const half = unit(first.x + second.x, first.y + second.y) ?? { x: -first.y, y: first.x };
   const way = reading.reflex ? -1 : 1;
-  const arms =
-    (Math.hypot(one.x - corner.x, one.y - corner.y) +
-      Math.hypot(other.x - corner.x, other.y - corner.y)) /
-    2;
-  return {
-    at: { x: corner.x, y: corner.y },
-    along: { x: half.x * way, y: half.y * way },
-    span: arms,
-  };
+  return { at: { x: corner.x, y: corner.y }, along: { x: half.x * way, y: half.y * way } };
 }
 
 /** A circle's frame: its centre, running the way its reference runs. */
@@ -125,8 +120,7 @@ function ringFrame(corners: Position[]): Frame | null {
 }
 
 /** A fill's frame: off its corners where it has them, off the path it fills where not. */
-function fillFrame(fill: SketchObject, settled: Settled): Frame | null {
-  if (!isInterior(fill)) return null;
+function fillFrame(fill: SketchInterior, settled: Settled): Frame | null {
   if (cornersOf(fill)) {
     const corners = settled.shapes.get(fill.id);
     return corners ? ringFrame(corners) : null;
@@ -140,21 +134,11 @@ function fillFrame(fill: SketchObject, settled: Settled): Frame | null {
 }
 
 /**
- * A point's frame: the point itself, running the way the path under it runs.
- * One point says where but not which way round, so a point riding a path takes
- * its way along from the path, and a point riding nothing has none and keeps
- * its number square to the sheet.
+ * The frame the thing a reading was taken from gives, whatever kind it is, or
+ * null where that thing carries no frame. A point is one of those: the tool
+ * takes no reading off a point on its own, and one point would say where the
+ * number goes but not which way round it turns as the figure does.
  */
-function pointFrame(point: SketchObject, settled: Settled): Frame | null {
-  if (!isPoint(point)) return null;
-  const at = settled.points.get(point.id) ?? point;
-  const on = point.from?.kind === "on" ? point.from : null;
-  const path = on ? pathIn(settled, on.path) : undefined;
-  const along = path ? tangentOnPath(path, on?.at ?? 0) : null;
-  return { at: { x: at.x, y: at.y }, along: along ?? { x: 1, y: 0 }, span: 1 };
-}
-
-/** The frame the first thing a reading was taken from gives, whatever kind it is. */
 function frameOfOne(object: SketchObject, settled: Settled): Frame | null {
   if (isLine(object)) {
     const along = settled.lines.get(object.id);
@@ -168,39 +152,32 @@ function frameOfOne(object: SketchObject, settled: Settled): Frame | null {
     const arc = settled.arcs.get(object.id);
     return arc ? arcFrame(arc) : null;
   }
-  if (isInterior(object)) return fillFrame(object, settled);
-  return pointFrame(object, settled);
+  return isInterior(object) ? fillFrame(object, settled) : null;
 }
 
 /**
  * The frame a reading's number hangs in, or null where what it reads has not
- * settled anywhere. An angle is measured from its corner; a pair of points from
- * the middle of the pair, which is where a distance is written; everything else
- * from the frame the first thing it was taken from gives.
+ * settled anywhere or carries no frame. An angle is measured from its corner,
+ * since that is where its arc is drawn from; everything else from the frame the
+ * thing it was taken from gives.
  */
 export function frameOf(
   reading: SketchMeasurement,
   objects: SketchObject[],
   settled: Settled,
 ): Frame | null {
-  if (!isMeasurement(reading) || reading.of.length === 0) return null;
+  if (reading.of.length === 0) return null;
   if (reading.measure === "angle") return angleFrame(reading, objects, settled);
-  const held = reading.of.map((id) => find(objects, id)).filter((one) => one !== undefined);
-  if (held.length === 0) return null;
-  if (held.length >= 2 && held.every(isPoint)) {
-    const spots = held.map((point) => settled.points.get(point.id));
-    if (spots[0] && spots[1]) return ringFrame([spots[0], spots[1]]);
-  }
-  return frameOfOne(held[0], settled);
+  const held = find(objects, reading.of[0]);
+  return held ? frameOfOne(held, settled) : null;
 }
 
 /** Where a number hung in this frame sits on the sheet. */
 export function spotIn(frame: Frame, spot: ReadingSpot): Position {
   const across = { x: -frame.along.y, y: frame.along.x };
-  const out = spot.along * frame.span;
   return {
-    x: frame.at.x + frame.along.x * out + across.x * spot.across,
-    y: frame.at.y + frame.along.y * out + across.y * spot.across,
+    x: frame.at.x + frame.along.x * spot.along + across.x * spot.across,
+    y: frame.at.y + frame.along.y * spot.along + across.y * spot.across,
   };
 }
 
@@ -209,7 +186,7 @@ export function spotOf(frame: Frame, at: Position): ReadingSpot {
   const away = { x: at.x - frame.at.x, y: at.y - frame.at.y };
   const across = { x: -frame.along.y, y: frame.along.x };
   return {
-    along: (away.x * frame.along.x + away.y * frame.along.y) / frame.span,
+    along: away.x * frame.along.x + away.y * frame.along.y,
     across: away.x * across.x + away.y * across.y,
   };
 }

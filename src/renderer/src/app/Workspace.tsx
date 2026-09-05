@@ -92,6 +92,7 @@ export function Workspace({
           activeTool={tools.activeTool}
           cancelRef={tools.cancelSheet}
           zoomable={settings.prefs.zoom === true}
+          tieReadings={settings.prefs.tieReadings === true}
           sketch={sketch}
           pointSize={tools.pointSize}
           view={sketch.view}
