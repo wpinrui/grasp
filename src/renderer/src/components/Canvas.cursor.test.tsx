@@ -16,17 +16,20 @@ afterEach(cleanup);
 /** The stubbed sheet sits at the window's corner, so a client point is a sheet point. */
 const ORIGIN = { x: 0, y: 0 };
 
-/** Where each layer of the cursor has been put. Both must agree, or the outline
- *  and the glyph come apart. */
-function placedIn(container: HTMLElement): string[] {
-  return [...container.querySelectorAll<HTMLElement>(".tool-cursor")].map(
+/**
+ * Where each layer of the cursor has been put. Both must agree, or the outline
+ * and the glyph come apart. Read off the body, since that is where they are
+ * drawn: the sheet clips what it holds and a cursor may not be clipped.
+ */
+function placedIn(): string[] {
+  return [...document.body.querySelectorAll<HTMLElement>(".tool-cursor")].map(
     (layer) => layer.style.transform,
   );
 }
 
 /** How many of the layers are out of sight. Half of them is as wrong as none. */
-function hiddenIn(container: HTMLElement): number {
-  return container.querySelectorAll(".tool-cursor--away").length;
+function hiddenIn(): number {
+  return document.body.querySelectorAll(".tool-cursor--away").length;
 }
 
 function moveTo(sheet: HTMLElement, at: { x: number; y: number }) {
@@ -46,15 +49,15 @@ describe("the cursor the sheet draws", () => {
     const sheet = sheetOf(container);
     // Nothing until the pointer has been on the sheet, and nothing by halves:
     // one layer left showing is the outline or the glyph on its own.
-    expect(hiddenIn(container)).toBe(2);
+    expect(hiddenIn()).toBe(2);
     expect(sheet.className).not.toContain("canvas__sheet--drawn-cursor");
 
     moveTo(sheet, { x: 220, y: 160 });
-    expect(hiddenIn(container)).toBe(0);
+    expect(hiddenIn()).toBe(0);
     expect(sheet.className).toContain("canvas__sheet--drawn-cursor");
     const spot = `translate(${220 - HOTSPOT.x}px, ${160 - HOTSPOT.y}px)`;
     // Both layers, together: they only read as one cursor while they agree.
-    expect(placedIn(container)).toEqual([spot, spot]);
+    expect(placedIn()).toEqual([spot, spot]);
   });
 
   it("follows the pointer across the sheet", () => {
@@ -63,7 +66,7 @@ describe("the cursor the sheet draws", () => {
     moveTo(sheet, { x: 100, y: 100 });
     moveTo(sheet, { x: 340, y: 260 });
     const spot = `translate(${340 - HOTSPOT.x}px, ${260 - HOTSPOT.y}px)`;
-    expect(placedIn(container)).toEqual([spot, spot]);
+    expect(placedIn()).toEqual([spot, spot]);
   });
 
   it("goes when the pointer leaves, and gives the browser its cursor back", () => {
@@ -73,7 +76,7 @@ describe("the cursor the sheet draws", () => {
     act(() => {
       fireEvent.pointerLeave(sheet);
     });
-    expect(hiddenIn(container)).toBe(2);
+    expect(hiddenIn()).toBe(2);
     expect(sheet.className).not.toContain("canvas__sheet--drawn-cursor");
   });
 
@@ -88,7 +91,7 @@ describe("the cursor the sheet draws", () => {
         pointerType: "touch",
       });
     });
-    expect(hiddenIn(container)).toBe(2);
+    expect(hiddenIn()).toBe(2);
     expect(sheet.className).not.toContain("canvas__sheet--drawn-cursor");
   });
 
@@ -96,19 +99,21 @@ describe("the cursor the sheet draws", () => {
     const { container } = put([], "hand");
     const sheet = sheetOf(container);
     moveTo(sheet, { x: 200, y: 200 });
-    expect(container.querySelector(".tool-cursor")).toBe(null);
+    expect(document.body.querySelector(".tool-cursor")).toBe(null);
     expect(sheet.className).not.toContain("canvas__sheet--drawn-cursor");
   });
 
   it("badges the Arrow with the arming the window is holding", () => {
-    const marks = (container: HTMLElement) =>
-      container.querySelectorAll(".tool-cursor")[1].querySelectorAll("path, text, circle").length;
-    const plain = put([], "arrow", { arrowKind: "all" });
-    moveTo(sheetOf(plain.container), { x: 200, y: 200 });
-    const armed = put([], "arrow", { arrowKind: "points" });
-    moveTo(sheetOf(armed.container), { x: 200, y: 200 });
-    expect(marks(armed.container)).toBe(
-      marks(plain.container) + BADGES["arrow.points"].marks.length,
-    );
+    // The layers are portalled into the body, so one window's cursor is taken
+    // down before the next is put up rather than both being counted at once.
+    const marks = (arming: string) => {
+      cleanup();
+      const window = put([], "arrow", { arrowKind: arming });
+      moveTo(sheetOf(window.container), { x: 200, y: 200 });
+      return document.body
+        .querySelectorAll(".tool-cursor")[1]
+        .querySelectorAll("path, text, circle").length;
+    };
+    expect(marks("points")).toBe(marks("all") + BADGES["arrow.points"].marks.length);
   });
 });

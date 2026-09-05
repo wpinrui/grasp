@@ -8,12 +8,22 @@
 import { act, renderHook } from "@testing-library/react";
 import type { PointerEvent } from "react";
 import { describe, expect, it } from "vitest";
+import { HOST_MOVED } from "../../../../shared/embed";
 import { HOTSPOT } from "./cursorGeometry";
 import { useToolCursor } from "./useToolCursor";
 
 /** Where the sheet says the pointer is, whatever the event carried. */
 const AT = { x: 200, y: 140 };
 const screenOf = () => AT;
+
+/** A sheet that can be moved under the pointer, or taken out from under it. */
+function sliding() {
+  const reading = { at: AT as { x: number; y: number } | null };
+  return { reading, screenOf: () => reading.at };
+}
+
+/** Where in the window the pointer is, which is where the layers are put. */
+const IN_WINDOW = { clientX: 320, clientY: 240 };
 
 /**
  * A pointer move of the kind the sheet hands the hook. `over` is what the
@@ -25,6 +35,7 @@ function moved(kind = "mouse", over?: Element) {
     pointerType: kind,
     currentTarget: sheet,
     target: over ?? sheet,
+    ...IN_WINDOW,
   } as unknown as PointerEvent<HTMLDivElement>;
 }
 
@@ -34,9 +45,9 @@ function layer() {
 }
 
 /** The hook holding one layer, the way the sheet hands it one. */
-function held(tool: string) {
+function held(tool: string, reader: () => { x: number; y: number } | null = screenOf) {
   const box = layer();
-  const cursor = renderHook(() => useToolCursor(tool, screenOf));
+  const cursor = renderHook(() => useToolCursor(tool, reader));
   // The sheet mounts the layers and hands each one over; the hook holds no
   // element of its own. `drop` is what React calls when the layer unmounts.
   let drop: (() => void) | undefined;
@@ -44,6 +55,19 @@ function held(tool: string) {
     drop = cursor.result.current.hold(box) ?? undefined;
   });
   return { cursor, box, drop };
+}
+
+/**
+ * A move carrying where in the window the pointer is, which is what the hook
+ * keeps so it can ask the sheet again after the sheet has moved.
+ */
+function movedIn(clientX: number, clientY: number) {
+  return { ...moved(), clientX, clientY } as unknown as PointerEvent<HTMLDivElement>;
+}
+
+/** Where the layers are put for a pointer at that place in the window. */
+function put(clientX = IN_WINDOW.clientX, clientY = IN_WINDOW.clientY) {
+  return `translate(${clientX - HOTSPOT.x}px, ${clientY - HOTSPOT.y}px)`;
 }
 
 describe("where the drawn cursor is", () => {
@@ -56,7 +80,7 @@ describe("where the drawn cursor is", () => {
     const { cursor, box } = held("point");
     act(() => cursor.result.current.follow(moved()));
     expect(cursor.result.current.showing).toBe(true);
-    expect(box.style.transform).toBe(`translate(${AT.x - HOTSPOT.x}px, ${AT.y - HOTSPOT.y}px)`);
+    expect(box.style.transform).toBe(put());
   });
 
   it("goes with the pointer when it leaves the sheet", () => {
@@ -119,7 +143,7 @@ describe("where the drawn cursor is", () => {
       cursor.result.current.hold(box);
     });
     cursor.rerender({ tool: "point" });
-    expect(box.style.transform).toBe(`translate(${AT.x - HOTSPOT.x}px, ${AT.y - HOTSPOT.y}px)`);
+    expect(box.style.transform).toBe(put());
   });
 
   it("draws none over something that carries a cursor of its own", () => {
@@ -132,5 +156,51 @@ describe("where the drawn cursor is", () => {
     expect(cursor.result.current.showing).toBe(true);
     act(() => cursor.result.current.follow(moved("mouse", label)));
     expect(cursor.result.current.showing).toBe(false);
+  });
+});
+
+/**
+ * Framed in a page, GRASP can move out from under a pointer that has not moved
+ * and hear nothing about it. Left alone the cursor stays drawn where the
+ * pointer used to be: stuck, and pointing at nothing, with the platform's own
+ * cursor still hidden.
+ */
+describe("the frame moving under a pointer that has not moved", () => {
+  it("stays under a pointer that has not moved when the view is panned", () => {
+    // The layers are placed in window coordinates, so a sheet moving under a
+    // still pointer does not move them, and inside one document the browser
+    // fires the sheet's own boundary event where it stops being underneath.
+    const sheet = sliding();
+    const { cursor, box } = held("point", sheet.screenOf);
+    act(() => cursor.result.current.follow(movedIn(320, 240)));
+    sheet.reading.at = { x: 60, y: 30 };
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(cursor.result.current.showing).toBe(true);
+    expect(box.style.transform).toBe(put(320, 240));
+  });
+
+  it("puts the cursor away when the page framing GRASP says it moved", () => {
+    // Scrolled in a page, the frame moves and nothing inside it hears: the
+    // pointer's own place in the window is stale too, so there is nothing left
+    // to ask the sheet with.
+    const { cursor } = held("point");
+    act(() => cursor.result.current.follow(movedIn(320, 240)));
+    expect(cursor.result.current.showing).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent("message", { data: HOST_MOVED }));
+    });
+    expect(cursor.result.current.showing).toBe(false);
+  });
+
+  it("stays where it is for a message it does not know", () => {
+    const { cursor } = held("point");
+    act(() => cursor.result.current.follow(movedIn(320, 240)));
+    act(() => {
+      window.dispatchEvent(new MessageEvent("message", { data: "something else" }));
+    });
+    expect(cursor.result.current.showing).toBe(true);
   });
 });

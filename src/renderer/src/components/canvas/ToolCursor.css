@@ -3,19 +3,27 @@
   against the sheet, so it can never be the colour under it, and the glyph is
   drawn over it at the tool's own hue.
 
-  They are siblings on the sheet rather than a pair inside a box of their own,
-  and that is load-bearing. A box would have to be moved, and raised above the
+  They are drawn into the body, not into the sheet: the sheet clips what it
+  holds, and a glyph sits beside the arrow rather than under it, so near an edge
+  the sheet cut the glyph off while the arrow stayed whole. Nothing clips the
+  platform's own cursor, and nothing may clip this one. The sheet is still in
+  the backdrop the outline differences against, since the body is where the
+  whole page is painted.
+
+  They are a pair of siblings rather than a box of their own, and that is
+  load-bearing. A box would have to be moved, and raised above the
   panels, and either of those makes it a stacking context, which isolates the
   blending group: the outline would then difference itself against nothing and
   paint flat white, invisible on white paper, which is the one thing the two
-  layers exist to prevent. As the sheet's own children they blend against the
-  paper and the figure, which is what was wanted.
+  layers exist to prevent. The body is where the whole page is painted, so the
+  sheet is still in the backdrop they difference against, which is what was
+  wanted.
 
   Both are moved to the pointer by writing their transform directly rather than
   by rendering, so a pointer crossing the sheet costs no render at all.
 */
 .tool-cursor {
-  position: absolute;
+  position: fixed;
   left: 0;
   top: 0;
   pointer-events: none;

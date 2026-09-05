@@ -43,6 +43,56 @@ export function ToolSvg({ children }: { children: React.ReactNode }) {
  */
 export const TOOL_STROKE = 1.6;
 
+/**
+ * Every cursor is the arrow, drawn in the tool's own ink, with that tool's
+ * glyph beside it. The arrow is what a pointer looks like everywhere else, and
+ * the glyph is what says which tool it is holding.
+ *
+ * Everything is drawn inset by `PAD`, because a glyph may sit above or left of
+ * the arrow and the box has no room outside itself: a shape placed at a
+ * negative coordinate is simply not drawn.
+ */
+export const PAD = 10;
+
+/** The arrow itself, at its own size, and the tip the click lands on. */
+export const ARROW_FROM = PAD + 3;
+export const ARROW_POINT = { x: 5, y: 2.5 };
+export const ARROW_AT = `translate(${ARROW_FROM} ${ARROW_FROM}) scale(1)`;
+
+/**
+ * Where each tool's glyph sits beside the arrow, placed by hand: the icons are
+ * padded differently and drawn at different weights, so no single rule puts
+ * them all where they belong. A turn is about the glyph's own middle, so it
+ * spins in place rather than swinging away.
+ */
+export const GLYPH_AT: Record<string, string> = {
+  point: `translate(${PAD + 9.08} ${PAD - 2.75}) scale(0.715)`,
+  compass: `translate(${PAD + 11.88} ${PAD - 4.2}) scale(0.7)`,
+  straightedge: `translate(${PAD + 14.54} ${PAD + 10.96}) scale(0.755) rotate(-23 10 10)`,
+  polygon: `translate(${PAD + 13.79} ${PAD - 5.47}) scale(0.79)`,
+  text: `translate(${PAD + 11.8} ${PAD - 1.82}) scale(0.59)`,
+  // Flat. The ruler icon is drawn turned in the toolbox, and the 45 it was
+  // placed with was undoing that rather than adding to it.
+  measure: `translate(${PAD + 12.45} ${PAD - 4.09}) scale(0.705)`,
+  marker: `translate(${PAD + 16.38} ${PAD + 11.89}) scale(0.75) rotate(-15 9.9 10.1)`,
+};
+
+/** How much of an icon's box the arming fit takes. */
+const FIT = 0.657;
+
+/**
+ * The same drawing, fitted into an icon's own 20-unit box, so a flyout key and
+ * the cursor it stands for are one drawing rather than two that have to be kept
+ * in step by hand. One fit for every arming, so the keys are a row of the same
+ * size rather than each fitted to its own glyph.
+ *
+ * It starts at the arrow's own left edge and at the highest glyph, both said in
+ * terms of the inset rather than written out, so moving the inset moves the
+ * keys with the cursors.
+ */
+const FIT_FROM = { x: ARROW_FROM + ARROW_POINT.x, y: PAD - 0.4 };
+export const ARMING_FIT = `translate(${(1 - FIT_FROM.x * FIT).toFixed(2)} ${(1 - FIT_FROM.y * FIT).toFixed(2)}) scale(${FIT})`;
+
 export const STRAIGHT = {
   fill: "none",
   stroke: "currentColor",

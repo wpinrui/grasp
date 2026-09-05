@@ -15,6 +15,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { HOST_MOVED } from "../shared/embed";
 import { page, payload, script, styles, UUID, unbalanced } from "./testing/landing";
 
 describe("landing page bundle", () => {
@@ -188,6 +189,9 @@ describe("landing page embeds", () => {
     return made;
   }
 
+  /** One animation frame, which is what the page waits for before it posts. */
+  const frame = () => new Promise((settle) => requestAnimationFrame(settle));
+
   /** The srcs the page ships, read off the payload rather than typed out again. */
   function shipped(): string[] {
     return [...page().querySelectorAll("iframe.r-frame")].map(
@@ -227,19 +231,23 @@ describe("landing page embeds", () => {
       .join("");
     const frames = [...document.querySelectorAll("iframe.r-frame")] as HTMLIFrameElement[];
     const replaced: string[] = [];
+    const posted: unknown[] = [];
     for (const frame of frames) {
       const href = where(frame.getAttribute("src") ?? "");
       Object.defineProperty(frame, "contentWindow", {
         configurable: true,
         get() {
           if (href === null) throw new Error("cross-origin");
-          return { location: { href, replace: (to: string) => replaced.push(to) } };
+          return {
+            location: { href, replace: (to: string) => replaced.push(to) },
+            postMessage: (what: unknown) => posted.push(what),
+          };
         },
       });
       // jsdom lays nothing out, so the width the refit keys on has to be said.
       Object.defineProperty(frame, "clientWidth", { configurable: true, value: width });
     }
-    return { frames, replaced };
+    return { frames, replaced, posted };
   }
 
   const lazy = (width?: number) => embeds(() => "about:blank", width);
@@ -329,6 +337,38 @@ describe("landing page embeds", () => {
       true,
     );
     expect(frames.map((frame) => frame.getAttribute("src"))).toEqual(before);
+  });
+
+  /**
+   * A frame moves on screen as the page scrolls and nothing inside it hears,
+   * so GRASP's own cursor would be left drawn where the pointer no longer is.
+   * The page says so instead, in the word the app listens for, which both read
+   * from one place rather than writing twice.
+   */
+  it("tells its embeds it moved when the page is scrolled", async () => {
+    const { posted } = loaded();
+    fitterFor(embedder()).initEmbeds();
+    window.dispatchEvent(new Event("scroll"));
+    await frame();
+    expect(posted).toEqual([HOST_MOVED, HOST_MOVED]);
+  });
+
+  it("says so once a frame however many scrolls arrive before it is drawn", async () => {
+    const { posted } = loaded();
+    fitterFor(embedder()).initEmbeds();
+    for (let nth = 0; nth < 5; nth += 1) window.dispatchEvent(new Event("scroll"));
+    await frame();
+    expect(posted).toEqual([HOST_MOVED, HOST_MOVED]);
+  });
+
+  it("stops telling them once the page is gone", async () => {
+    const { posted } = loaded();
+    const fitter = fitterFor(embedder());
+    fitter.initEmbeds();
+    fitter.componentWillUnmount();
+    window.dispatchEvent(new Event("scroll"));
+    await frame();
+    expect(posted).toEqual([]);
   });
 
   /**

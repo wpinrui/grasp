@@ -50,9 +50,6 @@
   --color-tool-text: #ff8ba7;
   --color-tool-measure: #ffc83d;
   --color-tool-marker: #ff9f4a;
-  /* What the Text arrow's T is drawn in, which is a red rather than the Text
-     tool's pink: beside a blue arrow the pink read as another shade of it. */
-  --color-arrow-text: #ff6b6b;
   /* The counter-outline a drawn cursor carries. It is differenced against
      whatever is under it, so it must be pure white: that is what makes the
      outline the exact inverse of the sheet rather than a colour of its own. */
