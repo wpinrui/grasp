@@ -15,8 +15,9 @@
   panels, and either of those makes it a stacking context, which isolates the
   blending group: the outline would then difference itself against nothing and
   paint flat white, invisible on white paper, which is the one thing the two
-  layers exist to prevent. As the sheet's own children they blend against the
-  paper and the figure, which is what was wanted.
+  layers exist to prevent. The body is where the whole page is painted, so the
+  sheet is still in the backdrop they difference against, which is what was
+  wanted.
 
   Both are moved to the pointer by writing their transform directly rather than
   by rendering, so a pointer crossing the sheet costs no render at all.

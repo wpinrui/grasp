@@ -160,36 +160,25 @@ describe("where the drawn cursor is", () => {
 });
 
 /**
- * The sheet can move out from under a pointer that has not moved. Left alone,
- * the cursor stays drawn where the pointer used to be: stuck, and pointing at
- * nothing, with the platform's own cursor still hidden.
+ * Framed in a page, GRASP can move out from under a pointer that has not moved
+ * and hear nothing about it. Left alone the cursor stays drawn where the
+ * pointer used to be: stuck, and pointing at nothing, with the platform's own
+ * cursor still hidden.
  */
-describe("the sheet moving under a pointer that has not moved", () => {
-  it("asks the sheet again where the pointer is, rather than staying put", () => {
+describe("the frame moving under a pointer that has not moved", () => {
+  it("stays under a pointer that has not moved when the view is panned", () => {
+    // The layers are placed in window coordinates, so a sheet moving under a
+    // still pointer does not move them, and inside one document the browser
+    // fires the sheet's own boundary event where it stops being underneath.
     const sheet = sliding();
     const { cursor, box } = held("point", sheet.screenOf);
     act(() => cursor.result.current.follow(movedIn(320, 240)));
-    expect(box.style.transform).toBe(put());
-
-    // The view is panned: the same pointer is over a different part of it.
     sheet.reading.at = { x: 60, y: 30 };
     act(() => {
       window.dispatchEvent(new Event("scroll"));
     });
-    expect(box.style.transform).toBe(put(320, 240));
     expect(cursor.result.current.showing).toBe(true);
-  });
-
-  it("puts the cursor away when the sheet is no longer under the pointer at all", () => {
-    const sheet = sliding();
-    const { cursor } = held("point", sheet.screenOf);
-    act(() => cursor.result.current.follow(movedIn(320, 240)));
-
-    sheet.reading.at = null;
-    act(() => {
-      window.dispatchEvent(new Event("resize"));
-    });
-    expect(cursor.result.current.showing).toBe(false);
+    expect(box.style.transform).toBe(put(320, 240));
   });
 
   it("puts the cursor away when the page framing GRASP says it moved", () => {
@@ -213,16 +202,5 @@ describe("the sheet moving under a pointer that has not moved", () => {
       window.dispatchEvent(new MessageEvent("message", { data: "something else" }));
     });
     expect(cursor.result.current.showing).toBe(true);
-  });
-
-  it("moves the Arrow by its own tip when it is asked again", () => {
-    const sheet = sliding();
-    const { cursor, box } = held("arrow", sheet.screenOf);
-    act(() => cursor.result.current.follow(movedIn(320, 240)));
-    sheet.reading.at = { x: 90, y: 70 };
-    act(() => {
-      window.dispatchEvent(new Event("scroll"));
-    });
-    expect(box.style.transform).toBe(put(320, 240));
   });
 });

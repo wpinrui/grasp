@@ -1,22 +1,17 @@
 /**
- * The cursors GRASP draws for itself: one per tool, plus a badge for each of
- * the Arrow's armings, all on the same 46-unit box with the hotspot at the
- * crosshair's centre.
+ * The cursors GRASP draws for itself: the arrow every one of them is, in the
+ * tool's own ink, with that tool's glyph beside it.
  *
- * Every glyph is the tool's own icon, read from `components/icons/tools.tsx`
- * (and `icons/frame.tsx` for the Arrow, which the chrome shares) rather than
- * copied, so a cursor and its key in the rail cannot come apart.
- * Measure is the one that is not the tool's own icon: it takes its Length
- * variant's ruler, turned 45 degrees, the ruler-and-protractor having too much
- * in it to read at 20 units across.
+ * Every glyph is the tool's own icon, read from `components/icons` rather than
+ * copied, so a cursor and its key in the rail cannot come apart. Where each one
+ * sits beside the arrow is read from there too, since the flyout keys are drawn
+ * from the same placings.
  *
- * The badges are not traces. Each is its arming's motif redrawn at badge size,
- * where the icon's own proportions would be a smudge.
+ * What the Arrow is armed to pick up is said with the whole cursor of the tool
+ * that makes that kind of thing, rather than with a motif of its own.
  */
 
 import { ARROW_FROM, ARROW_POINT, GLYPH_AT, STRAIGHT, TOOL_STROKE } from "../icons/frame";
-
-export { ARROW_AT } from "../icons/frame";
 
 import {
   COMPASS_HUB,
@@ -65,7 +60,7 @@ const RULER_STROKE = Number(STRAIGHT.strokeWidth);
 /** The box a cursor is drawn on. */
 export const CURSOR_BOX = 46;
 
-/** One cursor: what it is drawn from, in what ink, and any turn of its own. */
+/** One cursor: what its glyph is drawn from, in what ink, and where it sits. */
 export interface Cursor {
   marks: Mark[];
   /** The custom property it is drawn in. */
@@ -126,12 +121,6 @@ export const CURSORS: Record<string, Cursor> = {
   },
 };
 
-/**
- * One badge per Arrow arming but the plain one, which picks up anything and so
- * has nothing to say. Only the Arrow is badged at all: its arming changes what
- * a click can touch and nothing on the sheet says so, where a drawing tool's
- * variant only changes what the click makes.
- */
 /**
  * What the Arrow is armed to pick up, said with the cursor of the tool that
  * makes that kind of thing: the same glyph, in the same ink, in the same place

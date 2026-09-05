@@ -148,17 +148,6 @@ describe("landing page responsive handles", () => {
    * is the failure this catches. Matched against the stylesheets alone, since
    * a comment repeating the width would otherwise satisfy it.
    */
-  /**
-   * A frame moves on screen as the page scrolls and nothing inside it hears,
-   * so the app's own cursor would be left drawn where the pointer no longer
-   * is. The page says so instead. The word it says is the app's, so the two
-   * are read from one place rather than written twice.
-   */
-  it("tells its embeds it moved in the words the app listens for", () => {
-    expect(script()).toContain(`postMessage("${HOST_MOVED}"`);
-    expect(script()).toContain('window.addEventListener("scroll", this.onEmbedScroll');
-  });
-
   it("states the phone breakpoint the same way in the CSS and the script", () => {
     const declared = /static PHONE = "([^"]+)"/.exec(script())?.[1];
     expect(declared).toBeTruthy();
@@ -200,6 +189,9 @@ describe("landing page embeds", () => {
     return made;
   }
 
+  /** One animation frame, which is what the page waits for before it posts. */
+  const frame = () => new Promise((settle) => requestAnimationFrame(settle));
+
   /** The srcs the page ships, read off the payload rather than typed out again. */
   function shipped(): string[] {
     return [...page().querySelectorAll("iframe.r-frame")].map(
@@ -239,19 +231,23 @@ describe("landing page embeds", () => {
       .join("");
     const frames = [...document.querySelectorAll("iframe.r-frame")] as HTMLIFrameElement[];
     const replaced: string[] = [];
+    const posted: unknown[] = [];
     for (const frame of frames) {
       const href = where(frame.getAttribute("src") ?? "");
       Object.defineProperty(frame, "contentWindow", {
         configurable: true,
         get() {
           if (href === null) throw new Error("cross-origin");
-          return { location: { href, replace: (to: string) => replaced.push(to) } };
+          return {
+            location: { href, replace: (to: string) => replaced.push(to) },
+            postMessage: (what: unknown) => posted.push(what),
+          };
         },
       });
       // jsdom lays nothing out, so the width the refit keys on has to be said.
       Object.defineProperty(frame, "clientWidth", { configurable: true, value: width });
     }
-    return { frames, replaced };
+    return { frames, replaced, posted };
   }
 
   const lazy = (width?: number) => embeds(() => "about:blank", width);
@@ -325,6 +321,38 @@ describe("landing page embeds", () => {
    * the joint session history, so every crossing of the breakpoint would cost
    * the reader a Back press that re-fits an embed instead of leaving the page.
    */
+  /**
+   * A frame moves on screen as the page scrolls and nothing inside it hears,
+   * so GRASP's own cursor would be left drawn where the pointer no longer is.
+   * The page says so instead, in the word the app listens for, which both read
+   * from one place rather than writing twice.
+   */
+  it("tells its embeds it moved when the page is scrolled", async () => {
+    const { posted } = loaded();
+    fitterFor(embedder()).initEmbeds();
+    window.dispatchEvent(new Event("scroll"));
+    await frame();
+    expect(posted).toEqual([HOST_MOVED, HOST_MOVED]);
+  });
+
+  it("says so once a frame however many scrolls arrive before it is drawn", async () => {
+    const { posted } = loaded();
+    fitterFor(embedder()).initEmbeds();
+    for (let nth = 0; nth < 5; nth += 1) window.dispatchEvent(new Event("scroll"));
+    await frame();
+    expect(posted).toEqual([HOST_MOVED, HOST_MOVED]);
+  });
+
+  it("stops telling them once the page is gone", async () => {
+    const { posted } = loaded();
+    const fitter = fitterFor(embedder());
+    fitter.initEmbeds();
+    fitter.componentWillUnmount();
+    window.dispatchEvent(new Event("scroll"));
+    await frame();
+    expect(posted).toEqual([]);
+  });
+
   it("navigates a loaded frame by replacing, never by the src attribute", () => {
     const Component = embedder();
     at("desktop", Component);

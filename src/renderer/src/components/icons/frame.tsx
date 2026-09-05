@@ -78,23 +78,19 @@ export const GLYPH_AT: Record<string, string> = {
 };
 
 /**
- * The badge on an Arrow arming, which is the one thing the Arrow carries in
- * place of a glyph. It sits where the other tools' glyphs sit, so the pair
- * reads the same way whichever tool is up.
- */
-/** Where in the box the click lands. */
-export interface Hotspot {
-  readonly x: number;
-  readonly y: number;
-}
-
-/**
  * The same drawing, fitted into an icon's own 20-unit box, so a flyout key and
  * the cursor it stands for are one drawing rather than two that have to be
  * kept in step by hand. One fit for every arming, so the keys are a row of the
  * same size rather than each fitted to its own glyph.
  */
-export const ARMING_FIT = "translate(-10.8 -5.3) scale(0.657)";
+/**
+ * How much of the icon's box the fit takes, and where it starts. The content
+ * runs from the arrow's left edge to the far side of the widest glyph, and
+ * from the highest glyph down, so it is measured off `PAD` rather than written
+ * out: moving the inset moves the keys with the cursors.
+ */
+const FIT = 0.657;
+export const ARMING_FIT = `translate(${(1 - 18 * FIT).toFixed(2)} ${(1 - (PAD - 0.4) * FIT).toFixed(2)}) scale(${FIT})`;
 
 export const STRAIGHT = {
   fill: "none",

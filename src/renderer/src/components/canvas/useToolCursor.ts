@@ -11,7 +11,6 @@
 import {
   type PointerEvent,
   type RefCallback,
-  type RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -20,7 +19,7 @@ import {
 } from "react";
 import { HOST_MOVED } from "../../../../shared/embed";
 import type { Position } from "../../sketch/model";
-import { cursorDrawnFor, HOTSPOT, type Hotspot } from "./cursorGeometry";
+import { cursorDrawnFor, HOTSPOT } from "./cursorGeometry";
 
 /** What the sheet answers when asked what is under a point in the window. */
 type Reader = (event: { clientX: number; clientY: number }) => Position | null;
@@ -30,26 +29,16 @@ interface Following {
   /** The layers on the sheet, however many the cursor is drawn in. */
   layers: SVGSVGElement[];
   /**
-   * Where the pointer last was. Kept whatever the tool in hand, so that letting
-   * go of the space bar after a pan does not bring the cursor back where the
-   * pan began.
-   */
-  spot: Position | null;
-  /**
-   * Where in the window the pointer last was, kept beside where that put it on
-   * the sheet. The sheet can move under a pointer that has not moved, and then
-   * the window place still holds while the sheet place does not.
+   * Where in the window the pointer last was, which is where the layers go.
+   * Kept whatever the tool in hand, so that letting go of the space bar after a
+   * pan does not bring the cursor back where the pan began.
    */
   inWindow: { clientX: number; clientY: number } | null;
-  /** The latest reading of the sheet, so the listeners below are bound once. */
-  read: Reader;
-  /** Where the tool in hand takes its click from. */
-  hotspot: Hotspot;
 }
 
 /** What a cursor follows before the pointer has been anywhere. */
-function nothingYet(read: Reader, hotspot: Hotspot): Following {
-  return { layers: [], spot: null, inWindow: null, read, hotspot };
+function nothingYet(): Following {
+  return { layers: [], inWindow: null };
 }
 
 /**
@@ -61,46 +50,31 @@ function nothingYet(read: Reader, hotspot: Hotspot): Following {
 function place(one: Following) {
   const at = one.inWindow;
   if (!at) return;
-  const put = `translate(${at.clientX - one.hotspot.x}px, ${at.clientY - one.hotspot.y}px)`;
+  const put = `translate(${at.clientX - HOTSPOT.x}px, ${at.clientY - HOTSPOT.y}px)`;
   for (const layer of one.layers) layer.style.transform = put;
 }
 
 /**
- * The sheet moving out from under a pointer that has not moved. Panning the
- * view or resizing the window does it, and so does the page scrolling when
- * GRASP is framed in one.
+ * The frame GRASP is in moving out from under a pointer that has not moved.
  *
- * Where the pointer's own place in the window still holds, the sheet is asked
- * again what is under it. Where the frame itself moved, that place is stale
- * too and there is nothing left to ask with, so the page framing GRASP says so
- * and the cursor is put away, the platform's coming back until the pointer
- * moves. Bound only while there is a cursor to strand.
+ * Inside one document there is nothing to do: the layers are placed where the
+ * pointer is in the window, so panning the view or resizing the window does not
+ * move them, and where the sheet stops being under the pointer the browser
+ * fires the boundary event the sheet already listens for. A frame is the
+ * exception. Scrolled in a page, it moves and nothing inside it hears, and the
+ * pointer's own place in the window is stale with it, so there is nothing left
+ * to ask with. The page says so instead, and the cursor is put away until the
+ * pointer moves. Bound only while there is a cursor to strand.
  */
-function useResettle(following: RefObject<Following>, drawn: boolean, away: () => void) {
+function useHostMoved(drawn: boolean, away: () => void) {
   useEffect(() => {
     if (!drawn) return;
-    const again = () => {
-      const one = following.current;
-      const at = one.inWindow && one.read(one.inWindow);
-      if (!at) {
-        away();
-        return;
-      }
-      one.spot = at;
-      place(one);
-    };
     const moved = (event: MessageEvent) => {
       if (event.data === HOST_MOVED) away();
     };
-    window.addEventListener("scroll", again, { capture: true, passive: true });
-    window.addEventListener("resize", again);
     window.addEventListener("message", moved);
-    return () => {
-      window.removeEventListener("scroll", again, { capture: true });
-      window.removeEventListener("resize", again);
-      window.removeEventListener("message", moved);
-    };
-  }, [following, drawn, away]);
+    return () => window.removeEventListener("message", moved);
+  }, [drawn, away]);
 }
 
 export function useToolCursor(tool: string, screenOf: Reader) {
@@ -108,9 +82,7 @@ export function useToolCursor(tool: string, screenOf: Reader) {
   const [onPaper, setOnPaper] = useState(false);
   const hasCursor = cursorDrawnFor(tool);
 
-  const following = useRef<Following>(nothingYet(screenOf, HOTSPOT));
-  following.current.read = screenOf;
-  following.current.hotspot = HOTSPOT;
+  const following = useRef<Following>(nothingYet());
 
   const away = useCallback(() => setOnPaper(false), []);
 
@@ -118,7 +90,7 @@ export function useToolCursor(tool: string, screenOf: Reader) {
   // and have yet to be put anywhere. Before the paint, so they are never seen
   // at the sheet's corner on the way.
   useLayoutEffect(() => place(following.current));
-  useResettle(following, hasCursor && onPaper, away);
+  useHostMoved(hasCursor && onPaper, away);
 
   /**
    * Takes each layer as it mounts and lets it go as it unmounts, so `place`
@@ -160,7 +132,6 @@ export function useToolCursor(tool: string, screenOf: Reader) {
       }
       // Kept even where this tool draws nothing, so the next one that does
       // starts where the pointer actually is.
-      following.current.spot = at;
       following.current.inWindow = { clientX: event.clientX, clientY: event.clientY };
       place(following.current);
       if (!onPaper) setOnPaper(true);

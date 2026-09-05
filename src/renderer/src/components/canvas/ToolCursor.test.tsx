@@ -2,16 +2,18 @@
  * The cursor GRASP draws for itself. None of what makes it work can be seen
  * headlessly, so what is pinned here is everything the drawing rests on: that
  * every tool in the rail has one, that both layers carry the same marks, that
- * the hotspot really is the crosshair's centre, and that the tool's hue and the
- * rail key's are the same value.
+ * the click lands on the arrow's own tip, that the halo comes out one width
+ * whatever a glyph's scale, and that the tool's hue and the rail key's are the
+ * same value.
  */
 
+import { readFileSync } from "node:fs";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { ARROW_PATH } from "../icons/frame";
+import { ARROW_AT, ARROW_PATH } from "../icons/frame";
+import { ArrowMarksIcon, ArrowPathsIcon, ArrowPointsIcon, ArrowTextIcon } from "../icons/tools";
 import { TOOLS } from "../tools";
 import {
-  ARROW_AT,
   BADGES,
   CURSOR_BOX,
   CURSORS,
@@ -128,6 +130,18 @@ describe("the cursor on the sheet", () => {
     expect(container.querySelectorAll(".tool-cursor--away").length).toBe(2);
   });
 
+  /**
+   * The layers hang off the body and are moved by writing a transform read in
+   * window coordinates, which only lands where the pointer is while they are
+   * taken out of the page's flow and off its scrolling. Nothing in jsdom lays
+   * out, so the stylesheet is read rather than measured.
+   */
+  it("holds the layers to the window, since that is what they are placed in", () => {
+    const css = readFileSync("src/renderer/src/components/canvas/ToolCursor.css", "utf8");
+    const rule = css.slice(css.indexOf(".tool-cursor {"));
+    expect(rule.slice(0, rule.indexOf("}"))).toContain("position: fixed");
+  });
+
   it("draws two layers, the outline and the glyph over it", () => {
     const container = drawn("point");
     const layers = container.querySelectorAll(".tool-cursor");
@@ -166,8 +180,11 @@ describe("the cursor on the sheet", () => {
         const under = Number(glyph[nth]?.getAttribute("stroke-width") ?? 0);
         const wide = Number(one.getAttribute("stroke-width"));
         // What the halo comes to on screen, once its transform has had it.
-        expect([tool, nth]).toEqual([tool, nth]);
-        expect((wide - under) * scale).toBeCloseTo(OUTLINE_WIDEN);
+        expect({ tool, nth, halo: (wide - under) * scale }).toEqual({
+          tool,
+          nth,
+          halo: expect.closeTo(OUTLINE_WIDEN),
+        });
       }
     }
   });
@@ -190,10 +207,14 @@ describe("the cursor on the sheet", () => {
     }
   });
 
-  it("hands that hue to every mark it draws", () => {
-    for (const tool of ["point", "compass", "marker"]) {
-      const first = glyphLayer(tool).querySelector("path, text, circle") as SVGElement;
-      expect(first.getAttribute("stroke")).toBe(CURSORS[tool].ink);
+  it("hands that hue to every mark it draws, the glyph's as well as the arrow's", () => {
+    for (const tool of Object.keys(CURSORS)) {
+      const inks = [...glyphLayer(tool).querySelectorAll("path, text, circle")].map((one) =>
+        one.getAttribute("stroke") === "none"
+          ? one.getAttribute("fill")
+          : one.getAttribute("stroke"),
+      );
+      expect([tool, inks]).toEqual([tool, inks.map(() => CURSORS[tool]?.ink)]);
     }
   });
 
@@ -204,14 +225,66 @@ describe("the cursor on the sheet", () => {
   it("turns the glyphs that were placed turned, about their own middle", () => {
     // The arrow is drawn first, so the glyph's own marks follow it.
     for (const [tool, turn] of [
-      ["straightedge", "rotate(-23"],
-      ["marker", "rotate(-15"],
+      ["straightedge", "rotate(-23 10 10)"],
+      ["marker", "rotate(-15 9.9 10.1)"],
     ]) {
       const glyph = glyphLayer(tool).querySelectorAll("path, text, circle")[1];
       expect([tool, glyph?.getAttribute("transform")?.includes(turn as string)]).toEqual([
         tool,
         true,
       ]);
+    }
+  });
+});
+
+/**
+ * The key in the Arrow's flyout is the cursor it stands for. The placings are
+ * read from one place by both, but each key still draws its own marks, so what
+ * is checked here is that the two have not come apart: the same marks, in the
+ * same ink, in the same place beside the arrow.
+ */
+describe("the key that stands for an arming", () => {
+  const keys: Record<string, () => React.JSX.Element> = {
+    points: ArrowPointsIcon,
+    paths: ArrowPathsIcon,
+    marks: ArrowMarksIcon,
+    text: ArrowTextIcon,
+  };
+
+  it("draws the arrow the cursor draws, in the Arrow's own ink", () => {
+    for (const [arming, Key] of Object.entries(keys)) {
+      cleanup();
+      const { container } = render(<Key />);
+      const arrow = [...container.querySelectorAll("path")].filter(
+        (one) => one.getAttribute("d") === ARROW_PATH,
+      );
+      expect([arming, arrow.length]).toEqual([arming, 1]);
+      expect([arming, arrow[0]?.getAttribute("transform")]).toEqual([arming, ARROW_AT]);
+      expect([arming, arrow[0]?.getAttribute("fill")]).toEqual([arming, CURSORS.arrow?.ink]);
+    }
+  });
+
+  it("puts the same glyph in the same ink and the same place as the cursor", () => {
+    for (const [arming, Key] of Object.entries(keys)) {
+      cleanup();
+      const { container } = render(<Key />);
+      const badge = BADGES[`arrow.${arming}`];
+      const glyph = [...container.querySelectorAll("path, circle, text")].filter(
+        (one) => one.getAttribute("d") !== ARROW_PATH,
+      );
+      expect([arming, glyph.length]).toEqual([arming, badge?.marks.length]);
+      for (const one of glyph) {
+        // A mark carries its placing and its ink itself, or takes them from the
+        // group it is drawn in, which is how the multi-part glyphs are written.
+        const of = (name: string) =>
+          one.getAttribute(name) ?? one.parentElement?.getAttribute(name);
+        expect([arming, of("transform")]).toEqual([arming, badge?.at]);
+        const stroke = of("stroke");
+        expect([arming, stroke && stroke !== "none" ? stroke : of("fill")]).toEqual([
+          arming,
+          badge?.ink,
+        ]);
+      }
     }
   });
 });

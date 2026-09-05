@@ -1,8 +1,7 @@
 import type { RefCallback } from "react";
 import { createPortal } from "react-dom";
-import { ARROW_PATH } from "../icons/frame";
+import { ARROW_AT, ARROW_PATH } from "../icons/frame";
 import {
-  ARROW_AT,
   BADGES,
   CURSOR_BOX,
   CURSORS,
