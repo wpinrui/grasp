@@ -137,13 +137,6 @@
   cursor: ew-resize;
 }
 
-/* The toolbox's tooltip, hung off the other side of the rail so it opens over
-   the sheet rather than off the edge of the window. */
-.tooltip--dock {
-  left: auto;
-  right: 54px;
-}
-
 /*
   A touch screen. The rail and its pane are gone: they cost a sixth of the width
   of a phone and the pane opens over most of what is left, so the sheet never
