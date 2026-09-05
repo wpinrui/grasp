@@ -1,6 +1,7 @@
 import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { usePhone } from "../phone";
 import { FlyoutMarker, ShareIcon } from "./icons";
+import { TooltipChip } from "./Tooltip";
 import { TOOLS } from "./tools";
 import "./Toolbox.css";
 
@@ -216,14 +217,12 @@ export function Toolbox({
       )}
 
       {tip && !opened && hovered !== null && (
-        <div
-          className="tooltip"
+        // A tool with nothing to do says why rather than what it is.
+        <TooltipChip
+          says={off[tip.id] ?? tip.name}
+          keys={off[tip.id] ? undefined : tip.key}
           style={{ top: `${openAt.top + TOOLTIP_OFFSET}px`, left: `${openAt.left}px` }}
-        >
-          {/* A tool with nothing to do says why rather than what it is. */}
-          <span className="tooltip__name">{off[tip.id] ?? tip.name}</span>
-          {!off[tip.id] && <span className="tooltip__key">{tip.key}</span>}
-        </div>
+        />
       )}
     </div>
   );

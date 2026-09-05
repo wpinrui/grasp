@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from "react";
 import type { Position } from "../sketch/model";
+import { Tooltip } from "./Tooltip";
 import "./MarkPanel.css";
 
 // A press must not reach the sheet: that would count as a click on the canvas,
@@ -36,8 +37,8 @@ export function PanelShell({ at, colour, children }: PanelShellProps) {
 interface PanelButtonProps {
   /** What the button is, read out by a screen reader. */
   label: string;
-  /** The tooltip, where there is one. The count buttons deliberately have none. */
-  title?: string;
+  /** What the tooltip says, where there is one. The count buttons have none. */
+  tip?: string;
   /** Whether it reads as the one that is on. */
   on?: boolean;
   disabled?: boolean;
@@ -50,27 +51,27 @@ interface PanelButtonProps {
 /** One press in a panel strip. */
 export function PanelButton({
   label,
-  title,
+  tip,
   on,
   disabled,
   away,
   onClick,
   children,
 }: PanelButtonProps) {
-  return (
+  const key = (
     <button
       type="button"
       className={`mark-panel__button${on ? " mark-panel__button--on" : ""}${
         away ? " mark-panel__button--away" : ""
       }`}
       aria-label={label}
-      title={title}
       disabled={disabled}
       onClick={onClick}
     >
       {children}
     </button>
   );
+  return tip ? <Tooltip says={tip}>{key}</Tooltip> : key;
 }
 
 /** The hairline between two groups of presses. */

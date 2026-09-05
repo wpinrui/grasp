@@ -64,7 +64,7 @@ export function MarkPanel({
         <>
           <PanelButton
             label="Turn the mark round"
-            title="Turn the mark round"
+            tip="Turn the mark round"
             onClick={() => onFlip(mark.id)}
           >
             <FlipIcon />
@@ -76,7 +76,7 @@ export function MarkPanel({
         <>
           <PanelButton
             label="Mark the reflex angle instead"
-            title="Mark the reflex angle instead"
+            tip="Mark the reflex angle instead"
             on={"reflex" in mark && mark.reflex}
             onClick={() => onReflex(mark.id)}
           >
@@ -84,7 +84,7 @@ export function MarkPanel({
           </PanelButton>
           <PanelButton
             label="Draw it as a right angle"
-            title="Draw it as a right angle"
+            tip="Draw it as a right angle"
             on={square}
             onClick={() => onSquare(mark.id, !square)}
           >
@@ -108,7 +108,7 @@ export function MarkPanel({
           <PanelSplit />
           <PanelButton
             label={swapTo}
-            title={swapTo}
+            tip={swapTo}
             onClick={() => onForm(mark.id, form === "equal" ? "parallel" : "equal")}
           >
             {form === "equal" ? <ParallelMarkIcon /> : <EqualMarkIcon />}
@@ -118,7 +118,7 @@ export function MarkPanel({
       <PanelSplit />
       <PanelButton
         label="Delete the mark"
-        title="Delete the mark"
+        tip="Delete the mark"
         away
         onClick={() => onDelete(mark.id)}
       >

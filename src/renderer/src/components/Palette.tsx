@@ -5,6 +5,7 @@ import { LINE_PATTERNS, LINE_WIDTHS } from "../sketch/model";
 import { type LabelMarks, type TextStyling, textBoxes } from "../sketch/text";
 import { PATTERN_SAMPLE, Picker, Popout, Rule, WEIGHT_SAMPLE } from "./PalettePicker";
 import { caretLook, caretMarks, chosenRun, wrapRun } from "./paletteCaret";
+import { Tooltip } from "./Tooltip";
 import { FONTS, INKS, NOTATION, SIZES, SYMBOLS } from "./typeset";
 import "./Palette.css";
 
@@ -183,17 +184,17 @@ export function Palette({
         <span className={`palette__name${colourOff ? "" : " palette__name--on"}`}>Colour</span>
         <div className="palette__controls palette__controls--inks">
           {INKS.map((ink) => (
-            <button
-              type="button"
-              key={ink.token}
-              className={`palette__ink${inked === ink.token ? " palette__ink--on" : ""}`}
-              style={{ background: `var(${ink.token})` }}
-              aria-label={ink.name}
-              title={ink.name}
-              disabled={colourOff}
-              onMouseDown={hold}
-              onClick={() => pickColour(ink.token)}
-            />
+            <Tooltip key={ink.token} says={ink.name}>
+              <button
+                type="button"
+                className={`palette__ink${inked === ink.token ? " palette__ink--on" : ""}`}
+                style={{ background: `var(${ink.token})` }}
+                aria-label={ink.name}
+                disabled={colourOff}
+                onMouseDown={hold}
+                onClick={() => pickColour(ink.token)}
+              />
+            </Tooltip>
           ))}
         </div>
 
@@ -203,20 +204,20 @@ export function Palette({
         </span>
         <div className="palette__controls">
           {LINE_WIDTHS.map((weight) => (
-            <button
-              type="button"
-              key={weight}
-              className={`palette__key palette__key--sample${
-                styling.weight === weight ? " palette__key--on" : ""
-              }`}
-              aria-label={WEIGHT_NAMES[weight]}
-              title={WEIGHT_NAMES[weight]}
-              disabled={!styling.canWeight}
-              onMouseDown={hold}
-              onClick={() => onStyle({ weight })}
-            >
-              <Rule width={WEIGHT_SAMPLE[weight]} />
-            </button>
+            <Tooltip key={weight} says={WEIGHT_NAMES[weight]}>
+              <button
+                type="button"
+                className={`palette__key palette__key--sample${
+                  styling.weight === weight ? " palette__key--on" : ""
+                }`}
+                aria-label={WEIGHT_NAMES[weight]}
+                disabled={!styling.canWeight}
+                onMouseDown={hold}
+                onClick={() => onStyle({ weight })}
+              >
+                <Rule width={WEIGHT_SAMPLE[weight]} />
+              </button>
+            </Tooltip>
           ))}
         </div>
 
@@ -226,20 +227,20 @@ export function Palette({
         </span>
         <div className="palette__controls">
           {LINE_PATTERNS.map((pattern) => (
-            <button
-              type="button"
-              key={pattern}
-              className={`palette__key palette__key--sample${
-                styling.pattern === pattern ? " palette__key--on" : ""
-              }`}
-              aria-label={PATTERN_NAMES[pattern]}
-              title={PATTERN_NAMES[pattern]}
-              disabled={!styling.canPattern}
-              onMouseDown={hold}
-              onClick={() => onStyle({ pattern })}
-            >
-              <Rule width={2} dash={PATTERN_SAMPLE[pattern]} />
-            </button>
+            <Tooltip key={pattern} says={PATTERN_NAMES[pattern]}>
+              <button
+                type="button"
+                className={`palette__key palette__key--sample${
+                  styling.pattern === pattern ? " palette__key--on" : ""
+                }`}
+                aria-label={PATTERN_NAMES[pattern]}
+                disabled={!styling.canPattern}
+                onMouseDown={hold}
+                onClick={() => onStyle({ pattern })}
+              >
+                <Rule width={2} dash={PATTERN_SAMPLE[pattern]} />
+              </button>
+            </Tooltip>
           ))}
         </div>
         <span className="palette__gap" />
@@ -273,60 +274,69 @@ export function Palette({
         <span className="palette__split" />
         <span className={`palette__name${marksOff ? "" : " palette__name--on"}`}>Style</span>
         <div className="palette__controls">
-          <button
-            type="button"
-            className={`palette__key palette__key--bold${marks.bold ? " palette__key--on" : ""}`}
-            aria-label="Bold"
-            aria-pressed={marks.bold}
-            title="Bold (Ctrl+B)"
-            disabled={marksOff}
-            onMouseDown={hold}
-            onClick={() => style("bold")}
-          >
-            B
-          </button>
-          <button
-            type="button"
-            className={`palette__key palette__key--italic${marks.italic ? " palette__key--on" : ""}`}
-            aria-label="Italic"
-            aria-pressed={marks.italic}
-            title="Italic (Ctrl+I)"
-            disabled={marksOff}
-            onMouseDown={hold}
-            onClick={() => style("italic")}
-          >
-            I
-          </button>
-          <button
-            type="button"
-            className={`palette__key palette__key--underline${
-              marks.underline ? " palette__key--on" : ""
-            }`}
-            aria-label="Underline"
-            aria-pressed={marks.underline}
-            title="Underline (Ctrl+U)"
-            disabled={marksOff}
-            onMouseDown={hold}
-            onClick={() => style("underline")}
-          >
-            U
-          </button>
-          <span className="palette__split palette__split--tight" />
-          {(["left", "center", "right"] as CaptionAlign[]).map((way) => (
+          <Tooltip says="Bold" keys="Ctrl+B">
             <button
               type="button"
-              key={way}
-              className={`palette__key palette__key--align${
-                ranged === way ? " palette__key--on" : ""
-              }`}
-              aria-label={`Align ${way}`}
-              title={`Align ${way} (Alt+${way === "left" ? "Left" : way === "right" ? "Right" : "Up"})`}
-              disabled={rangeOff}
+              className={`palette__key palette__key--bold${marks.bold ? " palette__key--on" : ""}`}
+              aria-label="Bold"
+              aria-pressed={marks.bold}
+              disabled={marksOff}
               onMouseDown={hold}
-              onClick={() => (caption ? onCaption({ align: way }) : onArmText({ align: way }))}
+              onClick={() => style("bold")}
             >
-              <span className={`palette__lines palette__lines--${way}`} />
+              B
             </button>
+          </Tooltip>
+          <Tooltip says="Italic" keys="Ctrl+I">
+            <button
+              type="button"
+              className={`palette__key palette__key--italic${
+                marks.italic ? " palette__key--on" : ""
+              }`}
+              aria-label="Italic"
+              aria-pressed={marks.italic}
+              disabled={marksOff}
+              onMouseDown={hold}
+              onClick={() => style("italic")}
+            >
+              I
+            </button>
+          </Tooltip>
+          <Tooltip says="Underline" keys="Ctrl+U">
+            <button
+              type="button"
+              className={`palette__key palette__key--underline${
+                marks.underline ? " palette__key--on" : ""
+              }`}
+              aria-label="Underline"
+              aria-pressed={marks.underline}
+              disabled={marksOff}
+              onMouseDown={hold}
+              onClick={() => style("underline")}
+            >
+              U
+            </button>
+          </Tooltip>
+          <span className="palette__split palette__split--tight" />
+          {(["left", "center", "right"] as CaptionAlign[]).map((way) => (
+            <Tooltip
+              key={way}
+              says={`Align ${way}`}
+              keys={`Alt+${way === "left" ? "Left" : way === "right" ? "Right" : "Up"}`}
+            >
+              <button
+                type="button"
+                className={`palette__key palette__key--align${
+                  ranged === way ? " palette__key--on" : ""
+                }`}
+                aria-label={`Align ${way}`}
+                disabled={rangeOff}
+                onMouseDown={hold}
+                onClick={() => (caption ? onCaption({ align: way }) : onArmText({ align: way }))}
+              >
+                <span className={`palette__lines palette__lines--${way}`} />
+              </button>
+            </Tooltip>
           ))}
         </div>
 
@@ -336,20 +346,20 @@ export function Palette({
           <Popout name="Notation" sample={"√x"} disabled={!editing}>
             <div className="palette__grid palette__grid--notation">
               {NOTATION.map((mark) => (
-                <button
-                  type="button"
-                  key={mark.id}
-                  className="palette__key palette__key--wide"
-                  title={mark.name}
-                  aria-label={mark.name}
-                  onMouseDown={hold}
-                  onClick={() => {
-                    insertAtCaret(editor.current, mark.html);
-                    commit();
-                  }}
-                >
-                  {mark.sample}
-                </button>
+                <Tooltip key={mark.id} says={mark.name}>
+                  <button
+                    type="button"
+                    className="palette__key palette__key--wide"
+                    aria-label={mark.name}
+                    onMouseDown={hold}
+                    onClick={() => {
+                      insertAtCaret(editor.current, mark.html);
+                      commit();
+                    }}
+                  >
+                    {mark.sample}
+                  </button>
+                </Tooltip>
               ))}
             </div>
           </Popout>
@@ -361,19 +371,19 @@ export function Palette({
                   <span className="palette__name palette__name--set">{set.name}</span>
                   <div className="palette__grid">
                     {set.glyphs.map((glyph) => (
-                      <button
-                        type="button"
-                        key={glyph}
-                        className="palette__glyph"
-                        title={glyph}
-                        onMouseDown={hold}
-                        onClick={() => {
-                          insertAtCaret(editor.current, glyph);
-                          commit();
-                        }}
-                      >
-                        {glyph}
-                      </button>
+                      <Tooltip key={glyph} says={glyph}>
+                        <button
+                          type="button"
+                          className="palette__glyph"
+                          onMouseDown={hold}
+                          onClick={() => {
+                            insertAtCaret(editor.current, glyph);
+                            commit();
+                          }}
+                        >
+                          {glyph}
+                        </button>
+                      </Tooltip>
                     ))}
                   </div>
                 </div>

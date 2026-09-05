@@ -1,5 +1,6 @@
 import { Fragment, type PointerEvent, type ReactNode, useRef, useState } from "react";
 import { HiddenIcon, SnapIcon, TagIcon } from "./icons";
+import { TooltipChip } from "./Tooltip";
 import "./Dock.css";
 
 /** How wide the pane can be dragged, in pixels. */
@@ -189,13 +190,12 @@ export function Dock({ open, onToggle, width, onWidth, panes }: DockProps) {
 
         {/* The same tooltip the toolbox shows, on the other side of the rail. */}
         {tip && hovered !== null && (
-          <div
-            className="tooltip tooltip--dock"
+          <TooltipChip
+            className="tooltip--dock"
+            says={tip.name}
+            keys={tip.key}
             style={{ top: `${RAIL_PADDING + hovered * TOOL_PITCH + TOOLTIP_OFFSET}px` }}
-          >
-            <span className="tooltip__name">{tip.name}</span>
-            {tip.key && <span className="tooltip__key">{tip.key}</span>}
-          </div>
+          />
         )}
       </div>
     </>

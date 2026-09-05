@@ -11,6 +11,7 @@ import {
   recentItems,
 } from "./menus";
 import { phoneMenus } from "./menus.phone";
+import { Tooltip } from "./Tooltip";
 import "./MenuBar.css";
 
 interface MenuBarProps {
@@ -89,20 +90,19 @@ export function MenuBar({
         </div>
       ))}
       <div className="menubar__spacer" />
-      <button
-        type="button"
-        className="menubar__tool menubar__tool--ai"
-        title="Ask an AI for a figure"
-        onClick={onAsk}
-      >
-        <SparkleIcon />
-        AI
-      </button>
-      {!phone && (
-        <button type="button" className="menubar__tool" title="Run a script" onClick={onScript}>
-          <ScriptIcon />
-          Script
+      <Tooltip says="Ask an AI for a figure" side="bottom">
+        <button type="button" className="menubar__tool menubar__tool--ai" onClick={onAsk}>
+          <SparkleIcon />
+          AI
         </button>
+      </Tooltip>
+      {!phone && (
+        <Tooltip says="Run a script" side="bottom">
+          <button type="button" className="menubar__tool" onClick={onScript}>
+            <ScriptIcon />
+            Script
+          </button>
+        </Tooltip>
       )}
     </div>
   );

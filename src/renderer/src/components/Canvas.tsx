@@ -162,6 +162,7 @@ import { MeasurementBox } from "./MeasurementBox";
 import { ReadingPanel } from "./ReadingPanel";
 import type { Snapping } from "./SnapPanel";
 import { TableBox } from "./TableBox";
+import { Tooltip } from "./Tooltip";
 import { armedForWriting } from "./tools";
 import "./Canvas.css";
 
@@ -2049,15 +2050,16 @@ export function Canvas({
               >
                 −
               </button>
-              <button
-                type="button"
-                className="canvas__zoom-level"
-                aria-label="Zoom to 100%"
-                title="Zoom to 100%"
-                onClick={() => zoomTo(1)}
-              >
-                {Math.round(scale * 100)}%
-              </button>
+              <Tooltip says="Zoom to 100%">
+                <button
+                  type="button"
+                  className="canvas__zoom-level"
+                  aria-label="Zoom to 100%"
+                  onClick={() => zoomTo(1)}
+                >
+                  {Math.round(scale * 100)}%
+                </button>
+              </Tooltip>
               <button
                 type="button"
                 className="canvas__zoom-button"

@@ -1,0 +1,41 @@
+/*
+  GRASP's own tooltip, in place of the browser's `title`: the same chip
+  whether the toolbox places it or `Tooltip` finds the place itself.
+
+  On the window rather than in what it names, so a rail that scrolls and
+  clips what leaves it can still hang one off its edge.
+*/
+.tooltip {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px 0 10px;
+  background: var(--color-flyout);
+  border: 1px solid var(--color-border-flyout);
+  border-radius: 6px;
+  box-shadow: var(--shadow-tooltip);
+  white-space: nowrap;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.tooltip__name {
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+
+.tooltip__key {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--color-key-bg);
+  border: 1px solid var(--color-key-border);
+  border-bottom-width: 2px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
