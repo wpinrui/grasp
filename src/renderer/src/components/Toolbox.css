@@ -163,9 +163,9 @@
     overflow-x: auto;
   }
 
-  /* Above the sheet, which the rail is drawn over here. */
-  .variants,
-  .tooltip {
+  /* Above the sheet, which the rail is drawn over here. A tooltip needs no
+     rule of its own: a finger opens none. */
+  .variants {
     z-index: 40;
   }
 

@@ -6,7 +6,7 @@ import { place, Tooltip } from "./Tooltip";
 
 afterEach(cleanup);
 
-/** The pointer GRASP is being used with, which `usePhone` asks the browser for. */
+/** The pointer GRASP is being used with, which `onAPhone` asks the browser for. */
 function pointerIs(coarse: boolean) {
   vi.stubGlobal(
     "matchMedia",
@@ -296,6 +296,21 @@ describe("the tooltip itself", () => {
     fireEvent.pointerDown(wrapper);
     fireEvent.focus(screen.getByRole("button"));
     expect(screen.queryByText("Add page")).toBeNull();
+  });
+
+  it("stays up when a key greys out under a resting pointer", () => {
+    // The browser blurs a control it disables. That blur must not take down the
+    // chip the pointer is still on, which is the case the wrapper exists for.
+    const { container } = render(
+      <Tooltip says="One more decimal place">
+        <button type="button">+</button>
+      </Tooltip>,
+    );
+    const wrapper = container.querySelector(".tooltip__of") as Element;
+    fireEvent.mouseOver(wrapper);
+    fireEvent.focus(screen.getByRole("button"));
+    fireEvent.blur(screen.getByRole("button"));
+    expect(screen.getByText("One more decimal place")).toBeTruthy();
   });
 
   it("stays down while something else is showing in its place", () => {

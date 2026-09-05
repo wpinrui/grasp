@@ -41,10 +41,10 @@ export function lookOfLabel(label: LabelState, ink: string): TextLook {
   };
 }
 
-/** How a label is marked up, which is the whole of it: a label holds no runs. */
 /** A mark a run of writing can carry, which the palette sets and reads. */
 export type Mark = "bold" | "italic" | "underline";
 
+/** How a label is marked up, which is the whole of it: a label holds no runs. */
 export type LabelMarks = Record<Mark, boolean>;
 
 /**
