@@ -155,6 +155,7 @@ import { useCaptions } from "./canvas/useCaptions";
 import { useLabelDrag } from "./canvas/useLabelDrag";
 import { useMarking } from "./canvas/useMarking";
 import { useReading } from "./canvas/useReading";
+import { useToolCursor } from "./canvas/useToolCursor";
 import { useView } from "./canvas/useView";
 import type { HiddenKinds } from "./HiddenPanel";
 import { MarkPanel } from "./MarkPanel";
@@ -162,6 +163,7 @@ import { MeasurementBox } from "./MeasurementBox";
 import { ReadingPanel } from "./ReadingPanel";
 import type { Snapping } from "./SnapPanel";
 import { TableBox } from "./TableBox";
+import { ToolCursor } from "./ToolCursor";
 import { Tooltip } from "./Tooltip";
 import { armedForWriting } from "./tools";
 import "./Canvas.css";
@@ -552,8 +554,19 @@ export function Canvas({
    */
   const area = union(drawn ? union(drawn, origin) : origin, onScreen);
 
-  const { handleScrollX, handleScrollY, handleWheel, positionOf, scaleNow, viewNow, zoomTo } =
-    useView({ view, onView, sheet, horizontal, vertical, viewport, area, zoomable });
+  const {
+    handleScrollX,
+    handleScrollY,
+    handleWheel,
+    positionOf,
+    screenOf,
+    scaleNow,
+    viewNow,
+    zoomTo,
+  } = useView({ view, onView, sheet, horizontal, vertical, viewport, area, zoomable });
+
+  /** GRASP's own cursor, where the tool in hand has one drawn for it. */
+  const toolCursor = useToolCursor(cursor, screenOf);
 
   useLayoutEffect(() => {
     const element = sheet.current;
@@ -1030,6 +1043,7 @@ export function Canvas({
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    toolCursor.follow(event);
     if (event.pointerType === "touch" && fingers.current.has(event.pointerId)) {
       fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     }
@@ -1497,6 +1511,7 @@ export function Canvas({
   }
 
   function handlePointerLeave() {
+    toolCursor.away();
     setSnap(null);
     setOverNamed(false);
     // The ghost letter stands in for the vertex's own label, so leaving the
@@ -1800,7 +1815,12 @@ export function Canvas({
         {/* biome-ignore lint/a11y/noStaticElementInteractions: the sheet is the drawing surface, where every gesture is a pointer gesture; the keyboard reaches the same work through the menus and their shortcuts */}
         <div
           ref={sheet}
-          className={`canvas__sheet canvas__sheet--${cursor}`}
+          // The sheet gives up its own cursor only while GRASP is drawing one
+          // in its place, so a pointer that has not reached the sheet yet, and
+          // a finger, which draws none, both keep what they had.
+          className={`canvas__sheet canvas__sheet--${cursor}${
+            toolCursor.drawing ? " canvas__sheet--drawn-cursor" : ""
+          }`}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -2038,6 +2058,9 @@ export function Canvas({
           <Boxing boxing={boxing} view={view} scale={scale} />
 
           <MarkCaptions marks={marks} spotOf={markAt} view={view} scale={scale} />
+
+          {/* Over everything on the sheet, because it is the pointer. */}
+          <ToolCursor tool={cursor} arrowKind={arrowKind} at={toolCursor.at} />
 
           {zoomable && (
             <div className="canvas__zoom" onPointerDown={(event) => event.stopPropagation()}>

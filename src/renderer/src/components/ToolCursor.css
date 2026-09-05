@@ -1,0 +1,19 @@
+/*
+  The drawn cursor. Two of these ride over the sheet, one per layer: the outline
+  differences itself against the sheet so it can never be the colour under it,
+  and the glyph is drawn over it at the tool's own hue.
+*/
+.tool-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.tool-cursor--outline {
+  mix-blend-mode: difference;
+}
+
+/* The sheet gives up its own cursor while a drawn one is over it. */
+.canvas__sheet--drawn-cursor {
+  cursor: none;
+}

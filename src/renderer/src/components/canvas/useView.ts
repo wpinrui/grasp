@@ -130,6 +130,7 @@ export function useView({
     handleScrollY,
     handleWheel,
     positionOf,
+    screenOf,
     scaleNow,
     viewNow,
     zoomTo,
