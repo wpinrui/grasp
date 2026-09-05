@@ -8,12 +8,19 @@
 import { act, renderHook } from "@testing-library/react";
 import type { PointerEvent } from "react";
 import { describe, expect, it } from "vitest";
-import { HOTSPOT } from "./cursorGeometry";
+import { HOST_MOVED } from "../../../../shared/embed";
+import { ARROW_TIP, HOTSPOT } from "./cursorGeometry";
 import { useToolCursor } from "./useToolCursor";
 
 /** Where the sheet says the pointer is, whatever the event carried. */
 const AT = { x: 200, y: 140 };
 const screenOf = () => AT;
+
+/** A sheet that can be moved under the pointer, or taken out from under it. */
+function sliding() {
+  const reading = { at: AT as { x: number; y: number } | null };
+  return { reading, screenOf: () => reading.at };
+}
 
 /**
  * A pointer move of the kind the sheet hands the hook. `over` is what the
@@ -34,9 +41,9 @@ function layer() {
 }
 
 /** The hook holding one layer, the way the sheet hands it one. */
-function held(tool: string) {
+function held(tool: string, reader: () => { x: number; y: number } | null = screenOf) {
   const box = layer();
-  const cursor = renderHook(() => useToolCursor(tool, screenOf));
+  const cursor = renderHook(() => useToolCursor(tool, reader));
   // The sheet mounts the layers and hands each one over; the hook holds no
   // element of its own. `drop` is what React calls when the layer unmounts.
   let drop: (() => void) | undefined;
@@ -44,6 +51,14 @@ function held(tool: string) {
     drop = cursor.result.current.hold(box) ?? undefined;
   });
   return { cursor, box, drop };
+}
+
+/**
+ * A move carrying where in the window the pointer is, which is what the hook
+ * keeps so it can ask the sheet again after the sheet has moved.
+ */
+function movedIn(clientX: number, clientY: number) {
+  return { ...moved(), clientX, clientY } as unknown as PointerEvent<HTMLDivElement>;
 }
 
 describe("where the drawn cursor is", () => {
@@ -132,5 +147,73 @@ describe("where the drawn cursor is", () => {
     expect(cursor.result.current.showing).toBe(true);
     act(() => cursor.result.current.follow(moved("mouse", label)));
     expect(cursor.result.current.showing).toBe(false);
+  });
+});
+
+/**
+ * The sheet can move out from under a pointer that has not moved. Left alone,
+ * the cursor stays drawn where the pointer used to be: stuck, and pointing at
+ * nothing, with the platform's own cursor still hidden.
+ */
+describe("the sheet moving under a pointer that has not moved", () => {
+  it("asks the sheet again where the pointer is, rather than staying put", () => {
+    const sheet = sliding();
+    const { cursor, box } = held("point", sheet.screenOf);
+    act(() => cursor.result.current.follow(movedIn(320, 240)));
+    expect(box.style.transform).toBe(`translate(${AT.x - HOTSPOT.x}px, ${AT.y - HOTSPOT.y}px)`);
+
+    // The view is panned: the same pointer is over a different part of it.
+    sheet.reading.at = { x: 60, y: 30 };
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(box.style.transform).toBe(`translate(${60 - HOTSPOT.x}px, ${30 - HOTSPOT.y}px)`);
+    expect(cursor.result.current.showing).toBe(true);
+  });
+
+  it("puts the cursor away when the sheet is no longer under the pointer at all", () => {
+    const sheet = sliding();
+    const { cursor } = held("point", sheet.screenOf);
+    act(() => cursor.result.current.follow(movedIn(320, 240)));
+
+    sheet.reading.at = null;
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(cursor.result.current.showing).toBe(false);
+  });
+
+  it("puts the cursor away when the page framing GRASP says it moved", () => {
+    // Scrolled in a page, the frame moves and nothing inside it hears: the
+    // pointer's own place in the window is stale too, so there is nothing left
+    // to ask the sheet with.
+    const { cursor } = held("point");
+    act(() => cursor.result.current.follow(movedIn(320, 240)));
+    expect(cursor.result.current.showing).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent("message", { data: HOST_MOVED }));
+    });
+    expect(cursor.result.current.showing).toBe(false);
+  });
+
+  it("stays where it is for a message it does not know", () => {
+    const { cursor } = held("point");
+    act(() => cursor.result.current.follow(movedIn(320, 240)));
+    act(() => {
+      window.dispatchEvent(new MessageEvent("message", { data: "something else" }));
+    });
+    expect(cursor.result.current.showing).toBe(true);
+  });
+
+  it("moves the Arrow by its own tip when it is asked again", () => {
+    const sheet = sliding();
+    const { cursor, box } = held("arrow", sheet.screenOf);
+    act(() => cursor.result.current.follow(movedIn(320, 240)));
+    sheet.reading.at = { x: 90, y: 70 };
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(box.style.transform).toBe(`translate(${90 - ARROW_TIP.x}px, ${70 - ARROW_TIP.y}px)`);
   });
 });

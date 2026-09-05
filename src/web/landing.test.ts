@@ -15,6 +15,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { HOST_MOVED } from "../shared/embed";
 import { page, payload, script, styles, UUID, unbalanced } from "./testing/landing";
 
 describe("landing page bundle", () => {
@@ -147,6 +148,17 @@ describe("landing page responsive handles", () => {
    * is the failure this catches. Matched against the stylesheets alone, since
    * a comment repeating the width would otherwise satisfy it.
    */
+  /**
+   * A frame moves on screen as the page scrolls and nothing inside it hears,
+   * so the app's own cursor would be left drawn where the pointer no longer
+   * is. The page says so instead. The word it says is the app's, so the two
+   * are read from one place rather than written twice.
+   */
+  it("tells its embeds it moved in the words the app listens for", () => {
+    expect(script()).toContain(`postMessage("${HOST_MOVED}"`);
+    expect(script()).toContain('window.addEventListener("scroll", this.onEmbedScroll');
+  });
+
   it("states the phone breakpoint the same way in the CSS and the script", () => {
     const declared = /static PHONE = "([^"]+)"/.exec(script())?.[1];
     expect(declared).toBeTruthy();

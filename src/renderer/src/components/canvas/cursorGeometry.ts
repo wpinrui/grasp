@@ -99,7 +99,13 @@ export const ARROW_TIP: Hotspot = {
   x: ARROW_FROM + ARROW_POINT.x * ARROW_SCALE,
   y: ARROW_FROM + ARROW_POINT.y * ARROW_SCALE,
 };
-export const BADGE_TRANSFORM = "translate(30.4 30.4) scale(0.45)";
+/**
+ * The badge sits against the corner the Arrow's tail makes, since the Arrow is
+ * the only thing badged and it is drawn from the box's corner. Far enough out
+ * not to touch the tail, and no further: a badge with a gap under it reads as
+ * a second thing on the sheet rather than as part of the cursor.
+ */
+export const BADGE_TRANSFORM = "translate(21.5 21.5) scale(0.45)";
 
 /** The anchor: a gapped crosshair, its arms stopping short of the hotspot. */
 export const ANCHOR: Stroke[] = [
