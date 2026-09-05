@@ -35,8 +35,11 @@
   background: var(--color-flyout-hover);
 }
 
-.mark-panel__button--on {
-  background: var(--color-surface-hover);
+/* The one that is on has to read as on across a hover, so it is the stronger
+   of the two rather than a tint of about the same weight as one. */
+.mark-panel__button--on,
+.mark-panel__button--on:hover {
+  background: var(--color-surface-selected);
 }
 
 .mark-panel__button--away {
