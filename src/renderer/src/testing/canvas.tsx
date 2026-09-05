@@ -94,6 +94,7 @@ function Harness({
       activeTool={tool}
       sketch={sketch}
       pointSize="medium"
+      tieReadings={false}
       view={sketch.view}
       onView={sketch.setView}
       picking={false}

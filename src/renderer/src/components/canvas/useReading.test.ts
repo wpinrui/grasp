@@ -14,7 +14,7 @@ import {
   lineThrough,
   type SketchObject,
 } from "../../sketch/model";
-import { useSketch } from "../../sketch/useSketch";
+import { type Sketch, useSketch } from "../../sketch/useSketch";
 import { useReading } from "./useReading";
 
 const A = { ...createPoint({ x: 0, y: 0 }, "medium"), id: "A" };
@@ -55,6 +55,7 @@ function open(objects: SketchObject[]) {
   const reading = renderHook(() => useReading(sketch.current)).result;
   return {
     reading,
+    sketch,
     at: (id: string) => sketch.current.state.objects.find((object) => object.id === id),
   };
 }
@@ -86,6 +87,74 @@ describe("what a reading's panel sets", () => {
     act(() => reading.current.setLeaders("read", false));
     const bare = at("read");
     expect(bare && isMeasurement(bare) ? bare.leaders : null).toBe(false);
+  });
+});
+
+/**
+ * A number tied to what it reads. The chain is what puts it on the same footing
+ * as the arrows and the arcs, which are worked out from the figure every time
+ * they are drawn and so were never left behind by it.
+ */
+describe("tying a number to its figure", () => {
+  /** A length hung 20 above the middle of the segment from A to B. */
+  const LENGTH = {
+    ...createMeasurement("length", ["east"], { x: 50, y: -20 }),
+    id: "len",
+    bare: true,
+  };
+
+  /** The page with B dragged out to there, which stretches the segment. */
+  function stretched(sketch: { current: Sketch }, x: number) {
+    act(() =>
+      sketch.current.commit({
+        objects: sketch.current.state.objects.map((object) =>
+          object.id === "B" ? { ...object, x } : object,
+        ),
+        selection: [],
+      }),
+    );
+  }
+
+  function spot(found: SketchObject | undefined) {
+    return found && "x" in found ? { x: found.x, y: found.y } : null;
+  }
+
+  it("takes the spot the number is at already, so nothing jumps", () => {
+    const { reading, at } = open([...FIGURE, LENGTH]);
+    act(() => reading.current.setTied("len", true));
+    const tied = at("len");
+    const held = tied && isMeasurement(tied) ? tied.tied : null;
+    // Over the middle of the segment, which is no way along it, and 20 clear.
+    expect(held?.along).toBeCloseTo(0);
+    expect(held?.across).toBeCloseTo(20);
+    expect(spot(tied)).toEqual({ x: 50, y: -20 });
+  });
+
+  it("carries the number as the figure moves under it", () => {
+    const { reading, at, sketch } = open([...FIGURE, LENGTH]);
+    act(() => reading.current.setTied("len", true));
+    stretched(sketch, 300);
+    // Over the middle of the longer segment, and the same 20 clear of it.
+    expect(spot(at("len"))?.x).toBeCloseTo(150);
+    expect(spot(at("len"))?.y).toBeCloseTo(-20);
+  });
+
+  it("leaves the number behind while it is not tied", () => {
+    const { at, sketch } = open([...FIGURE, LENGTH]);
+    stretched(sketch, 300);
+    expect(spot(at("len"))).toEqual({ x: 50, y: -20 });
+  });
+
+  it("lets the number loose where the figure had carried it to", () => {
+    const { reading, at, sketch } = open([...FIGURE, LENGTH]);
+    act(() => reading.current.setTied("len", true));
+    stretched(sketch, 300);
+    act(() => reading.current.setTied("len", false));
+    const loose = at("len");
+    expect(loose && isMeasurement(loose) ? loose.tied : "still tied").toBeUndefined();
+    // Left where the figure had brought it, and it goes no further.
+    stretched(sketch, 500);
+    expect(spot(at("len"))?.x).toBeCloseTo(150);
   });
 });
 

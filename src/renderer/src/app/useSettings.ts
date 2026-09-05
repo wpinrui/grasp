@@ -38,6 +38,7 @@ export function prefsFrom(held: Held): Prefs {
       sheet: held.colourSheet,
     },
     text: { font: held.captionFont, size: held.captionSize },
+    tieReadings: held.tieReadings,
   };
 }
 
@@ -57,6 +58,7 @@ function settingsFrom(prefs: Prefs): Partial<Held> {
     colourSheet: prefs.colours.sheet,
     captionFont: prefs.text.font,
     captionSize: prefs.text.size,
+    tieReadings: prefs.tieReadings === true,
   };
 }
 

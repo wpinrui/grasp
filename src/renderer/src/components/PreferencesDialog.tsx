@@ -148,40 +148,51 @@ export function PreferencesDialog({
         </Row>
       </Group>
 
+      <Group label="Measure:">
+        <div className="dialog__row">
+          <Check
+            label="Move a new reading's number with the figure"
+            on={prefs.tieReadings === true}
+            onToggle={(on) => onChange({ ...prefs, tieReadings: on })}
+          />
+        </div>
+      </Group>
+
       <Group label="View:">
         <div className="dialog__row">
-          <label className="dialog__radio">
-            <input
-              type="checkbox"
-              checked={prefs.zoom === true}
-              onChange={(event) => onChange({ ...prefs, zoom: event.target.checked })}
-            />
-            <span>Allow zooming</span>
-          </label>
+          <Check
+            label="Allow zooming"
+            on={prefs.zoom === true}
+            onToggle={(on) => onChange({ ...prefs, zoom: on })}
+          />
         </div>
       </Group>
 
       <Group label="Apply all of the above to:">
         <div className="dialog__row">
-          <label className="dialog__radio">
-            <input
-              type="checkbox"
-              checked={toSketch}
-              onChange={(event) => onScope({ toSketch: event.target.checked })}
-            />
-            <span>This Sketch</span>
-          </label>
-          <label className="dialog__radio">
-            <input
-              type="checkbox"
-              checked={toNew}
-              onChange={(event) => onScope({ toNew: event.target.checked })}
-            />
-            <span>New Sketches</span>
-          </label>
+          <Check label="This Sketch" on={toSketch} onToggle={(on) => onScope({ toSketch: on })} />
+          <Check label="New Sketches" on={toNew} onToggle={(on) => onScope({ toNew: on })} />
         </div>
       </Group>
     </DialogFrame>
+  );
+}
+
+/** One box to tick, which is how every yes or no on this sheet is asked. */
+function Check({
+  label,
+  on,
+  onToggle,
+}: {
+  label: string;
+  on: boolean;
+  onToggle: (on: boolean) => void;
+}) {
+  return (
+    <label className="dialog__radio">
+      <input type="checkbox" checked={on} onChange={(event) => onToggle(event.target.checked)} />
+      <span>{label}</span>
+    </label>
   );
 }
 

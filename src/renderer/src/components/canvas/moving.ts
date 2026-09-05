@@ -4,13 +4,17 @@
  * Only a point has a place of its own. Everything else is dragged by whatever
  * holds it: a line by its ends, a circle by its centre and its radius point, a
  * fill by its corners, and so on down. Writing is the exception, since it sits
- * where it was put and what it quotes is not what holds it there.
+ * where it was put and what it quotes is not what holds it there. A reading
+ * tied to its figure is the exception to that: what it reads is exactly what
+ * holds it, so a drag sets where it hangs off the figure rather than where it
+ * sits on the sheet.
  */
 
-import { endsOf } from "../../sketch/measure";
+import { endsOf, frameOf, spotOf } from "../../sketch/measure";
 import {
   alongPath,
   familyOf,
+  isMeasurement,
   isPoint,
   isWriting,
   movedBy,
@@ -214,7 +218,30 @@ export function placedBy(objects: SketchObject[], held: Held, by: Position): Ske
     }
     return { ...object, x: to.x, y: to.y };
   });
-  return pulled(placed, held, by);
+  return retied(pulled(placed, held, by), held, by);
+}
+
+/**
+ * The tied readings the drag has hold of, hung where the pointer left them.
+ *
+ * A tied number holds where it hangs off its figure rather than where it sits
+ * on the sheet, so the drop has to be read in the frame the figure has ended up
+ * in, not the one it started in. Read in the old frame, a drag that moves the
+ * figure as well would count itself twice, and one that moves only part of the
+ * figure would count itself by however much that part shifted the frame.
+ */
+function retied(after: SketchObject[], held: Held, by: Position): SketchObject[] {
+  const anyTied = after.some(
+    (object) => isMeasurement(object) && object.tied && held.ids.includes(object.id),
+  );
+  if (!anyTied) return after;
+  const geometry = settle(after).settled;
+  return after.map((object) => {
+    const index = held.ids.indexOf(object.id);
+    if (index === -1 || !isMeasurement(object) || !object.tied) return object;
+    const frame = frameOf(object, after, geometry);
+    return frame ? { ...object, tied: spotOf(frame, wantedAt(held, index, by)) } : object;
+  });
 }
 
 /** Put everything a drag has hold of where it has got to, as the gesture runs. */

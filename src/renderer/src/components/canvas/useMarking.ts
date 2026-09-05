@@ -245,9 +245,13 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
         object.arms.every((arm) => mark.arms.includes(arm)),
     );
     const alone = readings.length === 1 && marked.length === 1 ? readings[0] : null;
-    const hangs = alone
-      ? angleReadingSpot({ reading: alone, mark: turned, reflex }, hangsOn)
-      : null;
+    // A number tied to the angle is carried across the corner by the bisector
+    // turning with the arc, so working a spot out for it here would only be
+    // overwritten as the page settles. One rule owns where a tied number sits.
+    const hangs =
+      alone && !alone.tied
+        ? angleReadingSpot({ reading: alone, mark: turned, reflex }, hangsOn)
+        : null;
     const before = sketch.read();
     sketch.commit({
       ...before,

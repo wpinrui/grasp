@@ -4,6 +4,7 @@ import {
   BoundsBrokenIcon,
   BoundsFullIcon,
   BoundsNoneIcon,
+  ChainIcon,
   FewerPlacesIcon,
   LeadersIcon,
   MorePlacesIcon,
@@ -19,6 +20,8 @@ interface ReadingPanelProps {
   at: Position;
   onBounds: (id: string, bounds: "broken" | "full" | undefined) => void;
   onLeaders: (id: string, leaders: boolean) => void;
+  /** The number tied to what it reads, so it goes wherever the figure goes. */
+  onTie: (id: string, tied: boolean) => void;
   /** An angle read the long way round instead of the short way. */
   onReflex: (id: string, reflex: boolean) => void;
   /** How many places this reading is written to now, its kind's default included. */
@@ -37,6 +40,11 @@ interface ReadingPanelProps {
  * The dotted lines are what let the whole thing be dragged off the segment and
  * still say which segment it is about.
  *
+ * Every reading the Measure tool wrote says whether its number is tied to what
+ * it reads. Tied, the number holds its place against the figure and goes
+ * wherever the figure goes, the way the arrows and the arcs already do; loose,
+ * it sits where it was put.
+ *
  * Every reading says how far it is written out, whatever else it has to say.
  * That starts at what Preferences asks for and is moved a place at a time from
  * here, so one number can be exact while the rest of the sheet stays round.
@@ -46,6 +54,7 @@ export function ReadingPanel({
   at,
   onBounds,
   onLeaders,
+  onTie,
   onReflex,
   places,
   onPlaces,
@@ -53,6 +62,22 @@ export function ReadingPanel({
   const bounds = reading.bounds;
   const least = PLACES[0];
   const most = PLACES[PLACES.length - 1];
+  // Only what the Measure tool wrote is offered the chain. A reading from the
+  // Measure menu is a row of numbers in the corner of the view rather than a
+  // number set down beside a figure, so it has no figure to be tied to.
+  const chain = reading.bare ? (
+    <>
+      <PanelButton
+        label="Move the number with the figure"
+        title="Move the number with the figure"
+        on={reading.tied !== undefined}
+        onClick={() => onTie(reading.id, reading.tied === undefined)}
+      >
+        <ChainIcon />
+      </PanelButton>
+      <PanelSplit />
+    </>
+  ) : null;
   const decimals = (
     <>
       <PanelButton
@@ -88,6 +113,7 @@ export function ReadingPanel({
           <ReflexIcon />
         </PanelButton>
         <PanelSplit />
+        {chain}
         {decimals}
       </PanelShell>
     );
@@ -98,6 +124,7 @@ export function ReadingPanel({
   if (reading.measure !== "length") {
     return (
       <PanelShell at={at} colour={MEASURE_COLOUR}>
+        {chain}
         {decimals}
       </PanelShell>
     );
@@ -140,6 +167,7 @@ export function ReadingPanel({
         <LeadersIcon />
       </PanelButton>
       <PanelSplit />
+      {chain}
       {decimals}
     </PanelShell>
   );

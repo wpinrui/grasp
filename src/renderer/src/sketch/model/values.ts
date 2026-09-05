@@ -150,6 +150,17 @@ export interface SketchTable extends Labelled {
   size?: number;
 }
 
+/**
+ * Where a tied reading's number hangs, in the frame of what it reads: how far
+ * along that frame runs, and how far off it, both in sheet units. Where a
+ * number sits beside a figure is a drawing convention rather than a part of the
+ * figure, so the offset holds as the figure grows rather than growing with it.
+ */
+export interface ReadingSpot {
+  along: number;
+  across: number;
+}
+
 /** The Measure entries that read a geometric property off the figure. */
 export const MEASURES = [
   "length",
@@ -195,6 +206,14 @@ export interface SketchMeasurement extends Labelled {
    * measurement made from the Measure menu says what it is measuring first.
    */
   bare?: boolean;
+  /**
+   * Where the number hangs in the frame of what it reads, set on a reading that
+   * is tied to its figure. Absent on one that stays where it was put, which
+   * is what `x` and `y` alone mean. On a tied one `x` and `y` are worked out
+   * from this every time the page settles, so the number goes wherever the
+   * figure goes.
+   */
+  tied?: ReadingSpot;
   /**
    * How the segment a length is taken off is drawn out as a dimension: arrows
    * from end to end, broken by the number in the middle or running the whole

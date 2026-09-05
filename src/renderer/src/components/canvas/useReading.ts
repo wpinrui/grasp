@@ -11,7 +11,8 @@
  */
 
 import { useState } from "react";
-import { isMark, isMeasurement } from "../../sketch/model";
+import { frameOf, spotOf } from "../../sketch/measure";
+import { isMark, isMeasurement, type SketchMeasurement, settle } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
 import { sameAngle } from "./readings";
 import { sameReading, type Written } from "./sheet";
@@ -54,15 +55,23 @@ export function useReading(sketch: Sketch) {
     );
   }
 
-  /** How a length is drawn out, and whether it carries its dotted lines. */
-  function setBounds(id: string, bounds: "broken" | "full" | undefined) {
+  /**
+   * One reading changed, committed as one undo step. Everything the panel sets
+   * but the reflex is one field on one reading, so they all come through here.
+   */
+  function change(id: string, part: Partial<SketchMeasurement>) {
     const before = sketch.read();
     sketch.commit({
       ...before,
       objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, bounds } : object,
+        object.id === id && isMeasurement(object) ? { ...object, ...part } : object,
       ),
     });
+  }
+
+  /** How a length is drawn out, and whether it carries its dotted lines. */
+  function setBounds(id: string, bounds: "broken" | "full" | undefined) {
+    change(id, { bounds });
   }
 
   /**
@@ -70,13 +79,7 @@ export function useReading(sketch: Sketch) {
    * keeps what it was given while the rest of the sheet follows Preferences.
    */
   function setPlaces(id: string, places: number) {
-    const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, places } : object,
-      ),
-    });
+    change(id, { places });
   }
 
   /**
@@ -115,14 +118,25 @@ export function useReading(sketch: Sketch) {
     });
   }
 
-  function setLeaders(id: string, leaders: boolean) {
+  /**
+   * The number tied to what it reads, or let loose again. Tying it takes the
+   * spot it is at now, so nothing jumps as the chain goes on; letting it loose
+   * leaves it where the figure had carried it to.
+   */
+  function setTied(id: string, on: boolean) {
     const before = sketch.read();
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id && isMeasurement(object) ? { ...object, leaders } : object,
-      ),
-    });
+    const reading = before.objects.find((object) => object.id === id);
+    if (!reading || !isMeasurement(reading)) return;
+    if (!on) {
+      change(id, { tied: undefined });
+      return;
+    }
+    const frame = frameOf(reading, before.objects, settle(before.objects).settled);
+    if (frame) change(id, { tied: spotOf(frame, reading) });
+  }
+
+  function setLeaders(id: string, leaders: boolean) {
+    change(id, { leaders });
   }
   return {
     offer,
@@ -131,6 +145,7 @@ export function useReading(sketch: Sketch) {
     panel,
     setBounds,
     setLeaders,
+    setTied,
     setPanel,
     setPlaces,
     setReflex,

@@ -117,6 +117,7 @@ import {
   readingAlready,
   readingBox,
   readingFrom,
+  tiedToFigure,
 } from "./canvas/readings";
 import { SheetProvider } from "./canvas/SheetContext";
 import {
@@ -221,6 +222,8 @@ interface CanvasProps {
    * control that would do anything.
    */
   zoomable: boolean;
+  /** Whether a number the Measure tool writes comes out tied to what it reads. */
+  tieReadings: boolean;
   /** Counted up when the Text tool is double-clicked, which asks for a caption. */
   captionWanted: number;
   /**
@@ -309,6 +312,7 @@ export function Canvas({
   onEditing,
   editor,
   zoomable,
+  tieReadings,
   captionWanted,
   captionLook,
   cancelRef,
@@ -530,6 +534,7 @@ export function Canvas({
     offerNothing,
     setBounds,
     setLeaders,
+    setTied,
     setPlaces,
     setReflex: setReadingReflex,
   } = useReading(sketch);
@@ -963,7 +968,10 @@ export function Canvas({
 
   /** Write the number for one angle, by the two arms it runs between. */
   function readAngle(corner: string, arms: [string, string]) {
-    const written = angleWritten({ corner, arms, hit: null, named: true }, measuringNow());
+    const written = tiedToFigure(
+      angleWritten({ corner, arms, hit: null, named: true }, measuringNow()),
+      measuringNow(),
+    );
     if (!written) return;
     const already = readingAlready(written, measuringNow());
     if (already) {
@@ -1021,6 +1029,7 @@ export function Canvas({
       saying: (made) => readingFor(made).value,
       lastMark: lastMark.current,
       clearOf: clearOfCorner,
+      tieReadings,
     };
   }
 
@@ -1869,6 +1878,7 @@ export function Canvas({
               at={readingSpot}
               onBounds={setBounds}
               onLeaders={setLeaders}
+              onTie={setTied}
               onReflex={setReadingReflex}
               places={readingOpen.places ?? placesFor(readingOpen.measure)}
               onPlaces={setPlaces}

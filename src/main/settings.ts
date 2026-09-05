@@ -42,6 +42,16 @@ function step(value: unknown, fallback: number): number {
   return value;
 }
 
+/** The settings that hold a colour token, which is what `inks` reads. */
+const INKS = [
+  "colourPoint",
+  "colourPath",
+  "colourFill",
+  "colourMark",
+  "colourLabel",
+  "colourSheet",
+] as const;
+
 /** A stored colour token, which is a name rather than a colour. */
 function token(value: unknown, fallback: string): string {
   return typeof value === "string" && value.startsWith("--color-") ? value : fallback;
@@ -50,6 +60,12 @@ function token(value: unknown, fallback: string): string {
 /** A stored choice, or the default where it is missing or is not one of them. */
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
   return allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+/** The remembered ink for each kind, and the paper, each falling back on its own. */
+function inks(stored: Partial<Settings>): Pick<Settings, (typeof INKS)[number]> {
+  const kinds = INKS.map((key) => [key, token(stored[key], DEFAULT_SETTINGS[key])] as const);
+  return Object.fromEntries(kinds) as Pick<Settings, (typeof INKS)[number]>;
 }
 
 /** What was remembered, or the defaults when there is nothing to read. */
@@ -103,15 +119,13 @@ function read(): Settings {
       distanceUnit: oneOf(stored.distanceUnit, ["cm", "mm", "in"] as const, "cm"),
       distancePlaces: number(stored.distancePlaces, DEFAULT_SETTINGS.distancePlaces),
       otherPlaces: number(stored.otherPlaces, DEFAULT_SETTINGS.otherPlaces),
-      colourPoint: token(stored.colourPoint, DEFAULT_SETTINGS.colourPoint),
-      colourPath: token(stored.colourPath, DEFAULT_SETTINGS.colourPath),
-      colourFill: token(stored.colourFill, DEFAULT_SETTINGS.colourFill),
-      colourMark: token(stored.colourMark, DEFAULT_SETTINGS.colourMark),
-      colourLabel: token(stored.colourLabel, DEFAULT_SETTINGS.colourLabel),
-      colourSheet: token(stored.colourSheet, DEFAULT_SETTINGS.colourSheet),
+      ...inks(stored),
       captionFont:
         typeof stored.captionFont === "string" ? stored.captionFont : DEFAULT_SETTINGS.captionFont,
       captionSize: number(stored.captionSize, DEFAULT_SETTINGS.captionSize),
+      // A number written by the tool stays where it was put from a fresh
+      // install, so this is a thing to turn on rather than one to turn off.
+      tieReadings: stored.tieReadings === true,
       printPoints: stored.printPoints === true,
       printFill: oneOf(
         stored.printFill,

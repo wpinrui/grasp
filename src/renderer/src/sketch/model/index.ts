@@ -190,6 +190,7 @@ export type {
   MarkForm,
   MeasureKind,
   ParameterUnit,
+  ReadingSpot,
   SketchButton,
   SketchCalculation,
   SketchFunction,

@@ -128,7 +128,9 @@ export function markPath(mark: SketchMark): string | null {
 /**
  * Everything that sits on the sheet as text rather than as geometry. It has a
  * place of its own and no parents holding it there, so a drag carries it and
- * whatever it reads stays put.
+ * whatever it reads stays put. A reading tied to its figure is the one
+ * exception: its place is worked out from the figure every time the page
+ * settles, so it is carried by the figure instead.
  */
 export type SketchWriting =
   | SketchCaption

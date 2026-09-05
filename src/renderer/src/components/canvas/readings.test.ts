@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
+import { frameOf, spotIn } from "../../sketch/measure";
 import {
   createMeasurement,
   createPoint,
@@ -36,6 +37,7 @@ function measuring(measure: string | null, objects: SketchObject[] = FIGURE): Me
     saying: () => "5 cm",
     lastMark: { angle: 1, radius: 24 },
     clearOf: () => 24,
+    tieReadings: false,
   };
 }
 
@@ -107,5 +109,34 @@ describe("what is under the pointer", () => {
   it("finds a point under the pointer, and nothing out on bare sheet", () => {
     expect(pointUnder({ x: 1, y: 1 }, measuring(null))?.id).toBe("A");
     expect(pointUnder({ x: 50, y: 50 }, measuring(null))).toBe(null);
+  });
+});
+
+/**
+ * A number the tool writes tied to what it reads, where Preferences asks for
+ * that. It is settled as the tool writes it rather than by a pass over the
+ * page, since only the tool knows a reading was written by the tool just now: a
+ * pasted copy of one carries every other mark of having been.
+ */
+describe("a number the tool writes tied to its figure", () => {
+  function written(tieReadings: boolean): SketchMeasurement {
+    const found = readingFrom({ x: 50, y: 0 }, { ...measuring("length"), tieReadings });
+    if (!found) throw new Error("a length reading is written either way");
+    return found.reading;
+  }
+
+  it("leaves the number loose where Preferences does not ask", () => {
+    expect(written(false).tied).toBeUndefined();
+  });
+
+  it("ties the number where it hangs, so turning the chain on moves nothing", () => {
+    const tied = written(true);
+    const loose = written(false);
+    if (!tied.tied) throw new Error("Preferences asked for it to be tied");
+    const frame = frameOf(tied, FIGURE, settle(FIGURE).settled);
+    if (!frame) throw new Error("a segment carries a frame");
+    const at = spotIn(frame, tied.tied);
+    expect(at.x).toBeCloseTo(loose.x);
+    expect(at.y).toBeCloseTo(loose.y);
   });
 });

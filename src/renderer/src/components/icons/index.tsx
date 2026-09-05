@@ -32,6 +32,7 @@ export {
   BoundsBrokenIcon,
   BoundsFullIcon,
   BoundsNoneIcon,
+  ChainIcon,
   FewerPlacesIcon,
   LeadersIcon,
   MorePlacesIcon,

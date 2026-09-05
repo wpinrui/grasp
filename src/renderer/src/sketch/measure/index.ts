@@ -12,6 +12,8 @@
  */
 
 export { amountOf } from "./amount";
+export type { Frame } from "./frame";
+export { frameOf, spotIn, spotOf } from "./frame";
 export {
   fromSheetTerms,
   inSheetTerms,

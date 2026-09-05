@@ -3,14 +3,15 @@ import { type Arming, armedOnto } from "./armed";
 import {
   namedWhereShown,
   type PointSize,
-  resolve,
   type SketchObject,
   type SketchState,
+  settle,
   withDependents,
 } from "./model";
 import { demotedUnder } from "./overlaps";
 import { type PageContent, usePages } from "./pages";
 import { spelledOutNamed } from "./spelled";
+import { readingsPlaced } from "./tied";
 
 /**
  * The sketch: what a tool does to the page that is up.
@@ -85,8 +86,9 @@ export function useSketch() {
   );
 
   /**
-   * Every change goes through here, so an image is never left behind by the
-   * point it came from: `resolve` settles them all before anything is shown.
+   * Every change goes through here, so nothing is ever left behind by what it
+   * hangs off: settling puts every image where its point has got to, and a
+   * tied reading where its figure has got to, before anything is shown.
    */
   const apply = useCallback(
     (next: SketchState, arm = true) => {
@@ -98,7 +100,12 @@ export function useSketch() {
       const objects = arm
         ? armed(namedWhereShown(spelledOut(namedIfWanted(next.objects))))
         : next.objects;
-      write({ ...next, objects: resolve(objects) });
+      // A tied reading is placed off the settled geometry, so it comes after
+      // it. Moving a number moves no geometry, so nothing has to settle again,
+      // and undo and redo go through it too: what they hand back was arrived at
+      // with the figure where it is, so it lands in the same place.
+      const page = settle(objects);
+      write({ ...next, objects: readingsPlaced(page.objects, page.settled) });
     },
     [write, armed, spelledOut, namedIfWanted],
   );

@@ -53,6 +53,14 @@ export interface Prefs {
   colours: Colours;
   text: Text;
   /**
+   * Whether a number the Measure tool writes comes out tied to what it reads,
+   * so it goes wherever the figure goes. It says what a new reading starts as
+   * and nothing more: what is already on the sheet keeps whatever it was set
+   * to, since where a number has been put is not Preferences' to undo. Absent
+   * on a sketch saved before there was a choice, which reads as off.
+   */
+  tieReadings?: boolean;
+  /**
    * Whether the page bar shows its tabs, which Document Options sets. It
    * belongs to the sketch rather than to the window, since a sketch handed to
    * somebody else should open the way it was left. Absent on one saved before
@@ -101,6 +109,7 @@ export const DEFAULT_PREFS: Prefs = {
     sheet: "--color-sheet-white",
   },
   text: { font: "Times New Roman", size: 14 },
+  tieReadings: false,
   pageTabs: true,
   zoom: false,
 };
