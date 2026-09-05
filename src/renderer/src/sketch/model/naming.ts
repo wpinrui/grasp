@@ -1,7 +1,6 @@
 import { cornersOf, wedgeOf } from "./figures";
 import {
   isArc,
-  isButton,
   isCalculation,
   isCaption,
   isCircle,
@@ -60,8 +59,6 @@ function runFor(object: SketchObject, objects: SketchObject[]): string | null {
   if (isCaption(object)) return null;
   // A custom transform is called whatever it was named when it was defined.
   if (isTransform(object)) return null;
-  // So is a button: its name is written on it.
-  if (isButton(object)) return null;
   // A mark is an ornament. It says what it says by how it is drawn, so it
   // carries no name and takes no turn in any run.
   if (isMark(object)) return null;

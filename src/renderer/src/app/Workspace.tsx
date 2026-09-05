@@ -19,7 +19,6 @@ import { togglePick } from "../sketch/picking";
 import { canvasTokens } from "../sketch/prefs";
 import type { useDocument } from "../sketch/useDocument";
 import type { Sketch } from "../sketch/useSketch";
-import type { Buttons } from "./buttons";
 import type { Naming } from "./labels";
 import type { Palette as PaletteBar } from "./palette";
 import type { Dialogs } from "./useDialogs";
@@ -41,7 +40,6 @@ interface WorkspaceProps {
   relabel: Relabelling;
   regular: Regular;
   numbers: Numbers;
-  buttons: Buttons;
   palette: PaletteBar;
   objects: SketchObject[];
   /** The rows the labels panel lists, counted for its tab. */
@@ -62,7 +60,6 @@ export function Workspace({
   relabel,
   regular,
   numbers,
-  buttons,
   palette,
   objects,
   named,
@@ -106,7 +103,6 @@ export function Workspace({
           onRename={naming.rename}
           onEditValue={numbers.editValue}
           onMarkMirror={moves.setMirror}
-          onPressButton={buttons.pressButton}
           onCaptureRow={numbers.captureRow}
           onDropRow={(id) => numbers.dropRows(id, false)}
           onToggleLabel={(id) => {

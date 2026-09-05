@@ -11,13 +11,11 @@
 import { DEFAULT_CAPTION } from "../components/typeset";
 import {
   DEFAULT_LABEL,
-  isButton,
   isCaption,
   isFunction,
   isTable,
   isValue,
   type LabelState,
-  type SketchButton,
   type SketchCalculation,
   type SketchCaption,
   type SketchFunction,
@@ -35,17 +33,10 @@ export type Written =
   | SketchParameter
   | SketchCalculation
   | SketchFunction
-  | SketchTable
-  | SketchButton;
+  | SketchTable;
 
 export function isWritten(object: SketchObject): object is Written {
-  return (
-    isCaption(object) ||
-    isValue(object) ||
-    isFunction(object) ||
-    isTable(object) ||
-    isButton(object)
-  );
+  return isCaption(object) || isValue(object) || isFunction(object) || isTable(object);
 }
 
 /**

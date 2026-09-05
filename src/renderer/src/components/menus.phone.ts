@@ -70,7 +70,6 @@ const CUT_TITLES = new Set<string>(["Measure", "Number", "Help"]);
 
 /** Submenus are cut by name, having no action of their own to cut them by. */
 const CUT_LABELS = new Set<string>([
-  "Action Buttons",
   // Recents are kept as handles to files on a machine, which a phone browser
   // mostly cannot hold on to, and reopening one needs a picker it may not
   // have either. A list that cannot open what it lists is worse than no list.

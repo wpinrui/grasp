@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { buttonActions } from "./app/buttons";
 import { clipboardActions } from "./app/clipboard";
 import { customActions } from "./app/customs";
 import { Dialogs } from "./app/Dialogs";
@@ -163,15 +162,6 @@ export function App() {
     naming,
     names,
     page: sketch.activeId,
-  });
-  /** The buttons on the sheet, and what pressing one does. */
-  const buttons = buttonActions({
-    sketch,
-    building,
-    selection,
-    setButtonDialog: dialogs.setButtonDialog,
-    spot: numbers.valueSpot,
-    hideObjects: naming.hideObjects,
   });
   /** The transforms this page was shown by example. */
   const custom = customActions({
@@ -397,7 +387,6 @@ export function App() {
         dialogs={dialogs}
         numbers={numbers}
         naming={naming}
-        buttons={buttons}
         custom={custom}
         settings={settings}
         moves={moves}
@@ -426,7 +415,6 @@ export function App() {
         relabel={relabel}
         regular={regular}
         numbers={numbers}
-        buttons={buttons}
         palette={palette}
         objects={objects}
         named={named}
@@ -465,7 +453,6 @@ export function App() {
         numbers={numbers}
         relabel={relabel}
         regular={regular}
-        buttons={buttons}
         custom={custom}
         settings={settings}
         moves={moves}

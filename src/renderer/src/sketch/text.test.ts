@@ -2,7 +2,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CAPTION } from "../components/typeset";
 import type {
-  SketchButton,
   SketchCalculation,
   SketchCaption,
   SketchFunction,
@@ -86,16 +85,6 @@ const table = (over: Partial<SketchTable> = {}): SketchTable => ({
   ...over,
 });
 
-const button = (over: Partial<SketchButton> = {}): SketchButton => ({
-  id: "b",
-  kind: "button",
-  name: "Show",
-  does: { form: "hide-show", of: ["a"], does: "toggle" },
-  x: 0,
-  y: 0,
-  ...over,
-});
-
 const inked = (colour?: string): SketchLine => ({ ...line, colour });
 
 const line: SketchLine = {
@@ -113,7 +102,6 @@ describe("what counts as writing", () => {
     expect(isWritten(calculation())).toBe(true);
     expect(isWritten(graph())).toBe(true);
     expect(isWritten(table())).toBe(true);
-    expect(isWritten(button())).toBe(true);
   });
 
   it("leaves out what is drawn rather than written", () => {
@@ -172,7 +160,7 @@ describe("what a mixed pick agrees about", () => {
   });
 
   it("says what they share", () => {
-    const looks = [lookOf(reading()), lookOf(table()), lookOf(button())];
+    const looks = [lookOf(reading()), lookOf(table())];
     expect(textStyling(looks)).toEqual({
       font: DEFAULT_CAPTION.font,
       size: DEFAULT_CAPTION.size,

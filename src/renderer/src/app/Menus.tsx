@@ -6,7 +6,6 @@
  * window owns arrives as one of those handles rather than as thirty callbacks.
  */
 
-import type { ButtonForm } from "../components/ButtonDialog";
 import { MenuBar } from "../components/MenuBar";
 import type { MenuAction } from "../components/menus";
 import type { Building } from "../sketch/builds";
@@ -24,7 +23,6 @@ import type { PointSize, SketchObject } from "../sketch/model";
 import { transformable } from "../sketch/transforms";
 import type { useDocument } from "../sketch/useDocument";
 import type { Sketch } from "../sketch/useSketch";
-import type { Buttons } from "./buttons";
 import type { Clipboard } from "./clipboard";
 import type { Custom } from "./customs";
 import type { Naming } from "./labels";
@@ -73,7 +71,6 @@ interface MenusProps {
   dialogs: Dialogs;
   numbers: Numbers;
   naming: Naming;
-  buttons: Buttons;
   custom: Custom;
   settings: Settings;
   moves: Moves;
@@ -103,7 +100,6 @@ export function Menus({
   dialogs,
   numbers,
   naming,
-  buttons,
   custom,
   settings,
   moves,
@@ -133,10 +129,6 @@ export function Menus({
     if (action === "export-file" || action === "export-clipboard") {
       // Nothing drawn is nothing to export.
       return objects.some((object) => object.hidden !== true);
-    }
-    if (action.startsWith("button-")) {
-      const form = action.slice("button-".length) as ButtonForm;
-      return form === "link" ? sketch.pages.length > 0 : buttons.buttonWants(form).length > 0;
     }
     if (action === "split-merge") return moves.splitMerge !== null;
     if (action === "edit-definition") return numbers.editable() !== null;
@@ -249,8 +241,6 @@ export function Menus({
             objects.filter((object) => object.hidden === true).map((object) => object.id),
             false,
           );
-        } else if (action.startsWith("button-")) {
-          dialogs.setButtonDialog(action.slice("button-".length) as ButtonForm);
         } else if (action === "split-merge") moves.runSplitMerge();
         else if (action === "edit-definition") {
           const found = numbers.editable();

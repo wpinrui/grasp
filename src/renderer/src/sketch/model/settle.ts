@@ -17,7 +17,6 @@ import {
 import {
   familyOf,
   isArc,
-  isButton,
   isCaption,
   isCircle,
   isInterior,
@@ -74,7 +73,6 @@ function place(object: SketchObject, settled: Settled): void {
   // A custom transform is a relationship, not a thing on the sheet, so it has
   // nowhere to be put.
   if (isTransform(object)) return;
-  if (isButton(object)) return;
   const at = object.from ? imageOf(object.from, settled) : null;
   settled.points.set(object.id, at ? { ...object, x: at.x, y: at.y } : object);
 }

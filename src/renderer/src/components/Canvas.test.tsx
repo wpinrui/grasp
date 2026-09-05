@@ -84,14 +84,6 @@ const FIGURE: SketchObject[] = [
   { id: "calc", kind: "calculation", expression: { kind: "number", value: 2 }, x: 560, y: 160 },
   { id: "tab", kind: "table", of: ["par"], rows: [], x: 560, y: 200 },
   {
-    id: "but",
-    kind: "button",
-    name: "Show",
-    does: { form: "hide-show", does: "toggle", of: ["C"] },
-    x: 560,
-    y: 260,
-  },
-  {
     id: "cap",
     kind: "caption",
     x: 100,
@@ -277,7 +269,6 @@ describe("the gestures the sheet is drawn with", () => {
         "M",
         "ang",
         "arc",
-        "but",
         "calc",
         "cap",
         "circ",
