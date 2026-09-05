@@ -42,9 +42,7 @@ export function IterateDialog({
             >
               <span className="dialog__seed">Seed {index + 1}</span>
               <span className="dialog__arrow">&rarr;</span>
-              <span className="dialog__target">
-                {target ? `Image ${index + 1}` : "click a point"}
-              </span>
+              <span className="dialog__target">{target ? `Image ${index + 1}` : "—"}</span>
             </div>
           ))}
         </div>

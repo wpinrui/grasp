@@ -204,7 +204,7 @@ export function CalculatorDialog({
     ...values.map((value) => ({ text: value.name, label: `${value.name}   ${value.says}` })),
     { text: "π" },
     { text: "e" },
-    { text: "", label: "New Parameter…", act: onNewParameter },
+    { text: "", label: "New Parameter...", act: onNewParameter },
   ];
 
   return (

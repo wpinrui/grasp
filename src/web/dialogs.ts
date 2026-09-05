@@ -65,7 +65,7 @@ function ask<T>(message: string, choices: Choice<T>[]): Promise<T> {
 
 /** The three-way unsaved-changes question, the same one the desktop app asks. */
 export function askUnsaved(name: string): Promise<"save" | "discard" | "cancel"> {
-  return ask<"save" | "discard" | "cancel">(`Save changes to ${name} before closing?`, [
+  return ask<"save" | "discard" | "cancel">(`Save changes to ${name}?`, [
     { label: "Save", answer: "save", primary: true },
     { label: "Don't Save", answer: "discard" },
     { label: "Cancel", answer: "cancel" },
@@ -73,7 +73,7 @@ export function askUnsaved(name: string): Promise<"save" | "discard" | "cancel">
 }
 
 export function askDeletePage(name: string): Promise<boolean> {
-  return ask<boolean>(`Are you sure you want to delete ${name}? This cannot be undone.`, [
+  return ask<boolean>(`This will delete ${name}. It cannot be undone.`, [
     { label: "Delete", answer: true },
     { label: "Cancel", answer: false, primary: true },
   ]);

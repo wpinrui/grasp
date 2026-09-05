@@ -233,7 +233,7 @@ export function ScriptDialog({
                 <p className={`script__say script__say--${copied === "yes" ? "done" : "failed"}`}>
                   {copied === "yes"
                     ? "✓ Instructions for the AI are on your clipboard."
-                    : "✕ The instructions could not be copied. Press Copy again."}
+                    : "✕ The instructions are not on your clipboard. Press Copy again."}
                 </p>
                 <p className="script__note">
                   Paste them into any AI chat: ChatGPT, Claude, Gemini, whichever you use. It will
@@ -249,7 +249,7 @@ export function ScriptDialog({
                     className="script__link"
                     onClick={() => setShowing((was) => !was)}
                   >
-                    {showing ? "Hide the instructions" : "Show me the instructions"}
+                    {showing ? "Hide the instructions" : "Show the instructions"}
                   </button>
                 </div>
                 {showing && <pre className="script__prompt">{prompt}</pre>}

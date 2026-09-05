@@ -174,7 +174,7 @@ export function DocumentOptionsDialog({
           )}
         </div>
         <button type="button" className="docopts__action" disabled={rows.length < 2} onClick={drop}>
-          Remove Page
+          Delete Page
         </button>
       </div>
 
@@ -184,7 +184,7 @@ export function DocumentOptionsDialog({
       </label>
       <p className="docopts__note">
         Nothing here happens until OK. Cancel leaves the sketch exactly as it was, which is the only
-        way back from removing a page.
+        way back from deleting a page.
       </p>
     </DialogFrame>
   );

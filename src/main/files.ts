@@ -235,8 +235,8 @@ function registerPromptHandlers(): void {
     const { response } = await dialog.showMessageBox(window, {
       type: "warning",
       title: "GRASP",
-      message: `Are you sure you want to delete ${name}?`,
-      detail: "This cannot be undone.",
+      message: `This will delete ${name}.`,
+      detail: "It cannot be undone.",
       buttons: ["Delete", "Cancel"],
       defaultId: 1,
       cancelId: 1,
