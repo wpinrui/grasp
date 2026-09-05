@@ -1,5 +1,4 @@
 import { type CSSProperties, type ReactNode, useEffect } from "react";
-import { usePhone } from "../phone";
 import { CloseIcon } from "./icons";
 import { useDialogPlacement } from "./useDialogPlacement";
 import "./TransformDialog.css";
@@ -50,7 +49,7 @@ export function DialogFrame({
   quiet,
   children,
 }: DialogFrameProps) {
-  const place = useDialogPlacement({ opensAt, phone: usePhone() });
+  const place = useDialogPlacement(opensAt);
 
   useEffect(() => {
     if (quiet) return;

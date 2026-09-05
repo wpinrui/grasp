@@ -7,6 +7,12 @@
  * window, though. What it is asking has to be readable and its buttons have to
  * be reachable, whatever size the window is now, and neither is true of a
  * dialog hanging off an edge.
+ *
+ * Where the window cannot hold all of one, the height it is held to is kept
+ * here as a number rather than as a yes or no. The window's size is not state
+ * and no render follows a resize on its own, so a flag would leave a dialog
+ * that was already capped wearing a cap measured against the window it used to
+ * be in.
  */
 
 import {
@@ -19,6 +25,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePhone } from "../phone";
 import { inWindow } from "./inWindow";
 
 /** Where a dialog opens: clear of the middle, so the sheet stays clickable. */
@@ -30,7 +37,7 @@ const EDGE = 8;
 /** How far a dialog opened beside a spot on the sheet stands clear of it. */
 const CLEAR = { x: 36, y: 24 };
 
-export interface Placement {
+interface Placement {
   box: RefObject<HTMLDivElement | null>;
   body: RefObject<HTMLDivElement | null>;
   /** Where the dialog is placed and how tall it may be, or nothing on a phone. */
@@ -42,15 +49,16 @@ export interface Placement {
   endDrag: () => void;
 }
 
-interface Placing {
-  /** The spot on the sheet the dialog was opened beside, where there was one. */
-  opensAt?: { x: number; y: number };
-  phone: boolean;
-}
-
-export function useDialogPlacement({ opensAt, phone }: Placing): Placement {
+/**
+ * `opensAt` is the spot on the sheet the dialog was asked from, where it was
+ * asked from one. It is where the dialog starts and nothing more: the bar drags
+ * it from there like any other.
+ */
+export function useDialogPlacement(opensAt?: { x: number; y: number }): Placement {
+  const phone = usePhone();
   const [at, setAt] = useState(() => opening(opensAt));
-  const [tall, setTall] = useState(false);
+  /** The height the dialog is held to, or null while the window can hold it. */
+  const [cap, setCap] = useState<number | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
@@ -59,12 +67,13 @@ export function useDialogPlacement({ opensAt, phone }: Placing): Placement {
     const node = box.current;
     const sheet = body.current;
     if (phone || !node || !sheet) return;
+    const room = window.innerHeight - EDGE * 2;
     // The bar, the buttons and the border: everything the body is not. Those
     // are held at their own height by `flex-shrink: 0`, so this is the same
     // number whether or not the body is already scrolling, and capping the
     // dialog cannot go on to uncap it.
     const chrome = node.offsetHeight - sheet.offsetHeight;
-    setTall(chrome + sheet.scrollHeight > room());
+    setCap(chrome + sheet.scrollHeight > room ? room : null);
     setAt((was) => {
       const put = inWindow(was, { width: node.offsetWidth, height: node.offsetHeight }, EDGE);
       return put.x === was.x && put.y === was.y ? was : put;
@@ -104,19 +113,18 @@ export function useDialogPlacement({ opensAt, phone }: Placing): Placement {
   return {
     box,
     body,
-    style: phone ? undefined : written(at, tall),
-    tall,
+    // A touch screen has nowhere to drag a dialog to and a keyboard waiting to
+    // cover the bottom of it, so the stylesheet places it against the top of
+    // what is visible instead. Left off rather than overridden, so that rule
+    // needs no importance to win.
+    style: phone ? undefined : written(at, cap),
+    tall: cap !== null,
     startDrag,
     onDrag,
     endDrag: () => {
       drag.current = null;
     },
   };
-}
-
-/** How much of the window's height a dialog may take up. */
-function room(): number {
-  return window.innerHeight - EDGE * 2;
 }
 
 /** Where a dialog starts, before there is one to measure. */
@@ -129,12 +137,11 @@ function opening(opensAt?: { x: number; y: number }) {
   };
 }
 
-/**
- * The placement written onto the dialog, which is left off entirely on a phone:
- * there is nowhere to drag one to and a keyboard waiting to cover the bottom of
- * it, so the stylesheet pins it to the top of what is visible instead. Left off
- * rather than overridden, so that rule needs no importance to win.
- */
-function written(at: { x: number; y: number }, tall: boolean): CSSProperties {
-  return { left: `${at.x}px`, top: `${at.y}px`, maxHeight: tall ? `${room()}px` : undefined };
+/** The placement written onto the dialog itself. */
+function written(at: { x: number; y: number }, cap: number | null): CSSProperties {
+  return {
+    left: `${at.x}px`,
+    top: `${at.y}px`,
+    maxHeight: cap === null ? undefined : `${cap}px`,
+  };
 }

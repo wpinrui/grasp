@@ -6,11 +6,26 @@ import { DialogFrame } from "./DialogFrame";
 let captured: number[];
 
 /**
- * What the dialog and its body measure, since jsdom lays nothing out. The
- * chrome is the difference between the two heights, and `content` is what the
- * body is holding, which is what says whether it has to scroll.
+ * What the dialog is made of, since jsdom lays nothing out: how wide it is, how
+ * much of its height is bar and buttons and border, and how much its body is
+ * holding. Everything else is worked out from those the way a browser would.
  */
-const size = { width: 300, height: 400, body: 300, content: 300 };
+const size = { width: 300, chrome: 100, content: 300 };
+
+/** How tall the dialog would be were the window willing to hold all of it. */
+function natural(): number {
+  return size.chrome + size.content;
+}
+
+/**
+ * How tall the dialog actually is. A cap is a ceiling and not a height, so a
+ * dialog under one that it does not reach is still its own size, and modelling
+ * that is the point: it is what tells a stale cap from a fresh one.
+ */
+function shown(dialog: HTMLElement): number {
+  const cap = Number.parseFloat(dialog.style.maxHeight);
+  return Number.isNaN(cap) ? natural() : Math.min(natural(), cap);
+}
 
 /** The measurements jsdom answers with nothing, told for the boxes that matter. */
 const MEASURED = ["offsetWidth", "offsetHeight", "scrollHeight"] as const;
@@ -21,8 +36,12 @@ function tellSizes(): () => void {
   const answers: Record<(typeof MEASURED)[number], (element: HTMLElement) => number> = {
     offsetWidth: (element) => (element.classList.contains("dialog") ? size.width : 0),
     offsetHeight: (element) => {
-      if (element.classList.contains("dialog")) return size.height;
-      return element.classList.contains("dialog__body") ? size.body : 0;
+      if (element.classList.contains("dialog")) return shown(element);
+      if (!element.classList.contains("dialog__body")) return 0;
+      // The bar and the buttons hold their height, so whatever the dialog gives
+      // up comes off the body. That is `flex-shrink: 0` in TransformDialog.css.
+      const dialog = element.closest(".dialog") as HTMLElement | null;
+      return dialog ? shown(dialog) - size.chrome : 0;
     },
     scrollHeight: (element) => (element.classList.contains("dialog__body") ? size.content : 0),
   };
@@ -48,7 +67,7 @@ let forgetSizes: () => void;
 
 beforeEach(() => {
   captured = [];
-  Object.assign(size, { width: 300, height: 400, body: 300, content: 300 });
+  Object.assign(size, { width: 300, chrome: 100, content: 300 });
   forgetSizes = tellSizes();
   Element.prototype.setPointerCapture = function capture(id: number) {
     captured.push(id);
@@ -106,7 +125,7 @@ function frame(at?: { x: number; y: number }) {
 
 /** The far corner a dialog placed anywhere may not reach past. */
 function corner() {
-  return { x: window.innerWidth - size.width - 8, y: window.innerHeight - size.height - 8 };
+  return { x: window.innerWidth - size.width - 8, y: window.innerHeight - natural() - 8 };
 }
 
 /**
@@ -158,6 +177,35 @@ describe("the chrome a dialog is put up in", () => {
     expect(at()).toEqual({ x: 8, y: 8 });
   });
 
+  it("lets go at the end of a drag", () => {
+    const { at, bar } = frame();
+    fireEvent.pointerDown(bar, { clientX: 100, clientY: 20, pointerId: 1 });
+    fireEvent.pointerMove(bar, { clientX: 200, clientY: 120, pointerId: 1 });
+    const dropped = at();
+    fireEvent.pointerUp(bar, { pointerId: 1 });
+    // Still following the pointer after the press ended, the dialog would be
+    // stuck to it and there would be no way to put it down.
+    fireEvent.pointerMove(bar, { clientX: 400, clientY: 300, pointerId: 1 });
+    expect(at()).toEqual(dropped);
+  });
+
+  it("leaves a dialog placed by the stylesheet alone on a phone", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({
+        matches: true,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })),
+    );
+    // Nothing written on the box, so the rules that pin it to the top of what
+    // is visible need no importance to win.
+    const { box, scrolls } = frame();
+    expect(box.style.left).toBe("");
+    expect(box.style.maxHeight).toBe("");
+    expect(scrolls()).toBe(false);
+  });
+
   it("stands off the top left where the window is smaller than it is", () => {
     const { at, scrolls } = frame();
     vi.stubGlobal("innerHeight", 300);
@@ -169,16 +217,31 @@ describe("the chrome a dialog is put up in", () => {
   });
 
   it("scrolls its body only where the window is too short to hold it", () => {
+    // A body holding most of the dialog's height, so counting that height twice
+    // would wrongly make it too tall for the 752 the window leaves.
+    size.content = 600;
     const roomy = frame();
     expect(roomy.scrolls()).toBe(false);
     expect(roomy.capped()).toBe("");
     cleanup();
-    // 700 fits the 752 the window leaves on its own. It is the chrome, the 100
-    // of the 400 that is not the body, that takes it past.
+    // 700 fits the 752 on its own. It is the 100 of chrome above and below it
+    // that takes the dialog past.
     size.content = 700;
     const cramped = frame();
     expect(cramped.scrolls()).toBe(true);
     expect(cramped.capped()).toBe("752px");
+  });
+
+  it("caps a dialog against the window it is in now, not the one it was in", () => {
+    size.content = 900;
+    const { capped } = frame();
+    expect(capped()).toBe("752px");
+    // Already capped, so neither how tall it may be nor where it sits changes
+    // as a fraction. Nothing but the window has moved, and the cap has to
+    // follow it anyway.
+    vi.stubGlobal("innerHeight", 400);
+    fireEvent.resize(window);
+    expect(capped()).toBe("384px");
   });
 
   it("scrolls its body once its own contents have outgrown the window", () => {

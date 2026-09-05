@@ -14,12 +14,23 @@ import { describe, expect, it } from "vitest";
 const DIALOG_CSS = "src/renderer/src/components/TransformDialog.css";
 const BASE_CSS = "src/renderer/src/styles/base.css";
 
-/** Every rule in `css` written against exactly `selector`, declarations only. */
+/**
+ * Every rule in `css` written against `selector` alone, each as its selector
+ * and the declarations under it. A rule that reached the same end through a
+ * selector list would not be found, so the first thing every check below does
+ * is insist there was something to read.
+ */
 function rulesFor(css: string, selector: string): string[] {
   const found: string[] = [];
   for (let from = 0; ; ) {
     const at = css.indexOf(`${selector} {`, from);
-    if (at === -1) return found;
+    if (at === -1) {
+      expect(
+        found.length,
+        `no rule in the sheet is written against ${selector} alone`,
+      ).toBeGreaterThan(0);
+      return found;
+    }
     const end = css.indexOf("}", at);
     found.push(css.slice(at, end));
     from = end;
@@ -51,10 +62,11 @@ describe("what gives way when the window is too small", () => {
     const panel = rulesFor(css, ".scrim__panel")[0];
     expect(panel).toContain("max-height: 100%");
     expect(panel).toContain("overflow-y: auto");
-    // Both of them: the second is the phone's, where the scrim is pulled onto
-    // the visual viewport and the panel has to follow it.
     const scrims = rulesFor(css, ".scrim");
-    expect(scrims.length).toBe(2);
     for (const scrim of scrims) expect(scrim).toMatch(/padding: \d+px/);
+    // The phone's among them, where the scrim is pulled onto the visual
+    // viewport and the panel has to be measured against that rather than the
+    // window the keyboard is covering.
+    expect(scrims.some((scrim) => scrim.includes("var(--seen-height)"))).toBe(true);
   });
 });
