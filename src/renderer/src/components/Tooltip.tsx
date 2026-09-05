@@ -109,9 +109,9 @@ export function Tooltip({ says, keys, side = "top", quiet, children }: TooltipPr
   const of = useRef<HTMLSpanElement>(null);
   const chip = useRef<HTMLDivElement>(null);
   /**
-   * Whether the pointer is still down from a press on this. A press focuses
-   * what it lands on, so without this the focus would put straight back up the
-   * chip the press just took down.
+   * Whether this has been pressed and the pointer has not left it since. A
+   * press focuses what it lands on, so without this the focus would put
+   * straight back up the chip the press just took down.
    */
   const pressed = useRef(false);
   // Asked at each render rather than subscribed to: the answer is wanted on the
