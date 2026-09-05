@@ -2,8 +2,8 @@
  * What the palette's Text row is set on.
  *
  * Writing on the sheet is not one kind of object. A caption, a reading, a
- * parameter, a calculation, a function, a table and a button are each drawn by
- * their own component, and every one of them carries a face and a size. The row
+ * parameter, a calculation, a function and a table are each drawn by their own
+ * component, and every one of them carries a face and a size. The row
  * treats them alike, so what counts as writing, and how a mixed pick of it
  * reads, is worked out here rather than in the bar.
  */
@@ -11,33 +11,21 @@
 import { DEFAULT_CAPTION } from "../components/typeset";
 import {
   DEFAULT_LABEL,
-  isCaption,
-  isFunction,
-  isTable,
-  isValue,
+  isWriting,
   type LabelState,
-  type SketchCalculation,
-  type SketchCaption,
-  type SketchFunction,
-  type SketchMeasurement,
   type SketchObject,
-  type SketchParameter,
-  type SketchTable,
+  type SketchWriting,
   type TextLook,
 } from "./model";
 
-/** Everything written on the sheet, which is everything that takes a face and a size. */
-export type Written =
-  | SketchCaption
-  | SketchMeasurement
-  | SketchParameter
-  | SketchCalculation
-  | SketchFunction
-  | SketchTable;
+/**
+ * Everything written on the sheet, which is everything that takes a face and a
+ * size. The same set the model calls `SketchWriting`, named here for what the
+ * bar does with it: kept as one definition, so the two cannot drift apart.
+ */
+export type Written = SketchWriting;
 
-export function isWritten(object: SketchObject): object is Written {
-  return isCaption(object) || isValue(object) || isFunction(object) || isTable(object);
-}
+export const isWritten = isWriting;
 
 /**
  * How a piece of writing is drawn, rather than what it holds. Only a caption

@@ -74,8 +74,8 @@ describe("what a figure is called", () => {
   it("says what can carry a name whether or not it has one", () => {
     const bare = point(0);
     expect(nameable(bare, [bare])).toBe(true);
-    // A caption says what it says and a button has its name written on it, so
-    // neither takes a turn in any run. The panel and Ctrl+K both lean on this.
+    // A caption says what it says, so it takes no turn in any run. The panel
+    // and Ctrl+K both lean on this.
     const caption = createCaption({ x: 0, y: 0 }, 100, {
       font: "Arial",
       size: 12,
