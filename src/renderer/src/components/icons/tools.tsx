@@ -1,6 +1,14 @@
 /** One icon per tool in the Toolbox, and one per variant its flyout offers. */
 
-import { ARROW_PATH, STRAIGHT, TOOL_STROKE, ToolSvg } from "./frame";
+import {
+  ARMING_FIT,
+  ARROW_AT,
+  ARROW_PATH,
+  GLYPH_AT,
+  STRAIGHT,
+  TOOL_STROKE,
+  ToolSvg,
+} from "./frame";
 
 export function SegmentIcon() {
   return (
@@ -180,7 +188,11 @@ export function TextIcon() {
   );
 }
 
-/** Relabel: the letters handed out in the order the vertices are clicked. */
+/**
+ * Relabel: the letters a run hands out, standing where they would land on a
+ * triangle's corners. The triangle itself is not drawn, since what the tool
+ * does is name the corners rather than make the shape.
+ */
 export function RelabelIcon() {
   const letter = {
     textAnchor: "middle" as const,
@@ -188,20 +200,19 @@ export function RelabelIcon() {
     stroke: "none",
     fontFamily: "var(--font-label)",
     fontWeight: "700",
-    fontSize: "10",
+    fontSize: "9",
   };
   return (
     <ToolSvg>
-      <text x="5" y="8.5" {...letter}>
+      <text x="6.5" y="8" {...letter}>
         A
       </text>
-      <text x="15.5" y="18.5" {...letter}>
+      <text x="14.5" y="12.5" {...letter}>
         B
       </text>
-      <g {...STRAIGHT}>
-        <path d="M8 10 L13.6 15.6" />
-        <path d="M9.4 15.6 L13.9 15.6 L13.9 11.1" />
-      </g>
+      <text x="6.5" y="17" {...letter}>
+        C
+      </text>
     </ToolSvg>
   );
 }
@@ -224,17 +235,11 @@ export function MarkerIcon() {
  * The Arrow's variants: the arrow itself in the Arrow's own blue, and beside it
  * the one kind of thing it will pick up, in that kind's own colour.
  */
-function ArrowOver({ tint, children }: { tint: string; children: React.ReactNode }) {
+function ArrowOver({ children }: { children: React.ReactNode }) {
   return (
     <ToolSvg>
-      <path
-        d="M5 2.6 L5 14.4 L8.1 11.5 L10.2 16.4 L12.2 15.4 L10.1 10.7 L14.3 10.4 Z"
-        fill="currentColor"
-        stroke="currentColor"
-        strokeWidth="1"
-        strokeLinejoin="round"
-      />
-      <g fill="none" stroke={tint} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <g transform={ARMING_FIT}>
+        <path d={ARROW_PATH} transform={ARROW_AT} fill="var(--color-tool-arrow)" stroke="none" />
         {children}
       </g>
     </ToolSvg>
@@ -243,43 +248,69 @@ function ArrowOver({ tint, children }: { tint: string; children: React.ReactNode
 
 export function ArrowPointsIcon() {
   return (
-    <ArrowOver tint="var(--color-tool-point)">
-      <circle cx="15.6" cy="4.4" r="2.2" fill="var(--color-tool-point)" stroke="none" />
+    <ArrowOver>
+      <circle
+        {...POINT_DOT}
+        transform={GLYPH_AT.point}
+        fill="var(--color-tool-point)"
+        stroke="none"
+      />
     </ArrowOver>
   );
 }
 
 export function ArrowPathsIcon() {
   return (
-    <ArrowOver tint="var(--color-tool-compass)">
-      <path d="M10.8 8.6 A 7.4 7.4 0 0 1 18.2 1.6" />
+    <ArrowOver>
+      <g
+        transform={GLYPH_AT.straightedge}
+        fill="none"
+        stroke="var(--color-tool-straightedge)"
+        strokeWidth={TOOL_STROKE}
+        strokeLinecap="round"
+      >
+        <path d={STRAIGHTEDGE_RULE} />
+        {STRAIGHTEDGE_ENDS.map((end) => (
+          <circle key={end.cx} {...end} fill="var(--color-tool-straightedge)" stroke="none" />
+        ))}
+      </g>
     </ArrowOver>
   );
 }
 
 export function ArrowMarksIcon() {
   return (
-    <ArrowOver tint="var(--color-tool-marker)">
-      <path d="M11.6 7.4 L17.6 1.6" />
-      <path d="M13.2 4.2 L16 7" />
+    <ArrowOver>
+      <g
+        transform={GLYPH_AT.marker}
+        fill="none"
+        stroke="var(--color-tool-marker)"
+        strokeWidth={TOOL_STROKE}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      >
+        <path d={MARKER_BODY} />
+        <path d={MARKER_NIB} />
+      </g>
     </ArrowOver>
   );
 }
 
 export function ArrowTextIcon() {
   return (
-    <ArrowOver tint="var(--color-arrow-text)">
+    <ArrowOver>
       <text
-        x="15"
-        y="9.4"
+        x={TEXT_T.x}
+        y={TEXT_T.y}
+        transform={GLYPH_AT.text}
         textAnchor="middle"
-        fill="var(--color-arrow-text)"
+        fill="var(--color-tool-text)"
         stroke="none"
         fontFamily="var(--font-label)"
         fontWeight="700"
-        fontSize="11"
+        fontSize={TEXT_T.size}
       >
-        T
+        {TEXT_T.ch}
       </text>
     </ArrowOver>
   );
