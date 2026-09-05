@@ -4,9 +4,10 @@
  * A script comes here written by a person or, more often, by a language model
  * working from the prompt GRASP handed out, and whoever wrote it sees only what
  * this file says. So a rejection has to carry three things: where in their own
- * source to look, which call it was, and what to do next. The wording of what
- * went wrong belongs beside the test that failed, in `calls.ts`; everything
- * around it is here.
+ * source to look, which call it was, and what to do next. Wording thrown from
+ * one place stays at that place, in `calls.ts`, beside the test that failed;
+ * wording more than one call needs is here, along with everything that finds
+ * the call and the line to put in front of it.
  */
 
 import type { SketchObject } from "../model";
@@ -27,8 +28,22 @@ export class ScriptError extends Error {
   nth?: number;
 }
 
-/** A handle nothing on the page answers to, which is usually a variable never set. */
+/** A handle as `nextId` writes one: a kind, a count, and the token of its run. */
+const A_HANDLE = /^[a-z]+-\d+-[a-z0-9]+$/;
+
+/**
+ * A handle nothing on the page answers to.
+ *
+ * One the run itself issued was either taken off by `remove` or belongs to
+ * another page, and saying which would be a guess. Anything else was never a
+ * handle at all, and is usually a variable that was never set, so it is said
+ * back as it was written. The id is not: it is no use to whoever wrote the
+ * script, which is the whole reason `saying.ts` exists.
+ */
 export function missing(id: unknown): string {
+  if (typeof id === "string" && A_HANDLE.test(id)) {
+    return "that handle is not on this page. Anything taken off with remove takes what was built on it too.";
+  }
   return `${quoted(id)} is not a handle from this page. Pass back what a call handed you.`;
 }
 
@@ -39,8 +54,8 @@ export function missing(id: unknown): string {
  */
 export function notAPoint(held: SketchObject[], found: SketchObject): string {
   const name = found.label?.name;
-  const said = name ? `${name} is ${nounFor(found)}` : `${called(held, found.id)} was passed`;
-  return `${said}, and a point was wanted.`;
+  const phrase = name ? `${name} is ${nounFor(found)}` : `${called(held, found.id)} was passed`;
+  return `${phrase}, and a point was wanted.`;
 }
 
 /**

@@ -16,7 +16,6 @@ import {
   type SketchObject,
 } from "./model";
 import { API_REFERENCE, type ScriptSheet } from "./scriptApi";
-import { round } from "./scriptApi/saying";
 
 /** Where a script is to work: a page GRASP will add, or one already there. */
 export type ScriptTarget =
@@ -27,6 +26,10 @@ export interface PromptContext {
   request: string;
   target: ScriptTarget;
   sheet: ScriptSheet;
+}
+
+function round(value: number): string {
+  return `${Math.round(value)}`;
 }
 
 /**

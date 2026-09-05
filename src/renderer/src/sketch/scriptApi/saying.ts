@@ -19,9 +19,12 @@
  * point is still at the origin until the run returns and the host resolves what
  * came back, so its position would be a lie.
  *
- * `kindOf` in `app/labels.ts` is a third near neighbour, and stays apart for a
- * plainer reason: it feeds a sentence about names clashing, so a point there is
- * "another point", which is nonsense in a message about what a call was handed.
+ * `kindOf` in `app/labels.ts` is a third near neighbour, and stays apart for
+ * three plainer reasons. It feeds a sentence about names clashing, so a point
+ * there is "another point", which is nonsense in a message about what a call
+ * was handed. It covers kinds this does not and misses kinds this has. And both
+ * its callers strip the article straight back off, so what they want of it is
+ * not what is wanted here at all.
  */
 
 import { isArc, isCircle, isInterior, isLine, isMark, isPoint, type SketchObject } from "../model";
@@ -31,8 +34,7 @@ export function quoted(id: unknown): string {
   return typeof id === "string" ? JSON.stringify(id) : String(id);
 }
 
-/** A number said to a reader rather than held, which wants no decimals on it. */
-export function round(value: number): string {
+function round(value: number): string {
   return `${Math.round(value)}`;
 }
 
@@ -81,7 +83,10 @@ function built(held: SketchObject[], object: SketchObject): string {
     if (from.kind === "translate") return `${said(from.of)} moved`;
     if (from.kind === "rotate") return `${said(from.of)} turned about ${said(from.centre)}`;
     if (from.kind === "dilate") return `${said(from.of)} scaled about ${said(from.centre)}`;
-    return nounFor(object);
+    // Every way of deriving a point is answered above. An eighth added later
+    // fails to compile here rather than quietly coming out as "a point".
+    const unreached: never = from;
+    return nounFor(unreached ?? object);
   }
   if (isLine(object)) {
     const span = object.span;

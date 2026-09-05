@@ -43,6 +43,9 @@ describe("what a rejected script is told", () => {
     expect(said).not.toMatch(AN_ID);
   });
 
+  // A part of a description stops at its own name, or at its own kind where it
+  // has no name. So the unnamed circle inside a crossing is "a circle" and not
+  // another description: a chain of them would say nothing all the way down.
   it.each([
     ["midpoint(A, B)", "the point halfway between A and B"],
     ["intersect(circle(A, B), circle(B, A))", "the point where a circle and a circle cross"],
@@ -55,17 +58,30 @@ describe("what a rejected script is told", () => {
     expect(turnedDownFor(`${NAMED}const M = ${made};\nangleMark(M, A, A);`)).toContain(phrase);
   });
 
+  // Handed where a point was wanted, which is the other way one of these
+  // reaches a message.
   it.each([
+    ["segment(A, B)", "the segment from A to B"],
+    ["ray(A, B)", "the ray from A to B"],
     ["bisector(A, B, B)", "the line halving the angle at A"],
     ["perpendicular(A, segment(A, B))", "the line through A, perpendicular to a segment"],
     ["parallel(A, segment(A, B))", "the line through A, parallel to a segment"],
     ["circle(A, B)", "the circle about A"],
   ])("says how a path built with %s was made", (made, phrase) => {
-    // Handed where a point was wanted, which is the other way one of these
-    // reaches a message. A part of a description stops at its own name or its
-    // own kind, so the unnamed segment inside these is "a segment" and not
-    // another description: a chain of them would say nothing on the way.
     expect(turnedDownFor(`${NAMED}midpoint(${made}, A);`)).toContain(phrase);
+  });
+
+  it.each([
+    ["arcThrough(A, B, A)", "an arc"],
+    ["polygon(A, B, A)", "a fill"],
+    ['caption(0, 0, "x")', "a caption"],
+  ])("says what kind of thing %s made, where it can say no more", (made, phrase) => {
+    expect(turnedDownFor(`${NAMED}midpoint(${made}, A);`)).toContain(phrase);
+  });
+
+  it("says what a marking is, which nothing else in a message reaches", () => {
+    const said = turnedDownFor(`${NAMED}segment(A, B);\nmidpoint(angleMark(A, B, B), A);`);
+    expect(said).toContain("a marking");
   });
 
   it("says which line of the script and which call it was", () => {
@@ -111,6 +127,19 @@ describe("what a rejected script is told", () => {
     const said = turnedDownFor("let gone;\nsegment(gone, gone);");
     expect(said).toContain("Line 2, segment:");
     expect(said).toContain("undefined is not a handle from this page");
+  });
+
+  it("reads the line off a frame, not off a message that looks like one", () => {
+    // The handle is quoted back into the message, so a stack read whole would
+    // find this before the frame below it and report line 1.
+    const said = turnedDownFor('const A = point(0, 0);\nsegment("<anonymous>:1:1", A);');
+    expect(said).toContain("Line 2, segment:");
+  });
+
+  it("says an object was taken off the page rather than quoting its handle back", () => {
+    const said = turnedDownFor(`${NAMED}remove(A);\nmidpoint(A, B);`);
+    expect(said).toContain("that handle is not on this page");
+    expect(said).not.toMatch(AN_ID);
   });
 
   it("says a handle back as it was written where nothing answers to it", () => {
