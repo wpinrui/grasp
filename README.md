@@ -31,7 +31,7 @@ GRASP comes with a full scripting language that an AI model can figure out. Gene
 
 ![The Ask an AI dialog](docs/images/ai.png)
 
-## How to use GRASP
+## Getting GRASP
 
 ### Online
 
@@ -45,28 +45,37 @@ Linux (x64): Versioned desktop releases include an AppImage and a Debian package
 
 macOS (Apple Silicon and Intel): Download the universal `.dmg` from the [releases](https://github.com/wpinrui/grasp/releases) page, open it, and drag GRASP into Applications.
 
-### SmartScreen and Gatekeeper
+## SmartScreen and Gatekeeper
 
-Desktop downloads are not signed with a verified publisher certificate, and the Mac app is not notarized by Apple. You may see a security prompt on first launch. Only proceed if you downloaded GRASP from the official [releases](https://github.com/wpinrui/grasp/releases) page and trust the app.
+Windows or macOS may warn you when you first open GRASP because it has no verified publisher certificate or Apple notarization. Only continue if you downloaded it from the official [releases](https://github.com/wpinrui/grasp/releases) page and trust the app.
 
-- **Windows SmartScreen:** If the prompt says **Windows protected your PC**, select **More info**, then **Run anyway** if offered. See [Microsoft's guidance](https://github.com/MicrosoftDocs/windows-dev-docs/blob/docs/hub/apps/package-and-deploy/publish-first-app.md).
-- **macOS Gatekeeper:** After trying to open GRASP in Applications, open **System Settings > Privacy & Security**, find the blocked-app notice, and select **Open Anyway**. Confirm the next prompt. See [Apple's instructions](https://support.apple.com/en-us/102445).
+### Windows
 
-If a managed school or work device does not offer these options, use the [browser version](https://grasp-math.netlify.app/launch) or contact its administrator. These steps apply to unrecognized-publisher prompts, not malware alerts; keep system-wide protection enabled.
+If SmartScreen says **Windows protected your PC**, select **More info**, then **Run anyway** if available. [Microsoft's guidance](https://github.com/MicrosoftDocs/windows-dev-docs/blob/docs/hub/apps/package-and-deploy/publish-first-app.md).
 
-### Building desktop packages
+### macOS
 
-Run `yarn install --frozen-lockfile`, then `yarn package:linux` on Linux, `yarn package:win` on Windows, or `yarn package:mac` on macOS. Windows and Linux packages are x64; the Mac DMG contains a universal app for Apple Silicon and Intel. Packages are written to `dist/desktop/`. Mac builds use ad-hoc signing with Electron entitlements and do not require Apple developer credentials or notarization.
+1. Try opening GRASP from Applications.
+2. Open **System Settings > Privacy & Security**.
+3. Find the notice about GRASP, select **Open Anyway**, and confirm.
 
-The [Release desktop workflow](https://github.com/wpinrui/grasp/actions/workflows/release-desktop.yml) runs only when explicitly dispatched against a stable version tag. It requires an existing draft release with written notes and a tag matching `package.json`. Windows, Linux, and macOS builds must all pass checks before the five packages are attached and the draft is published. Build failures leave the release unpublished. Workflow artifacts are retained for 14 days; published release downloads remain available independently.
+[Apple's instructions](https://support.apple.com/en-us/102445). These steps are for an unrecognized developer warning, not a malware alert.
 
-| Action | Website | Desktop builds | GitHub Release |
-| --- | --- | --- | --- |
-| Push a feature branch, open a PR, or merge to `main` | No production deployment | None | None |
-| Push `deploy` | Netlify deploys | None | None |
-| Dispatch Release desktop against a prepared version tag | No additional web deployment | Windows, Linux, and macOS | Publishes the prepared draft after all builds succeed |
+If a school or work device blocks these options, use the [browser version](https://grasp-math.netlify.app/launch) or ask its administrator. Keep system-wide protection enabled.
 
-For a versioned release, first deploy the selected commit and confirm Netlify is ready. Create and push `v<version>` at that exact commit, prepare a draft with `gh release create v<version> --verify-tag --draft --title "GRASP <version>" --notes-file <notes-path>`, then run `gh workflow run release-desktop.yml --ref v<version>`. The workflow must already exist on the default branch. Dispatching publishes the draft automatically on success, preserving its title and notes. A web-only deployment stops after Netlify is ready.
+## Building desktop packages
+
+Install dependencies with `yarn install --frozen-lockfile`, then run the command for your computer:
+
+| Platform | Command | Output |
+| --- | --- | --- |
+| Windows | `yarn package:win` | x64 installer and portable EXE |
+| Linux | `yarn package:linux` | x64 AppImage and Debian package |
+| macOS | `yarn package:mac` | Universal DMG for Apple Silicon and Intel |
+
+Packages are saved to `dist/desktop/`.
+
+For releases, the [Release desktop workflow](https://github.com/wpinrui/grasp/actions/workflows/release-desktop.yml) builds all three platforms on demand. Start it against a version tag matching `package.json`, with a draft release and notes already prepared. It publishes the draft only after all builds succeed. Ordinary pushes do not start desktop builds; pushing `deploy` deploys only the website.
 
 ## Acknowledgements
 
