@@ -1,0 +1,30 @@
+/*
+  The drawn cursor. Two layers ride in one box: the outline differences itself
+  against the sheet, so it can never be the colour under it, and the glyph is
+  drawn over it at the tool's own hue.
+
+  The box is moved to the pointer by writing its transform directly rather than
+  by rendering, so a pointer crossing the sheet costs no render at all.
+*/
+.tool-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Off the sheet. It keeps its place in the tree so the transform written to it
+   is already right when the pointer comes back. */
+.tool-cursor--away {
+  display: none;
+}
+
+.tool-cursor__layer {
+  position: absolute;
+  inset: 0;
+}
+
+.tool-cursor__layer--outline {
+  mix-blend-mode: difference;
+}

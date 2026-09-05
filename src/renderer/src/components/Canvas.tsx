@@ -151,6 +151,7 @@ import {
   spanOfLocus,
   travelOf,
 } from "./canvas/steps";
+import { ToolCursor } from "./canvas/ToolCursor";
 import { useCaptions } from "./canvas/useCaptions";
 import { useLabelDrag } from "./canvas/useLabelDrag";
 import { useMarking } from "./canvas/useMarking";
@@ -163,7 +164,6 @@ import { MeasurementBox } from "./MeasurementBox";
 import { ReadingPanel } from "./ReadingPanel";
 import type { Snapping } from "./SnapPanel";
 import { TableBox } from "./TableBox";
-import { ToolCursor } from "./ToolCursor";
 import { Tooltip } from "./Tooltip";
 import { armedForWriting } from "./tools";
 import "./Canvas.css";
@@ -1510,8 +1510,8 @@ export function Canvas({
     else cancel.current();
   }
 
-  function handlePointerLeave() {
-    toolCursor.away();
+  function handlePointerLeave(event: PointerEvent<HTMLDivElement>) {
+    toolCursor.away(event);
     setSnap(null);
     setOverNamed(false);
     // The ghost letter stands in for the vertex's own label, so leaving the
@@ -1819,7 +1819,7 @@ export function Canvas({
           // in its place, so a pointer that has not reached the sheet yet, and
           // a finger, which draws none, both keep what they had.
           className={`canvas__sheet canvas__sheet--${cursor}${
-            toolCursor.drawing ? " canvas__sheet--drawn-cursor" : ""
+            toolCursor.showing ? " canvas__sheet--drawn-cursor" : ""
           }`}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -2060,7 +2060,12 @@ export function Canvas({
           <MarkCaptions marks={marks} spotOf={markAt} view={view} scale={scale} />
 
           {/* Over everything on the sheet, because it is the pointer. */}
-          <ToolCursor tool={cursor} arrowKind={arrowKind} at={toolCursor.at} />
+          <ToolCursor
+            tool={cursor}
+            arrowKind={arrowKind}
+            box={toolCursor.box}
+            showing={toolCursor.showing}
+          />
 
           {zoomable && (
             <div className="canvas__zoom" onPointerDown={(event) => event.stopPropagation()}>

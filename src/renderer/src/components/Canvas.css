@@ -43,6 +43,14 @@
 }
 
 /*
+  GRASP is drawing the cursor itself, so the browser draws none. Doubled up so
+  it beats the tool rules above whatever order the stylesheets are emitted in.
+*/
+.canvas__sheet.canvas__sheet--drawn-cursor {
+  cursor: none;
+}
+
+/*
  * Real scrollbars, one per axis, each in its own strip beside the sheet. The
  * strip scrolls a spacer as wide or as tall as the sheet's bounds, and the
  * scroll position it reports is what moves the view.

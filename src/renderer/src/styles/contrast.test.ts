@@ -84,6 +84,13 @@ describe("contrast gate", () => {
     expect(surface).toBeLessThan(raised);
   });
 
+  it("keeps the drawn cursor's outline pure white, which is what makes it invert", () => {
+    // The outline is differenced against the sheet. Only pure white differences
+    // to a true inverse, so any other value would leave the cursor a colour of
+    // its own on some papers and invisible on others.
+    expect(tokens["cursor-outline"]).toBe("#ffffff");
+  });
+
   it("reports body text (text on bg) against the AAA target", () => {
     const ratio = contrastRatio(tokens.text, tokens.bg);
     if (ratio < AAA_BODY) {

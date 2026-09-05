@@ -57,10 +57,30 @@ export function StatusArrowIcon() {
   );
 }
 
+/**
+ * The shapes a tool is drawn as, on the icons' own 20-unit box. They are here
+ * rather than inline because the cursor for each tool is the same drawing at a
+ * different size: `canvas/cursorGeometry.ts` reads every one of these, so a
+ * tool's key in the rail and its cursor cannot come apart.
+ */
+export const POINT_DOT = { cx: 10, cy: 10, r: 3.4 } as const;
+export const COMPASS_RING = { cx: 10, cy: 10, r: 7 } as const;
+export const COMPASS_HUB = { cx: 10, cy: 10, r: 1.7 } as const;
+export const STRAIGHTEDGE_RULE = "M3.9 16.1 L16.1 3.9";
+export const STRAIGHTEDGE_ENDS = [
+  { cx: 3.9, cy: 16.1, r: 1.9 },
+  { cx: 16.1, cy: 3.9, r: 1.9 },
+] as const;
+export const TEXT_T = { ch: "T", x: 10, y: 16.4, size: 18 } as const;
+export const RULER_BODY = "M2.4 7 L17.6 7 L17.6 13 L2.4 13 Z";
+export const RULER_TICKS = ["M5.4 7 L5.4 10", "M8.2 7 L8.2 9", "M11 7 L11 10", "M13.8 7 L13.8 9"];
+export const MARKER_BODY = "M13.4 3.2 L16.8 6.6 L7.4 16 L3 17 L4 12.6 Z";
+export const MARKER_NIB = "M11.6 5 L15 8.4";
+
 export function PointIcon() {
   return (
     <ToolSvg>
-      <circle cx="10" cy="10" r="3.4" fill="currentColor" />
+      <circle {...POINT_DOT} fill="currentColor" />
     </ToolSvg>
   );
 }
@@ -68,8 +88,8 @@ export function PointIcon() {
 export function CompassIcon() {
   return (
     <ToolSvg>
-      <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.6" />
-      <circle cx="10" cy="10" r="1.7" fill="currentColor" />
+      <circle {...COMPASS_RING} stroke="currentColor" strokeWidth="1.6" />
+      <circle {...COMPASS_HUB} fill="currentColor" />
     </ToolSvg>
   );
 }
@@ -77,9 +97,10 @@ export function CompassIcon() {
 export function StraightedgeIcon() {
   return (
     <ToolSvg>
-      <path d="M3.9 16.1 L16.1 3.9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      <circle cx="3.9" cy="16.1" r="1.9" fill="currentColor" />
-      <circle cx="16.1" cy="3.9" r="1.9" fill="currentColor" />
+      <path d={STRAIGHTEDGE_RULE} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      {STRAIGHTEDGE_ENDS.map((end) => (
+        <circle key={end.cx} {...end} fill="currentColor" />
+      ))}
     </ToolSvg>
   );
 }
@@ -89,7 +110,7 @@ export function StraightedgeIcon() {
  * trapezium: irregular enough that nothing about it reads as a rule. The
  * regular one is drawn as a pentagon, which does.
  */
-const TRAPEZIUM = "M6.4 5.2 L13.6 5.2 L17.2 15.6 L2.8 15.6 Z";
+export const TRAPEZIUM = "M6.4 5.2 L13.6 5.2 L17.2 15.6 L2.8 15.6 Z";
 
 export function PolygonFillIcon() {
   return (
@@ -139,16 +160,16 @@ export function TextIcon() {
   return (
     <ToolSvg>
       <text
-        x="10"
-        y="16.4"
+        x={TEXT_T.x}
+        y={TEXT_T.y}
         textAnchor="middle"
         fill="currentColor"
         stroke="none"
         fontFamily="var(--font-label)"
         fontWeight="700"
-        fontSize="18"
+        fontSize={TEXT_T.size}
       >
-        T
+        {TEXT_T.ch}
       </text>
     </ToolSvg>
   );
@@ -183,13 +204,8 @@ export function RelabelIcon() {
 export function MarkerIcon() {
   return (
     <ToolSvg>
-      <path
-        d="M13.4 3.2 L16.8 6.6 L7.4 16 L3 17 L4 12.6 Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path d="M11.6 5 L15 8.4" stroke="currentColor" strokeWidth="1.6" />
+      <path d={MARKER_BODY} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d={MARKER_NIB} stroke="currentColor" strokeWidth="1.6" />
     </ToolSvg>
   );
 }
@@ -281,11 +297,10 @@ export function MeasureLengthIcon() {
   return (
     <ToolSvg>
       <g {...STRAIGHT}>
-        <path d="M2.4 7 L17.6 7 L17.6 13 L2.4 13 Z" />
-        <path d="M5.4 7 L5.4 10" />
-        <path d="M8.2 7 L8.2 9" />
-        <path d="M11 7 L11 10" />
-        <path d="M13.8 7 L13.8 9" />
+        <path d={RULER_BODY} />
+        {RULER_TICKS.map((tick) => (
+          <path key={tick} d={tick} />
+        ))}
       </g>
     </ToolSvg>
   );
