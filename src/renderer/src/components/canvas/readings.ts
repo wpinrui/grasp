@@ -387,8 +387,13 @@ export function readingFrom(at: Position, measuring: Measuring): Written | null 
   const { objects, settled, scale, measure } = measuring;
   const hit = objectAt(at, { objects, scale, settled });
   if (!hit) return null;
-  if (measure === "length") return tiedToFigure(lengthFrom(hit, measuring), measuring);
-  if (measure === "area") return tiedToFigure(areaFrom(hit, measuring), measuring);
-  if (measure === "angle") return tiedToFigure(angleFrom(hit, measuring), measuring);
-  return null;
+  const written =
+    measure === "length"
+      ? lengthFrom(hit, measuring)
+      : measure === "area"
+        ? areaFrom(hit, measuring)
+        : measure === "angle"
+          ? angleFrom(hit, measuring)
+          : null;
+  return tiedToFigure(written, measuring);
 }

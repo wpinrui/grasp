@@ -65,7 +65,7 @@ export function ReadingPanel({
   // Only what the Measure tool wrote is offered the chain. A reading from the
   // Measure menu is a row of numbers in the corner of the view rather than a
   // number set down beside a figure, so it has no figure to be tied to.
-  const link = reading.bare ? (
+  const chain = reading.bare ? (
     <>
       <PanelButton
         label="Move the number with the figure"
@@ -113,7 +113,7 @@ export function ReadingPanel({
           <ReflexIcon />
         </PanelButton>
         <PanelSplit />
-        {link}
+        {chain}
         {decimals}
       </PanelShell>
     );
@@ -124,7 +124,7 @@ export function ReadingPanel({
   if (reading.measure !== "length") {
     return (
       <PanelShell at={at} colour={MEASURE_COLOUR}>
-        {link}
+        {chain}
         {decimals}
       </PanelShell>
     );
@@ -167,7 +167,7 @@ export function ReadingPanel({
         <LeadersIcon />
       </PanelButton>
       <PanelSplit />
-      {link}
+      {chain}
       {decimals}
     </PanelShell>
   );

@@ -231,8 +231,10 @@ export function placedBy(objects: SketchObject[], held: Held, by: Position): Ske
  * figure would count itself by however much that part shifted the frame.
  */
 function retied(after: SketchObject[], held: Held, by: Position): SketchObject[] {
-  const dragged = after.filter((object) => isMeasurement(object) && object.tied);
-  if (dragged.every((object) => !held.ids.includes(object.id))) return after;
+  const anyTied = after.some(
+    (object) => isMeasurement(object) && object.tied && held.ids.includes(object.id),
+  );
+  if (!anyTied) return after;
   const geometry = settle(after).settled;
   return after.map((object) => {
     const index = held.ids.indexOf(object.id);
