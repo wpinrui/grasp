@@ -39,6 +39,8 @@ jobs:
             platform: win
           - os: ubuntu-22.04
             platform: linux
+          - os: macos-latest
+            platform: mac
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -63,11 +65,12 @@ jobs:
         run: yarn package:${{ matrix.platform }}
       - uses: actions/upload-artifact@v7
         with:
-          name: GRASP-${{ matrix.platform }}-x64
+          name: GRASP-${{ matrix.platform }}
           path: |
             dist/desktop/*.exe
             dist/desktop/*.AppImage
             dist/desktop/*.deb
+            dist/desktop/*.dmg
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
@@ -88,7 +91,7 @@ jobs:
           node-version: 24
       - uses: actions/download-artifact@v8
         with:
-          pattern: GRASP-*-x64
+          pattern: GRASP-*
           merge-multiple: true
           path: dist/desktop
       - name: Attach packages and publish draft

@@ -33,6 +33,13 @@ portable:
   artifactName: ${productName}-${version}-portable.${ext}
 mac:
   icon: resources/icon.png
+  target: dmg
+  category: public.app-category.education
+  identity: "-"
+  notarize: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  artifactName: ${productName}-${version}-${arch}.${ext}
 linux:
   icon: resources/icon.png
   target:

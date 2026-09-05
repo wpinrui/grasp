@@ -20,6 +20,7 @@ export function artifactNames(version) {
     `GRASP-${version}-portable.exe`,
     `GRASP-${version}-x64.AppImage`,
     `GRASP-${version}-x64.deb`,
+    `GRASP-${version}-universal.dmg`,
   ];
 }
 
@@ -54,7 +55,7 @@ export function runRelease({ command, context, gh, version, directory = "dist/de
   inspect();
   if (command === "check") return;
   const files = checkArtifacts(directory, version);
-  // Replacement is limited to the four expected files on an unpublished draft.
+  // Replacement is limited to expected packages on an unpublished draft.
   gh("release", "upload", tag, ...files, "--repo", repository, "--clobber");
   const release = inspect();
   for (const name of artifactNames(version)) {
@@ -66,7 +67,7 @@ export function runRelease({ command, context, gh, version, directory = "dist/de
     );
   }
   gh("release", "edit", tag, "--repo", repository, "--draft=false");
-  console.log(`Published ${tag} with all four desktop packages`);
+  console.log(`Published ${tag} with all ${files.length} desktop packages`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

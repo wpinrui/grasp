@@ -96,6 +96,13 @@ for (const [name, scenario] of Object.entries({
   "moved tag": { movedTag: true },
   "published draft": { afterUpload: { isDraft: false } },
   "missing assets": { afterUpload: { assets: [] } },
+  "missing Mac download": {
+    afterUpload: {
+      assets: artifactNames(valid.version)
+        .filter((name) => !name.endsWith(".dmg"))
+        .map((name) => ({ name, size: 7 })),
+    },
+  },
   "wrong asset size": {
     afterUpload: { assets: artifactNames(valid.version).map((name) => ({ name, size: 1 })) },
   },
@@ -122,7 +129,7 @@ test("rejects published releases, missing notes, and another release tag", () =>
     assert.throws(() => checkRelease({ ...valid, release: { ...valid.release, ...change } }));
 });
 
-test("requires all four nonempty packages for the selected version", () => {
+test("requires all five nonempty packages for the selected version", () => {
   mkdirSync("temp", { recursive: true });
   const directory = mkdtempSync(resolve("temp", "release-test-"));
   try {
@@ -130,7 +137,7 @@ test("requires all four nonempty packages for the selected version", () => {
     for (const name of artifactNames(valid.version)) {
       writeFileSync(resolve(directory, name), "package");
     }
-    assert.equal(checkArtifacts(directory, valid.version).length, 4);
+    assert.equal(checkArtifacts(directory, valid.version).length, 5);
     assert.throws(() => checkArtifacts(directory, "1.6.0"));
     writeFileSync(resolve(directory, artifactNames(valid.version)[3]), "");
     assert.throws(() => checkArtifacts(directory, valid.version));
