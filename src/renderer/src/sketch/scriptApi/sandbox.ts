@@ -1,5 +1,6 @@
 import { DEFAULT_POINT_SIZE, type PointSize, resolve, type SketchObject } from "../model";
 import { apiFor, apiNames, type ScriptSheet } from "./calls";
+import { PREAMBLE, said } from "./trouble";
 /**
  * What a script may reach, and the run itself.
  *
@@ -31,6 +32,57 @@ const SHADOWED = [
   "globalThis",
   "Function",
 ];
+
+/**
+ * The words of the language itself, which are not calls however much they look
+ * like one. `if (a)`, `for (;;)` and `return (x)` all read as a name followed by
+ * a bracket, so without this a script that branches or loops is turned away for
+ * calling something GRASP does not have. Every word that may be written with a
+ * bracket after it is listed, along with several that may not, because a word
+ * listed needlessly costs nothing and a word missed turns a good script away.
+ *
+ * `import` is the one word deliberately left out. `import(...)` really is a
+ * call, and the one thing on this page that reaches the network on its own.
+ */
+const KEYWORDS = new Set([
+  "async",
+  "await",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "export",
+  "extends",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "in",
+  "instanceof",
+  "let",
+  "new",
+  "of",
+  "return",
+  "static",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield",
+]);
 
 /** Every name a script may call that this API does not provide itself. */
 const ALLOWED_GLOBALS = new Set([
@@ -88,7 +140,13 @@ function boundNames(bare: string): Set<string> {
  */
 export function unknownCalls(source: string, provided: Iterable<string>): string[] {
   const bare = bareSource(source);
-  const known = new Set([...provided, ...ALLOWED_GLOBALS, ...SHADOWED, ...boundNames(bare)]);
+  const known = new Set([
+    ...provided,
+    ...ALLOWED_GLOBALS,
+    ...SHADOWED,
+    ...KEYWORDS,
+    ...boundNames(bare),
+  ]);
   const missing = new Set<string>();
   for (const [, name] of bare.matchAll(/(?:^|[^\w$.?])([A-Za-z_$][\w$]*)\s*\(/g)) {
     if (!known.has(name)) missing.add(name);
@@ -122,7 +180,7 @@ export function evaluate(
   let script: (...values: unknown[]) => void;
   try {
     // The API is in scope, and the obvious ways out of it are shadowed away.
-    script = new Function(...keys, ...SHADOWED, `"use strict";\n${source}\n`) as typeof script;
+    script = new Function(...keys, ...SHADOWED, `${PREAMBLE}${source}\n`) as typeof script;
   } catch (error) {
     return { ok: false, errors: [`That is not valid JavaScript: ${(error as Error).message}`] };
   }
@@ -130,7 +188,7 @@ export function evaluate(
   try {
     script(...keys.map((key) => api[key as keyof typeof api]));
   } catch (error) {
-    return { ok: false, errors: [(error as Error).message] };
+    return { ok: false, errors: [said(error as Error)] };
   }
 
   try {

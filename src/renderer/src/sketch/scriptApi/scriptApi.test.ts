@@ -174,7 +174,9 @@ describe("taking something out of view", () => {
       const result = evaluate(`${call}("nothing");`, { objects: [], sheet: SHEET });
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.errors).toEqual(['There is nothing here called "nothing".']);
+      expect(result.errors).toEqual([
+        `Line 1, ${call}: "nothing" is not a handle from this page. Pass back what a call handed you.`,
+      ]);
     },
   );
 });

@@ -22,6 +22,8 @@ import {
   type SketchObject,
   withDependents,
 } from "../model";
+import { called } from "./saying";
+import { missing, notAPoint, ScriptError, told } from "./trouble";
 /**
  * The API a script is run with: every call it can make, and the list of objects
  * those calls build.
@@ -53,9 +55,6 @@ const CAPTION_WIDTH = 160;
 /** What a caption written by a script is set in. */
 const CAPTION_LOOK = { font: "Times New Roman", size: 14, colour: "--color-ink-black" };
 
-/** What a script asks for that the sketch has no answer to. */
-class ScriptError extends Error {}
-
 /**
  * The straight object running from a corner out to one of its arms. An angle
  * mark is drawn between the two sides at the corner, so it wants them named.
@@ -67,7 +66,9 @@ function sideJoining(held: SketchObject[], corner: string, arm: string): string 
     return (one === corner && other === arm) || (one === arm && other === corner);
   });
   if (!found) {
-    throw new ScriptError(`There is no straight object from ${corner} to ${arm} to mark between.`);
+    throw new ScriptError(
+      `nothing joins ${called(held, corner)} to ${called(held, arm)}. Draw a segment, ray or line between them first, or mark a corner whose arms are already drawn.`,
+    );
   }
   return found.id;
 }
@@ -89,20 +90,20 @@ function pageOps(held: SketchObject[]): PageOps {
 
   const find = (id: string): SketchObject => {
     const found = held.find((object) => object.id === id);
-    if (!found) throw new ScriptError(`There is nothing here called ${JSON.stringify(id)}.`);
+    if (!found) throw new ScriptError(missing(id));
     return found;
   };
 
   const point = (id: string): string => {
     const found = find(id);
-    if (!isPoint(found)) throw new ScriptError(`${id} is a ${found.kind}, not a point.`);
+    if (!isPoint(found)) throw new ScriptError(notAPoint(held, found));
     return id;
   };
 
   /** Change what an object carries, leaving the rest of it alone. */
   const change = (id: string, part: Partial<SketchObject>) => {
     const at = held.findIndex((object) => object.id === id);
-    if (at === -1) throw new ScriptError(`There is nothing here called ${JSON.stringify(id)}.`);
+    if (at === -1) throw new ScriptError(missing(id));
     held[at] = { ...held[at], ...part } as SketchObject;
   };
 
@@ -177,7 +178,11 @@ function drawing({ put, point }: PageOps) {
       put(createArc({ kind: "through", from: point(from), via: point(via), to: point(to) })),
 
     polygon: (...corners: string[]) => {
-      if (corners.length < 3) throw new ScriptError("A polygon wants three corners or more.");
+      if (corners.length < 3) {
+        throw new ScriptError(
+          `a polygon wants three corners or more, and this was given ${corners.length}.`,
+        );
+      }
       return put(createInterior(corners.map(point)));
     },
     fill: (circle: string) => put(createFill(circle)),
@@ -282,7 +287,7 @@ function reading({ held, find }: PageOps) {
     /** Where a point sits. Only a plotted point has a place of its own. */
     at: (id: string) => {
       const found = find(id);
-      if (!isPoint(found)) throw new ScriptError(`${id} is a ${found.kind}, not a point.`);
+      if (!isPoint(found)) throw new ScriptError(notAPoint(held, found));
       return { x: found.x, y: found.y };
     },
     /** What something is called, whether the name was typed or handed out. */
@@ -312,7 +317,7 @@ function reading({ held, find }: PageOps) {
  */
 export function apiFor(held: SketchObject[], sheet: ScriptSheet, size: PointSize) {
   const ops = pageOps(held);
-  return {
+  return told({
     /** How big the sheet is on screen, so a script sizes itself rather than guessing. */
     sheet,
     ...plotting(ops, size),
@@ -321,7 +326,7 @@ export function apiFor(held: SketchObject[], sheet: ScriptSheet, size: PointSize
     ...writing(ops),
     ...naming(ops),
     ...reading(ops),
-  };
+  });
 }
 
 /** Every name a script may call. */
