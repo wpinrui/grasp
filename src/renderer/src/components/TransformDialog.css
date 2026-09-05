@@ -20,6 +20,18 @@
   width: 372px;
 }
 
+/*
+  Where the window is not tall enough to hold the whole dialog. The body gives
+  way and scrolls, so the title and the buttons are never what goes. Set only
+  while it is needed, because a body that scrolls is also a body that clips, and
+  the pickers inside some of these dialogs drop open well past its bottom edge.
+*/
+.dialog--tall {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 16px);
+}
+
 .dialog__bar {
   display: flex;
   align-items: center;
@@ -54,6 +66,12 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px;
+}
+
+/* The giving way itself, on the body of a dialog the window is too short for. */
+.dialog__body--tall {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .dialog__group {
