@@ -19,21 +19,12 @@ import {
 } from "./model";
 
 /**
- * Everything written on the sheet, which is everything that takes a face and a
- * size. The same set the model calls `SketchWriting`, named here for what the
- * bar does with it: kept as one definition, so the two cannot drift apart.
- */
-export type Written = SketchWriting;
-
-export const isWritten = isWriting;
-
-/**
  * How a piece of writing is drawn, rather than what it holds. Only a caption
  * carries all three; the rest fall back to what a caption starts in where they
  * say nothing. Two of them can hold the same thing and still be drawn
  * differently, which is why the bar reads what is on the sheet.
  */
-export function lookOf(object: Written): TextLook {
+export function lookOf(object: SketchWriting): TextLook {
   return {
     font: object.font ?? DEFAULT_CAPTION.font,
     size: object.size ?? DEFAULT_CAPTION.size,
@@ -51,7 +42,10 @@ export function lookOfLabel(label: LabelState, ink: string): TextLook {
 }
 
 /** How a label is marked up, which is the whole of it: a label holds no runs. */
-export type LabelMarks = Record<"bold" | "italic" | "underline", boolean>;
+/** A mark a run of writing can carry, which the palette sets and reads. */
+export type Mark = "bold" | "italic" | "underline";
+
+export type LabelMarks = Record<Mark, boolean>;
 
 /**
  * The three style keys over the picked labels. A key they do not all carry
@@ -71,7 +65,7 @@ export function marksOfLabels(labels: LabelState[]): LabelMarks {
  * set from here, so what the bar reads back and what the sheet shows cannot
  * drift apart.
  */
-export function drawnAs(object: Written): {
+export function drawnAs(object: SketchWriting): {
   fontFamily: string;
   fontSize: string;
   color: string;
@@ -121,7 +115,7 @@ export function textStyling(looks: TextLook[]): TextStyling | null {
 export function inkAgreed(objects: SketchObject[]): string | null {
   if (objects.length === 0) return null;
   const inkOf = (object: SketchObject) =>
-    isWritten(object) ? lookOf(object).colour : object.colour;
+    isWriting(object) ? lookOf(object).colour : object.colour;
   const first = inkOf(objects[0]);
   if (first === undefined) return null;
   return objects.every((object) => inkOf(object) === first) ? first : null;

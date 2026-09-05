@@ -1,10 +1,24 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { place, Tooltip } from "./Tooltip";
 
 afterEach(cleanup);
+
+/** The pointer GRASP is being used with, which `usePhone` asks the browser for. */
+function pointerIs(coarse: boolean) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => ({
+      matches: coarse,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })),
+  );
+}
+
+beforeEach(() => pointerIs(false));
 
 /**
  * The browser's `title` is not GRASP's tooltip. It is drawn in the browser's
@@ -88,8 +102,10 @@ function nativeTitles(source: string, file = ""): string[] {
 describe("no native title tooltips", () => {
   it("every tooltip is drawn by GRASP", () => {
     const files = jsxFiles(SRC_DIR).filter((file) => !file.endsWith("Tooltip.test.tsx"));
-    // Without this the sweep would pass by finding nothing to read.
+    // Without these the sweep could pass by finding nothing to read, or by
+    // narrowing back to the renderer and leaving the web app unread.
     expect(files.length).toBeGreaterThan(20);
+    expect(files.some((file) => file.endsWith(join("web", "main.tsx")))).toBe(true);
     const offenders = files.flatMap((file) => nativeTitles(readFileSync(file, "utf8"), file));
     expect(offenders).toEqual([]);
   });
@@ -106,6 +122,14 @@ describe("no native title tooltips", () => {
   it("is not fooled by a tag that closed before the attribute", () => {
     expect(nativeTitles('<Popout sample={<Rule />} title="Notation" />')).toEqual([]);
     expect(nativeTitles('<button icon={<Icon />} title="Bold" />')).toEqual([":1  <button title="]);
+  });
+
+  it("is not fooled by a greater-than inside an earlier prop", () => {
+    // `disabled={places >= most}`, the shape at ReadingPanel.tsx, closes the tag
+    // as far as a bare depth count is concerned, and the offence would walk.
+    expect(nativeTitles('<button disabled={a > b} title="Bold" />')).toEqual([
+      ":1  <button title=",
+    ]);
   });
 });
 
@@ -218,6 +242,60 @@ describe("the tooltip itself", () => {
     fireEvent.mouseOut(key);
     fireEvent.click(key);
     expect(seen).toEqual(["enter", "focus", "blur", "leave", "click"]);
+  });
+
+  it("goes down on a press, which is usually what moves what it names", () => {
+    const { container } = render(
+      <Tooltip says="Add page">
+        <button type="button">+</button>
+      </Tooltip>,
+    );
+    const wrapper = container.querySelector(".tooltip__of") as Element;
+    fireEvent.mouseOver(wrapper);
+    expect(screen.getByText("Add page")).toBeTruthy();
+    fireEvent.pointerDown(wrapper);
+    expect(screen.queryByText("Add page")).toBeNull();
+  });
+
+  it("opens on nothing at all under a finger", () => {
+    // A touch screen fires mouse events after a tap out of politeness to pages
+    // written before it. A chip answering those would stand over the sheet
+    // until the next tap somewhere else.
+    pointerIs(true);
+    const { container } = render(
+      <Tooltip says="Point" keys="P">
+        <button type="button">P</button>
+      </Tooltip>,
+    );
+    fireEvent.mouseOver(container.querySelector(".tooltip__of") as Element);
+    expect(screen.queryByText("Point")).toBeNull();
+  });
+
+  it("stays up for the keyboard while the pointer sweeps over and away", () => {
+    // One flag for both would let either source's leave cancel the other's.
+    const { container } = render(
+      <Tooltip says="Labels">
+        <button type="button">L</button>
+      </Tooltip>,
+    );
+    const wrapper = container.querySelector(".tooltip__of") as Element;
+    fireEvent.focus(screen.getByRole("button"));
+    fireEvent.mouseOver(wrapper);
+    fireEvent.mouseOut(wrapper);
+    expect(screen.getByText("Labels")).toBeTruthy();
+  });
+
+  it("does not come straight back up on the focus the press itself gives", () => {
+    const { container } = render(
+      <Tooltip says="Add page">
+        <button type="button">+</button>
+      </Tooltip>,
+    );
+    const wrapper = container.querySelector(".tooltip__of") as Element;
+    fireEvent.mouseOver(wrapper);
+    fireEvent.pointerDown(wrapper);
+    fireEvent.focus(screen.getByRole("button"));
+    expect(screen.queryByText("Add page")).toBeNull();
   });
 
   it("stays down while something else is showing in its place", () => {

@@ -38,10 +38,10 @@ interface PanelButtonProps {
   /** What the button is, read out by a screen reader. */
   label: string;
   /**
-   * What the tooltip says. The label by default, since the two say the same
-   * thing everywhere but the count buttons, which pass "" to have none.
+   * What the tooltip says, where that is not the label. Null on the count
+   * buttons, which say what they are by the strokes drawn on them.
    */
-  tip?: string;
+  tip?: string | null;
   /** Whether it reads as the one that is on. */
   on?: boolean;
   disabled?: boolean;
@@ -74,8 +74,8 @@ export function PanelButton({
       {children}
     </button>
   );
-  const says = tip ?? label;
-  return says ? <Tooltip says={says}>{key}</Tooltip> : key;
+  const says = tip === undefined ? label : tip;
+  return says === null ? key : <Tooltip says={says}>{key}</Tooltip>;
 }
 
 /** The hairline between two groups of presses. */

@@ -1,9 +1,8 @@
 /*
-  GRASP's own tooltip, in place of the browser's `title`: the same chip
-  whether the toolbox places it or `Tooltip` finds the place itself.
+  GRASP's own tooltip, in place of the browser's `title`.
 
-  On the window rather than in what it names, so a rail that scrolls and
-  clips what leaves it can still hang one off its edge.
+  On the window rather than in what it names, so a panel that clips its contents
+  cannot clip the chip with them.
 */
 .tooltip {
   position: fixed;
@@ -49,4 +48,21 @@
 */
 .tooltip__of {
   display: inline-flex;
+}
+
+/* The wrapper is the flex item now, so what it holds takes the box the wrapper
+   was given rather than shrinking inside it. */
+.tooltip__of > * {
+  flex: 1;
+}
+
+/*
+  A finger opens no tooltip, so the wrapper has no work to do and gives up its
+  box: what it holds goes back to being the flex or grid item it was, which is
+  what the rails and the menu bar place by on a touch screen.
+*/
+@media (pointer: coarse) {
+  .tooltip__of {
+    display: contents;
+  }
 }

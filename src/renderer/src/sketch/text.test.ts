@@ -1,19 +1,19 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CAPTION } from "../components/typeset";
-import type {
-  SketchCalculation,
-  SketchCaption,
-  SketchFunction,
-  SketchLine,
-  SketchMeasurement,
-  SketchParameter,
-  SketchTable,
+import {
+  isWriting,
+  type SketchCalculation,
+  type SketchCaption,
+  type SketchFunction,
+  type SketchLine,
+  type SketchMeasurement,
+  type SketchParameter,
+  type SketchTable,
 } from "./model";
 import {
   drawnAs,
   inkAgreed,
-  isWritten,
   lookOf,
   lookOfLabel,
   marksOfLabels,
@@ -96,16 +96,16 @@ const line: SketchLine = {
 
 describe("what counts as writing", () => {
   it("takes every kind that carries a face and a size", () => {
-    expect(isWritten(caption())).toBe(true);
-    expect(isWritten(reading())).toBe(true);
-    expect(isWritten(parameter())).toBe(true);
-    expect(isWritten(calculation())).toBe(true);
-    expect(isWritten(graph())).toBe(true);
-    expect(isWritten(table())).toBe(true);
+    expect(isWriting(caption())).toBe(true);
+    expect(isWriting(reading())).toBe(true);
+    expect(isWriting(parameter())).toBe(true);
+    expect(isWriting(calculation())).toBe(true);
+    expect(isWriting(graph())).toBe(true);
+    expect(isWriting(table())).toBe(true);
   });
 
   it("leaves out what is drawn rather than written", () => {
-    expect(isWritten(line)).toBe(false);
+    expect(isWriting(line)).toBe(false);
   });
 });
 

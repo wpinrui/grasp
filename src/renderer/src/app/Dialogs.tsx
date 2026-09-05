@@ -1,6 +1,6 @@
 /**
  * Every modal the window can put up, and nothing else. Each one is its own
- * question: what a number holds, what a button does, what a page prints on.
+ * question: what a number holds, what a transform moves, what a page prints on.
  *
  * They are gathered here rather than in the window because none of them draws
  * anything until it is opened, and what each one needs is already gathered into

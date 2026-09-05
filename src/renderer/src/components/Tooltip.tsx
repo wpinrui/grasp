@@ -1,5 +1,6 @@
 import { type CSSProperties, type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { onAPhone } from "../phone";
 import "./Tooltip.css";
 
 /** Which side of the thing it names the tooltip hangs off. */
@@ -91,14 +92,32 @@ interface TooltipProps {
  *
  * The chip rides on the window rather than inside what it names, so a panel
  * that clips its contents or a tab that slides mid-drag cannot take it along.
+ *
+ * A finger opens nothing. A touch screen fires mouse events after a tap out of
+ * politeness to pages written before it, and a chip that answers those would
+ * stand over the sheet until the next tap somewhere else.
  */
 export function Tooltip({ says, keys, side = "top", quiet, children }: TooltipProps) {
-  const [open, setOpen] = useState(false);
+  // The pointer and the keyboard are held apart: one flag for both would let
+  // the pointer sweeping away take down a chip the keyboard is still on, and
+  // let a key greying out under the pointer blur itself and take the chip with
+  // it, which is the state this whole wrapper exists to keep showing.
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
   /** Where the chip sits, once it has been measured. */
   const [spot, setSpot] = useState<Spot | null>(null);
   const of = useRef<HTMLSpanElement>(null);
   const chip = useRef<HTMLDivElement>(null);
-  const shown = open && !quiet;
+  /**
+   * Whether the pointer is still down from a press on this. A press focuses
+   * what it lands on, so without this the focus would put straight back up the
+   * chip the press just took down.
+   */
+  const pressed = useRef(false);
+  // Asked at each render rather than subscribed to: the answer is wanted on
+  // the hover, and a hover is a render.
+  const phone = onAPhone();
+  const shown = (hovered || focused) && !quiet && !phone;
 
   // Measured before the paint, so the chip is never seen anywhere but its
   // place. Both boxes are read here rather than remembered from the hover: what
@@ -122,15 +141,39 @@ export function Tooltip({ says, keys, side = "top", quiet, children }: TooltipPr
       <span
         ref={of}
         className="tooltip__of"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+        onMouseEnter={
+          phone
+            ? undefined
+            : () => {
+                pressed.current = false;
+                setHovered(true);
+              }
+        }
+        onMouseLeave={
+          phone
+            ? undefined
+            : () => {
+                pressed.current = false;
+                setHovered(false);
+              }
+        }
         // The keyboard reaches it too: a tooltip only a pointer can open is one
-        // half the people using GRASP never see.
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        // half the people using GRASP never see. A press focuses as well, and
+        // that focus is not the keyboard asking for anything.
+        onFocus={() => {
+          if (!pressed.current) setFocused(true);
+        }}
+        onBlur={() => {
+          pressed.current = false;
+          setFocused(false);
+        }}
         // A press is usually what moves things about, and a chip measured
         // against where a key used to be is worse than no chip.
-        onPointerDown={() => setOpen(false)}
+        onPointerDown={() => {
+          pressed.current = true;
+          setHovered(false);
+          setFocused(false);
+        }}
       >
         {children}
       </span>
