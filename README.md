@@ -2,9 +2,9 @@
 
 **G**RASP **R**enders **A**ll **S**ketches **P**recisely.
 
-A geometry sketchpad for the classroom. Draw accurate figures, measure them, produce visual proofs. Help your students grasp geometric intuition.
+A free and open-source geometry sketchpad for your classroom. Draw accurate figures, measure them, produce visual proofs. Help your students grasp geometric intuition.
 
-Free, open source, and it runs in a browser: **[grasp-math.netlify.app](https://grasp-math.netlify.app)**
+Check out the online version of GRASP [here](https://grasp-math.netlify.app). A Windows version is also available.
 
 ![The GRASP window: a labelled triangle with its angles, side and area measured](docs/images/window.png)
 
@@ -31,13 +31,17 @@ GRASP comes with a full scripting language that an AI model can figure out. Gene
 
 ![The Ask an AI dialog](docs/images/ai.png)
 
-## Getting it
+## How to use GRASP
 
-- **In a browser.** [grasp-math.netlify.app/launch](https://grasp-math.netlify.app/launch). Fully-featured on a desktop, and always available online. The same address works on a phone, laid out for a finger: two fingers move the sheet, a long press on a tool opens its variants, and a Share button hands the sketch to the device. The drawing and measuring tools are all there, so are the constructions, and so is asking an AI for a figure. The transform dialogs, the parameters and tables, the panels, the pages, image export and printing are not.
-- **Windows.** Each [release](https://github.com/wpinrui/grasp/releases) carries a full installation of GRASP, or a portable executable file.
-- **macOS and Linux.** Coming soon.
+### Online
 
-Building it yourself needs [yarn](https://yarnpkg.com): `yarn && yarn dev`.
+The online version of GRASP is fully featured and available [here](https://grasp-math.netlify.app/launch). You can also use a simplified version on mobile.
+
+### Desktop
+
+Windows: Go to the [releases](https://github.com/wpinrui/grasp/releases) page and download the installer or portable exe.
+
+macOS and Linux: Coming soon.
 
 ## Acknowledgements
 
