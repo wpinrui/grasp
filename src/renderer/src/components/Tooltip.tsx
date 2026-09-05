@@ -1,6 +1,7 @@
 import { type CSSProperties, type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { onAPhone } from "../phone";
+import { inWindow } from "./inWindow";
 import "./Tooltip.css";
 
 /** Which side of the thing it names the tooltip hangs off. */
@@ -54,16 +55,14 @@ export function place(
   const middleY = of.top + of.height / 2 - chip.height / 2;
   const wanted =
     side === "top"
-      ? { top: of.top - chip.height - GAP, left: middleX }
+      ? { x: middleX, y: of.top - chip.height - GAP }
       : side === "bottom"
-        ? { top: of.bottom + GAP, left: middleX }
+        ? { x: middleX, y: of.bottom + GAP }
         : side === "left"
-          ? { top: middleY, left: of.left - chip.width - GAP }
-          : { top: middleY, left: of.right + GAP };
-  return {
-    top: Math.max(EDGE, Math.min(wanted.top, window.innerHeight - chip.height - EDGE)),
-    left: Math.max(EDGE, Math.min(wanted.left, window.innerWidth - chip.width - EDGE)),
-  };
+          ? { x: of.left - chip.width - GAP, y: middleY }
+          : { x: of.right + GAP, y: middleY };
+  const put = inWindow(wanted, chip, EDGE);
+  return { top: put.y, left: put.x };
 }
 
 interface TooltipProps {

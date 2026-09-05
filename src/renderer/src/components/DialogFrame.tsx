@@ -1,17 +1,7 @@
-import {
-  type CSSProperties,
-  type PointerEvent,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { usePhone } from "../phone";
+import { type CSSProperties, type ReactNode, useEffect } from "react";
 import { CloseIcon } from "./icons";
+import { useDialogPlacement } from "./useDialogPlacement";
 import "./TransformDialog.css";
-
-/** Where a dialog opens: clear of the middle, so the sheet stays clickable. */
-const OPENS_AT = { x: 0.68, y: 0.18 };
 
 interface DialogFrameProps {
   title: string;
@@ -59,20 +49,7 @@ export function DialogFrame({
   quiet,
   children,
 }: DialogFrameProps) {
-  const phone = usePhone();
-  const [at, setAt] = useState(() =>
-    opensAt
-      ? {
-          // Clear of the pointer, and never off the far edge of the window.
-          x: Math.max(8, Math.min(opensAt.x + 36, window.innerWidth - 260)),
-          y: Math.max(8, Math.min(opensAt.y + 24, window.innerHeight - 220)),
-        }
-      : {
-          x: Math.round(window.innerWidth * OPENS_AT.x),
-          y: Math.round(window.innerHeight * OPENS_AT.y),
-        },
-  );
-  const drag = useRef<{ x: number; y: number } | null>(null);
+  const place = useDialogPlacement(opensAt);
 
   useEffect(() => {
     if (quiet) return;
@@ -86,40 +63,13 @@ export function DialogFrame({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [canApply, onApply, onCancel, quiet]);
 
-  // Dragged by its bar, because it must be possible to get it off a point you
-  // need to click. The close button sits on that bar and is not a handle: were
-  // the press on it to capture the pointer for the bar, the click that follows
-  // would be the bar's rather than the button's and the dialog would not shut.
-  function startDrag(event: PointerEvent<HTMLDivElement>) {
-    if (event.target instanceof Element && event.target.closest(".dialog__close")) return;
-    drag.current = { x: event.clientX - at.x, y: event.clientY - at.y };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function onDrag(event: PointerEvent<HTMLDivElement>) {
-    // Nowhere to drag it to: the stylesheet places it against the top of what
-    // is visible, and the inline position it would set is not read.
-    if (phone) return;
-    if (!drag.current) return;
-    setAt({ x: event.clientX - drag.current.x, y: event.clientY - drag.current.y });
-  }
-
   return (
-    <div
-      className={`dialog${wide ? " dialog--wide" : ""}`}
-      // A touch screen has nowhere to drag a dialog to and a keyboard waiting to
-      // cover the bottom of it, so the stylesheet places it against the top of
-      // what is visible instead. Left off rather than overridden, so that rule
-      // needs no importance to win.
-      style={phone ? undefined : { left: `${at.x}px`, top: `${at.y}px` }}
-    >
+    <div ref={place.box} className={`dialog${wide ? " dialog--wide" : ""}`} style={place.style}>
       <div
         className="dialog__bar"
-        onPointerDown={startDrag}
-        onPointerMove={onDrag}
-        onPointerUp={() => {
-          drag.current = null;
-        }}
+        onPointerDown={place.startDrag}
+        onPointerMove={place.onDrag}
+        onPointerUp={place.endDrag}
       >
         <span className="dialog__title">{title}</span>
         <button type="button" className="dialog__close" aria-label="Close" onClick={onCancel}>
@@ -127,7 +77,11 @@ export function DialogFrame({
         </button>
       </div>
 
-      <div className="dialog__body" style={bodyStyle}>
+      <div
+        ref={place.body}
+        className={`dialog__body${place.tall ? " dialog__body--tall" : ""}`}
+        style={bodyStyle}
+      >
         {children}
       </div>
 
