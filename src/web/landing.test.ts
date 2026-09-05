@@ -154,6 +154,23 @@ describe("landing page bundle", () => {
     // clip inside it at every width.
     expect(hero?.getAttribute("style")).toContain("height: auto");
   });
+
+  /**
+   * A reader who has asked their machine for less motion gets the still the
+   * clip was cut from rather than fourteen seconds of it. The swap is two
+   * rules and two handles, and either half alone is a hero showing nothing or
+   * a hero showing both.
+   */
+  it("shows the still instead of the clip where less motion was asked for", () => {
+    const still = page().querySelector("img.r-hero-still");
+    expect(still?.getAttribute("src")).toMatch(UUID);
+    expect(still?.getAttribute("style")).toContain("display: none");
+    expect(page().querySelector("video")?.getAttribute("src")).not.toBe(still?.getAttribute("src"));
+    const opened = styles().split("@media (prefers-reduced-motion: reduce)")[1] ?? "";
+    const rules = opened.split("@media")[0] as string;
+    expect(rules).toContain(".r-hero-clip { display: none; }");
+    expect(rules).toContain(".r-hero-still { display: block; }");
+  });
 });
 
 describe("landing page responsive handles", () => {
