@@ -97,6 +97,8 @@ export function MarkPanel({
         <PanelButton
           key={strokes}
           label={`${strokes}`}
+          // A count says what it is by the strokes drawn on it.
+          tip=""
           on={mark.strokes === strokes}
           onClick={() => onStrokes(mark.id, strokes)}
         >

@@ -16,6 +16,22 @@ const WEIGHT_NAMES: Record<LineWidth, string> = {
   thick: "Thick",
 };
 
+/**
+ * The three keys that set a mark on a run of writing. One row each: what the
+ * key is called, the key that does the same thing, the mark it sets, and the
+ * letter it is drawn as, which is also what names its modifier class.
+ */
+const MARK_KEYS: {
+  mark: "bold" | "italic" | "underline";
+  says: string;
+  keys: string;
+  shown: string;
+}[] = [
+  { mark: "bold", says: "Bold", keys: "Ctrl+B", shown: "B" },
+  { mark: "italic", says: "Italic", keys: "Ctrl+I", shown: "I" },
+  { mark: "underline", says: "Underline", keys: "Ctrl+U", shown: "U" },
+];
+
 const PATTERN_NAMES: Record<LinePattern, string> = {
   solid: "Solid",
   dashed: "Dashed",
@@ -274,49 +290,23 @@ export function Palette({
         <span className="palette__split" />
         <span className={`palette__name${marksOff ? "" : " palette__name--on"}`}>Style</span>
         <div className="palette__controls">
-          <Tooltip says="Bold" keys="Ctrl+B">
-            <button
-              type="button"
-              className={`palette__key palette__key--bold${marks.bold ? " palette__key--on" : ""}`}
-              aria-label="Bold"
-              aria-pressed={marks.bold}
-              disabled={marksOff}
-              onMouseDown={hold}
-              onClick={() => style("bold")}
-            >
-              B
-            </button>
-          </Tooltip>
-          <Tooltip says="Italic" keys="Ctrl+I">
-            <button
-              type="button"
-              className={`palette__key palette__key--italic${
-                marks.italic ? " palette__key--on" : ""
-              }`}
-              aria-label="Italic"
-              aria-pressed={marks.italic}
-              disabled={marksOff}
-              onMouseDown={hold}
-              onClick={() => style("italic")}
-            >
-              I
-            </button>
-          </Tooltip>
-          <Tooltip says="Underline" keys="Ctrl+U">
-            <button
-              type="button"
-              className={`palette__key palette__key--underline${
-                marks.underline ? " palette__key--on" : ""
-              }`}
-              aria-label="Underline"
-              aria-pressed={marks.underline}
-              disabled={marksOff}
-              onMouseDown={hold}
-              onClick={() => style("underline")}
-            >
-              U
-            </button>
-          </Tooltip>
+          {MARK_KEYS.map((key) => (
+            <Tooltip key={key.mark} says={key.says} keys={key.keys}>
+              <button
+                type="button"
+                className={`palette__key palette__key--${key.mark}${
+                  marks[key.mark] ? " palette__key--on" : ""
+                }`}
+                aria-label={key.says}
+                aria-pressed={marks[key.mark]}
+                disabled={marksOff}
+                onMouseDown={hold}
+                onClick={() => style(key.mark)}
+              >
+                {key.shown}
+              </button>
+            </Tooltip>
+          ))}
           <span className="palette__split palette__split--tight" />
           {(["left", "center", "right"] as CaptionAlign[]).map((way) => (
             <Tooltip

@@ -1,11 +1,9 @@
 import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { usePhone } from "../phone";
 import { FlyoutMarker, ShareIcon } from "./icons";
-import { TooltipChip } from "./Tooltip";
+import { Tooltip } from "./Tooltip";
 import { TOOLS } from "./tools";
 import "./Toolbox.css";
-
-const TOOLTIP_OFFSET = 3;
 
 /**
  * How long a tool is held before its variants come out, and how far a finger
@@ -66,9 +64,9 @@ export function Toolbox({
     setOpenAt({ top: at.top, left: at.right });
     setHovered(index);
   }
-  const tip = hovered === null ? null : TOOLS[hovered];
+  const held = hovered === null ? null : TOOLS[hovered];
   // A tool with variants opens them on hover, in place of its tooltip.
-  const opened = tip?.variants?.length && !off[tip.id] ? tip : null;
+  const opened = held?.variants?.length && !off[held.id] ? held : null;
 
   const phone = usePhone();
   /** The press being timed, if one is. */
@@ -132,43 +130,52 @@ export function Toolbox({
         const Icon = armed?.Icon ?? tool.Icon;
         const idle = off[tool.id];
         return (
-          <button
-            type="button"
+          // A tool with a flyout shows it in place of its tooltip, and a tool
+          // with nothing to do says why rather than what it is.
+          <Tooltip
             key={tool.id}
-            className={`tool${tool.id === activeTool ? " tool--active" : ""}${
-              idle ? " tool--off" : ""
-            }`}
-            style={{ color: `var(--color-tool-${tool.id})` }}
-            aria-label={tool.name}
-            aria-disabled={idle !== undefined}
-            aria-pressed={tool.id === activeTool}
-            onClick={() => {
-              // The press that opened the variants is spent on opening them.
-              if (opening.current) {
-                opening.current = false;
-                return;
-              }
-              if (!idle) onSelectTool(tool.id);
-            }}
-            onDoubleClick={() => {
-              if (!idle) onDoubleClickTool(tool.id);
-            }}
-            // A touch screen sends mouse events of its own after a tap, which
-            // would open a flyout on a plain press, so it gets the hold instead
-            // and none of the hover.
-            onPointerDown={phone && !idle ? (event) => startHold(index, event) : undefined}
-            onPointerMove={phone ? keepHold : undefined}
-            onPointerUp={phone ? dropHold : undefined}
-            onPointerCancel={phone ? dropHold : undefined}
-            // The browser's own long press, which would take the gesture.
-            onContextMenu={phone ? (event) => event.preventDefault() : undefined}
-            onMouseEnter={phone ? undefined : (event) => show(index, event.currentTarget)}
-            onMouseLeave={phone ? undefined : () => setHovered(null)}
+            says={idle ?? tool.name}
+            keys={idle ? undefined : tool.key}
+            side="right"
+            quiet={opened?.id === tool.id}
           >
-            {tool.id === activeTool && <span className="tool__rail" />}
-            <Icon />
-            {tool.flyout && <FlyoutMarker />}
-          </button>
+            <button
+              type="button"
+              className={`tool${tool.id === activeTool ? " tool--active" : ""}${
+                idle ? " tool--off" : ""
+              }`}
+              style={{ color: `var(--color-tool-${tool.id})` }}
+              aria-label={tool.name}
+              aria-disabled={idle !== undefined}
+              aria-pressed={tool.id === activeTool}
+              onClick={() => {
+                // The press that opened the variants is spent on opening them.
+                if (opening.current) {
+                  opening.current = false;
+                  return;
+                }
+                if (!idle) onSelectTool(tool.id);
+              }}
+              onDoubleClick={() => {
+                if (!idle) onDoubleClickTool(tool.id);
+              }}
+              // A touch screen sends mouse events of its own after a tap, which
+              // would open a flyout on a plain press, so it gets the hold instead
+              // and none of the hover.
+              onPointerDown={phone && !idle ? (event) => startHold(index, event) : undefined}
+              onPointerMove={phone ? keepHold : undefined}
+              onPointerUp={phone ? dropHold : undefined}
+              onPointerCancel={phone ? dropHold : undefined}
+              // The browser's own long press, which would take the gesture.
+              onContextMenu={phone ? (event) => event.preventDefault() : undefined}
+              onMouseEnter={phone ? undefined : (event) => show(index, event.currentTarget)}
+              onMouseLeave={phone ? undefined : () => setHovered(null)}
+            >
+              {tool.id === activeTool && <span className="tool__rail" />}
+              <Icon />
+              {tool.flyout && <FlyoutMarker />}
+            </button>
+          </Tooltip>
         );
       })}
 
@@ -214,15 +221,6 @@ export function Toolbox({
         >
           <ShareIcon />
         </button>
-      )}
-
-      {tip && !opened && hovered !== null && (
-        // A tool with nothing to do says why rather than what it is.
-        <TooltipChip
-          says={off[tip.id] ?? tip.name}
-          keys={off[tip.id] ? undefined : tip.key}
-          style={{ top: `${openAt.top + TOOLTIP_OFFSET}px`, left: `${openAt.left}px` }}
-        />
       )}
     </div>
   );

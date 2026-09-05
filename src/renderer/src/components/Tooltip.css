@@ -39,3 +39,14 @@
   font-size: 11px;
   color: var(--color-text-secondary);
 }
+
+/*
+  The wrapper that takes the hover. It shrinks to what it holds and generates no
+  box of its own beyond it, so a key inside a row sits exactly where it would
+  without one. It has to be a real box rather than `display: contents`: a box is
+  what the pointer can be over when the key inside is disabled and dispatching
+  nothing.
+*/
+.tooltip__of {
+  display: inline-flex;
+}

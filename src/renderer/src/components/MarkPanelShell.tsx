@@ -37,7 +37,10 @@ export function PanelShell({ at, colour, children }: PanelShellProps) {
 interface PanelButtonProps {
   /** What the button is, read out by a screen reader. */
   label: string;
-  /** What the tooltip says, where there is one. The count buttons have none. */
+  /**
+   * What the tooltip says. The label by default, since the two say the same
+   * thing everywhere but the count buttons, which pass "" to have none.
+   */
   tip?: string;
   /** Whether it reads as the one that is on. */
   on?: boolean;
@@ -71,7 +74,8 @@ export function PanelButton({
       {children}
     </button>
   );
-  return tip ? <Tooltip says={tip}>{key}</Tooltip> : key;
+  const says = tip ?? label;
+  return says ? <Tooltip says={says}>{key}</Tooltip> : key;
 }
 
 /** The hairline between two groups of presses. */
