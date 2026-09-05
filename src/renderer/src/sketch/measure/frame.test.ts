@@ -110,8 +110,7 @@ describe("the frame a reading hangs in", () => {
     const angle = createMeasurement("angle", [arm.id, corner.id, other.id], { x: 30, y: 30 });
     const frame = framed(angle, [corner, arm, other, angle]);
     expect(frame?.at).toEqual({ x: 0, y: 0 });
-    // The bisector of a right angle between those two arms, and one whole way
-    // along is the mean of the arms.
+    // The bisector of a right angle between those two arms.
     expect(frame?.along.x).toBeCloseTo(Math.SQRT1_2);
     expect(frame?.along.y).toBeCloseTo(Math.SQRT1_2);
   });
