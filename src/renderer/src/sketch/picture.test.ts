@@ -61,6 +61,66 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
+/** A box of its own, which beats the prototype stub every element shares. */
+function boxed(element: Element, at: { x: number; y: number; size: number }) {
+  const rect = {
+    x: at.x,
+    y: at.y,
+    left: at.x,
+    top: at.y,
+    right: at.x + at.size,
+    bottom: at.y + at.size,
+    width: at.size,
+    height: at.size,
+  } as DOMRect;
+  Object.defineProperty(element, "getBoundingClientRect", { value: () => rect });
+}
+
+/** A sheet with one short line on it, and the drawn cursor far away or absent. */
+function withCursor(cursor: boolean) {
+  document.body.innerHTML = [
+    '<div class="app__canvas"><div class="canvas__sheet">',
+    `<svg class="canvas__objects" width="${SHEET.width}" height="${SHEET.height}">`,
+    '<line class="canvas__line" x1="0" y1="0" x2="20" y2="20"/>',
+    "</svg>",
+    cursor
+      ? '<svg class="tool-cursor tool-cursor--outline"><path d="M11 1 L11 7"/></svg>' +
+        '<svg class="tool-cursor"><path d="M11 1 L11 7"/></svg>'
+      : "",
+    "</div></div>",
+  ].join("");
+  const sheet = document.querySelector(".canvas__sheet") as HTMLElement;
+  boxed(document.querySelector(".canvas__line") as Element, { x: 0, y: 0, size: 20 });
+  for (const mark of document.querySelectorAll(".tool-cursor path")) {
+    boxed(mark, { x: 400, y: 300, size: 46 });
+  }
+  return sheet;
+}
+
+describe("what a picture leaves out", () => {
+  it("comes out the same size whether or not the cursor is on the sheet", () => {
+    // The cursor's marks are paths on the sheet like any other, so without the
+    // app's own list to keep them out they would widen the crop to reach them.
+    withCursor(false);
+    const alone = pictureSvg(DEFAULT_PICTURE, null);
+    withCursor(true);
+    const over = pictureSvg(DEFAULT_PICTURE, null);
+    expect(alone).not.toBe(null);
+    expect(over?.width).toBe(alone?.width);
+    expect(over?.height).toBe(alone?.height);
+    // And the crop really was the short line rather than the whole sheet, or
+    // the two would agree by both being everything.
+    expect(alone?.width).toBeLessThan(SHEET.width / 2);
+  });
+
+  it("leaves the cursor out of the drawing itself", () => {
+    withCursor(true);
+    const drawn = pictureSvg(DEFAULT_PICTURE, null);
+    expect(drawn?.svg).not.toContain("tool-cursor");
+    expect(drawn?.svg).toContain("canvas__line");
+  });
+});
+
 describe("the colours a picture comes out in", () => {
   it("holds a path to the ink, the way it holds everything else drawn", () => {
     const css = styleOf({ ink: "black" });

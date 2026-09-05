@@ -36,6 +36,13 @@ export function ToolSvg({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * What a tool's outline is stroked at. Named because the cursor for each tool
+ * is the same drawing at another size and has to match: see
+ * `canvas/cursorGeometry.ts`.
+ */
+export const TOOL_STROKE = 1.6;
+
 export const STRAIGHT = {
   fill: "none",
   stroke: "currentColor",

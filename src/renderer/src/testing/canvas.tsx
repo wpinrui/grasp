@@ -59,6 +59,8 @@ export interface HarnessProps {
   onRegularAsk?: (asked: { spot: { x: number; y: number }; at: { x: number; y: number } }) => void;
   /** What the polygon tool is armed with, since one of them opens a box. */
   polygonKind?: string;
+  /** What the Arrow is armed with, which is what its cursor is badged by. */
+  arrowKind?: string;
 }
 
 /**
@@ -74,6 +76,7 @@ function Harness({
   marks = [],
   preview = [],
   labelKind = "caption",
+  arrowKind = "all",
   relabelName = null,
   onRelabelAsk = () => {},
   onRelabelGive = () => {},
@@ -126,7 +129,7 @@ function Harness({
       onViewport={() => {}}
       snapping={SNAPPING}
       measureKind="length"
-      arrowKind="all"
+      arrowKind={arrowKind}
       markForm="equal"
       hiddenKinds={{ marks: false, text: false }}
     />

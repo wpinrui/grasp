@@ -65,6 +65,8 @@ const UI_ONLY = [
   ".canvas__caption",
   ".canvas__label-input",
   ".canvas__zoom",
+  // The pointer itself, which is the app saying what it would do next.
+  ".tool-cursor",
   ".caption-box",
   ".caption--ghost",
   ".reading--ghost",
