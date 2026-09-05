@@ -44,3 +44,7 @@ temp/
 # Claude Code
 .claude/
 
+# Private local configuration
+/AGENTS.md
+/.codex/
+/.agents/
