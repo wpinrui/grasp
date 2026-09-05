@@ -41,7 +41,23 @@ The online version of GRASP is fully featured and available [here](https://grasp
 
 Windows: Go to the [releases](https://github.com/wpinrui/grasp/releases) page and download the installer or portable exe.
 
-macOS and Linux: Coming soon.
+Linux (x64): Versioned desktop releases include an AppImage and a Debian package on the [releases](https://github.com/wpinrui/grasp/releases) page. For the AppImage, enable its executable permission (`chmod +x GRASP-*.AppImage`) before opening it. On Debian or Ubuntu, install the `.deb` with `sudo apt install ./GRASP-*.deb`.
+
+macOS: Coming soon.
+
+### Building desktop packages
+
+Run `yarn install --frozen-lockfile`, then `yarn package:linux` on Linux or `yarn package:win` on Windows. The x64 packages are written to `dist/desktop/`.
+
+The [Release desktop workflow](https://github.com/wpinrui/grasp/actions/workflows/release-desktop.yml) runs only when explicitly dispatched against a stable version tag. It requires an existing draft release with written notes and a tag matching `package.json`. Both Windows and Linux builds must pass checks before all four packages are attached and the draft is published. Build failures leave the release unpublished. Workflow artifacts are retained for 14 days; published release downloads remain available independently.
+
+| Action | Website | Desktop builds | GitHub Release |
+| --- | --- | --- | --- |
+| Push a feature branch, open a PR, or merge to `main` | No production deployment | None | None |
+| Push `deploy` | Netlify deploys | None | None |
+| Dispatch Release desktop against a prepared version tag | No additional web deployment | Windows and Linux | Publishes the prepared draft after both builds succeed |
+
+For a versioned release, first deploy the selected commit and confirm Netlify is ready. Create and push `v<version>` at that exact commit, prepare a draft with `gh release create v<version> --verify-tag --draft --title "GRASP <version>" --notes-file <notes-path>`, then run `gh workflow run release-desktop.yml --ref v<version>`. The workflow must already exist on the default branch. Dispatching publishes the draft automatically on success, preserving its title and notes. A web-only deployment stops after Netlify is ready.
 
 ## Acknowledgements
 
