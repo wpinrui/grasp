@@ -112,7 +112,7 @@ If anything about the figure is unclear, ask the user about it and wait for an a
 
 ## The script
 
-The script is JavaScript. Only the calls listed below are in scope; there is no console, no DOM and no network. Every call that makes something hands back a handle, and every call that takes an object takes a handle. \`const\`, loops, functions and \`Math\` all work.
+The script is JavaScript. Only the calls listed below are in scope; there is no console, no DOM and no network. Every call that makes something hands back a handle, and every call that takes an object takes a handle. \`const\`, \`if\`, loops, functions and \`Math\` all work.
 
 A call GRASP does not have stops the whole script before anything is drawn, so use only what is listed.
 

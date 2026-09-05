@@ -1,5 +1,5 @@
 import { DEFAULT_POINT_SIZE, type PointSize, resolve, type SketchObject } from "../model";
-import { apiFor, apiNames, type ScriptSheet } from "./calls";
+import { apiFor, apiNames, ScriptError, type ScriptSheet } from "./calls";
 /**
  * What a script may reach, and the run itself.
  *
@@ -32,6 +32,54 @@ const SHADOWED = [
   "Function",
 ];
 
+/**
+ * The words of the language itself, which are not calls however much they look
+ * like one. `if (a)`, `for (;;)` and `return (x)` all read as a name followed by
+ * a bracket, so without this a script that branches or loops is turned away for
+ * calling something GRASP does not have. Every reserved word is listed rather
+ * than the handful that are usually written with a bracket after them, because
+ * the ones that are not are only ever missing from this list by oversight.
+ */
+const KEYWORDS = new Set([
+  "await",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "export",
+  "extends",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "import",
+  "in",
+  "instanceof",
+  "let",
+  "new",
+  "of",
+  "return",
+  "static",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield",
+]);
+
 /** Every name a script may call that this API does not provide itself. */
 const ALLOWED_GLOBALS = new Set([
   "Array",
@@ -48,6 +96,78 @@ const ALLOWED_GLOBALS = new Set([
   "parseFloat",
   "parseInt",
 ]);
+
+/**
+ * Put above every script. It is one line, and the line numbers a failure is
+ * reported at have to be told about it.
+ */
+const PREAMBLE = '"use strict";\n';
+
+/** How many lines of the body are the preamble rather than the script. */
+const PREAMBLE_LINES = PREAMBLE.split("\n").length - 1;
+
+/**
+ * The line an error says it came from, read out of its stack. A body handed to
+ * `new Function` has no file of its own, so its frames carry a bare line and
+ * column where every other frame carries a path as well. The first such frame
+ * is the innermost, which is where the call that failed was written.
+ */
+function reportedLine(error: Error): number | null {
+  const found = (error.stack ?? "")
+    .split("\n")
+    .map((frame) => frame.match(/<anonymous>:(\d+):\d+/))
+    .find((match) => match !== null);
+  return found ? Number(found[1]) : null;
+}
+
+/** What `headerLines` worked out, once, since the answer cannot change. */
+let header: number | null | undefined;
+
+/**
+ * How many lines an engine writes above the body it is handed. V8 writes two,
+ * being the parameter list and the brace that opens the body; nothing says
+ * another engine must, so it is measured with a probe that throws from the
+ * first line of a body of its own rather than assumed.
+ */
+function headerLines(): number | null {
+  if (header !== undefined) return header;
+  header = null;
+  try {
+    new Function('throw new Error("where");')();
+  } catch (error) {
+    const at = reportedLine(error as Error);
+    if (at !== null) header = at - 1;
+  }
+  return header;
+}
+
+/** Which line of the script a failure came from, where the engine will say. */
+function scriptLine(error: Error): number | null {
+  const at = reportedLine(error);
+  const above = headerLines();
+  if (at === null || above === null) return null;
+  const line = at - above - PREAMBLE_LINES;
+  return line >= 1 ? line : null;
+}
+
+/**
+ * Where in the script a failure was, as closely as the run can say. The line is
+ * what whoever wrote it will look for; failing that, which call of that name it
+ * was still narrows a script down to one place in it.
+ */
+function whereFrom(error: Error): string | null {
+  const call = error instanceof ScriptError ? error.call : undefined;
+  const line = scriptLine(error);
+  if (line !== null) return call ? `Line ${line}, ${call}` : `Line ${line}`;
+  if (!call) return null;
+  return `${call} call ${(error as ScriptError).nth}`;
+}
+
+/** A failed call, said the way whoever wrote the script will look for it. */
+function said(error: Error): string {
+  const where = whereFrom(error);
+  return where ? `${where}: ${error.message}` : error.message;
+}
 
 /** The source with its comments and its string literals blanked out. */
 function bareSource(source: string): string {
@@ -88,7 +208,13 @@ function boundNames(bare: string): Set<string> {
  */
 export function unknownCalls(source: string, provided: Iterable<string>): string[] {
   const bare = bareSource(source);
-  const known = new Set([...provided, ...ALLOWED_GLOBALS, ...SHADOWED, ...boundNames(bare)]);
+  const known = new Set([
+    ...provided,
+    ...ALLOWED_GLOBALS,
+    ...SHADOWED,
+    ...KEYWORDS,
+    ...boundNames(bare),
+  ]);
   const missing = new Set<string>();
   for (const [, name] of bare.matchAll(/(?:^|[^\w$.?])([A-Za-z_$][\w$]*)\s*\(/g)) {
     if (!known.has(name)) missing.add(name);
@@ -122,7 +248,7 @@ export function evaluate(
   let script: (...values: unknown[]) => void;
   try {
     // The API is in scope, and the obvious ways out of it are shadowed away.
-    script = new Function(...keys, ...SHADOWED, `"use strict";\n${source}\n`) as typeof script;
+    script = new Function(...keys, ...SHADOWED, `${PREAMBLE}${source}\n`) as typeof script;
   } catch (error) {
     return { ok: false, errors: [`That is not valid JavaScript: ${(error as Error).message}`] };
   }
@@ -130,7 +256,7 @@ export function evaluate(
   try {
     script(...keys.map((key) => api[key as keyof typeof api]));
   } catch (error) {
-    return { ok: false, errors: [(error as Error).message] };
+    return { ok: false, errors: [said(error as Error)] };
   }
 
   try {
