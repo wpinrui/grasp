@@ -5,7 +5,7 @@
  * script is gzipped, base64'd and parked in a JSON island, and a runtime in
  * the page decodes the lot, mints a blob URL per asset, substitutes those into
  * a packed template and replaces the document with the result. That is what a
- * file has to do when it travels alone, and it costs a 7 MB download before
+ * file has to do when it travels alone, and it costs a 9 MB download before
  * anything can be drawn, which is why the page shows a placeholder while it
  * happens.
  *

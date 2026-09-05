@@ -20,6 +20,9 @@ import { islandText } from "../../scripts/unpack-landing";
 
 const BUNDLE = "grasp-landing.html";
 
+/** What an asset is called in the payload, before the build gives it a path. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 /** Elements HTML closes for you, so an unmatched one is not a defect. */
 const VOID = new Set([
   "area",
@@ -41,7 +44,7 @@ const VOID = new Set([
 /**
  * The payload, read the same way the build reads it, so the two cannot come
  * to disagree about where an island begins. Read once; the file cannot change
- * under a run, and it is 7.5MB.
+ * under a run, and it is 9MB.
  */
 let read: { encoded: string; html: string } | null = null;
 function payload(): { encoded: string; html: string } {
@@ -125,6 +128,27 @@ describe("landing page bundle", () => {
   it("keeps the viewport meta the breakpoints need", () => {
     const viewport = page().querySelector('meta[name="viewport"]');
     expect(viewport?.getAttribute("content")).toBe("width=device-width, initial-scale=1");
+  });
+
+  /**
+   * The hero is a clip rather than a screenshot, and every attribute holding
+   * it up fails silently: without `muted` no browser will autoplay it, without
+   * `playsinline` iOS takes the whole page fullscreen the moment it does, and
+   * without a poster a reader whose browser refuses the autoplay is left
+   * looking at nothing. Its own size is here for the same reason: a replaced
+   * element with no dimensions lays out at 2:1 until the poster decodes, and
+   * the hero then reflows under the text.
+   */
+  it("gives the hero clip what it needs to play and to hold its box", () => {
+    const hero = page().querySelector("video");
+    expect(hero).not.toBeNull();
+    for (const flag of ["autoplay", "muted", "playsinline"]) {
+      expect(hero?.hasAttribute(flag)).toBe(true);
+    }
+    expect(hero?.getAttribute("poster")).toMatch(UUID);
+    expect(hero?.getAttribute("src")).toMatch(UUID);
+    expect(hero?.getAttribute("width")).toBe("1440");
+    expect(hero?.getAttribute("height")).toBe("860");
   });
 });
 

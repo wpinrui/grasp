@@ -13,11 +13,16 @@ import { ASSET_DIR, islandText, unpackLanding } from "../../scripts/unpack-landi
 
 const BUNDLE = "grasp-landing.html";
 
-/** What each kind of file starts with, which is how a bad decode shows up. */
-const SIGNATURE: Record<string, number[]> = {
-  ".png": [0x89, 0x50, 0x4e, 0x47],
-  ".jpg": [0xff, 0xd8, 0xff],
-  ".woff2": [0x77, 0x4f, 0x46, 0x32],
+/**
+ * The bytes each kind of file is known by, and where they sit. Most kinds
+ * open with theirs; an mp4 opens with the length of its first box and carries
+ * `ftyp` at byte four.
+ */
+const SIGNATURE: Record<string, { at: number; bytes: number[] }> = {
+  ".png": { at: 0, bytes: [0x89, 0x50, 0x4e, 0x47] },
+  ".jpg": { at: 0, bytes: [0xff, 0xd8, 0xff] },
+  ".woff2": { at: 0, bytes: [0x77, 0x4f, 0x46, 0x32] },
+  ".mp4": { at: 4, bytes: [0x66, 0x74, 0x79, 0x70] },
 };
 
 /** What a file still packed starts with, whatever it is meant to be. */
@@ -25,7 +30,7 @@ const GZIP = [0x1f, 0x8b];
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
 
-/** Read once: the file cannot change under a run, and it is 7.5MB. */
+/** Read once: the file cannot change under a run, and it is 9MB. */
 let source: string | null = null;
 function bundle(): string {
   if (source === null) source = readFileSync(BUNDLE, "utf8");
@@ -126,7 +131,7 @@ describe("the landing page as it is published", () => {
     const wrong = page()
       .assets.filter((asset) => {
         const want = SIGNATURE[asset.name.slice(asset.name.lastIndexOf("."))];
-        return want ? want.some((byte, at) => asset.bytes[at] !== byte) : false;
+        return want ? want.bytes.some((byte, at) => asset.bytes[want.at + at] !== byte) : false;
       })
       .map((asset) => asset.name);
     expect(wrong).toEqual([]);
