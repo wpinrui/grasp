@@ -1,16 +1,15 @@
 import type { RefCallback } from "react";
+import { createPortal } from "react-dom";
+import { ARROW_PATH } from "../icons/frame";
 import {
-  ANCHOR,
-  BADGE_TRANSFORM,
+  ARROW_AT,
   BADGES,
   CURSOR_BOX,
   CURSORS,
   type Cursor,
-  GLYPH_TRANSFORM,
   type Mark,
   OUTLINE_COLOUR,
   OUTLINE_WIDEN,
-  SHIFT,
 } from "./cursorGeometry";
 import "./ToolCursor.css";
 
@@ -85,27 +84,28 @@ function markOf({ mark, transform, ink }: Drawn, widen: number, key: number) {
 }
 
 /**
- * Every mark of a cursor, the crosshair first and the badge last.
- *
- * A glyph that points with its own outline is drawn without the crosshair and
- * at its own place in the box, since the crosshair is only there to point for
- * the glyphs that cannot.
+ * How much a transform shrinks what it draws, so the outline can be widened to
+ * suit. A stroke inside a scaled transform is scaled with everything else, so
+ * a glyph drawn at 0.6 would take six tenths of a halo and all but lose it.
+ */
+function scaleOf(transform: string): number {
+  return Number(/scale\(([\d.]+)/.exec(transform)?.[1] ?? 1) || 1;
+}
+
+/**
+ * Every mark of a cursor: the arrow, then the tool's glyph beside it, then the
+ * badge. The arrow is drawn for every tool, in that tool's own ink, because an
+ * arrow is what a pointer looks like; the glyph is what says which tool it is.
  */
 function marksOf(glyph: Cursor, badge: Cursor | undefined): Drawn[] {
-  const turn = glyph.turn ? ` ${glyph.turn}` : "";
+  const at = glyph.at ?? ARROW_AT;
   return [
-    ...(glyph.points ? [] : ANCHOR.map((mark) => ({ mark, transform: SHIFT, ink: glyph.ink }))),
-    ...glyph.marks.map((mark) => ({
-      mark,
-      transform: glyph.points ? glyph.points.transform : `${SHIFT} ${GLYPH_TRANSFORM}${turn}`,
-      ink: glyph.ink,
-    })),
+    { mark: { d: ARROW_PATH, w: 0, fill: true }, transform: ARROW_AT, ink: glyph.ink },
+    ...glyph.marks.map((mark) => ({ mark, transform: at, ink: glyph.ink })),
+    // An arming is drawn as that tool's own cursor: same glyph, same ink, same
+    // place beside the arrow, which is what makes the two read as one family.
     ...(badge
-      ? badge.marks.map((mark) => ({
-          mark,
-          transform: `${SHIFT} ${BADGE_TRANSFORM}`,
-          ink: badge.ink,
-        }))
+      ? badge.marks.map((mark) => ({ mark, transform: badge.at ?? at, ink: badge.ink }))
       : []),
   ];
 }
@@ -119,7 +119,14 @@ function marksOf(glyph: Cursor, badge: Cursor | undefined): Drawn[] {
  * outline pass is differenced against the sheet, so it is never the colour
  * beneath it; the glyph rides over it unblended, so the tool's hue is its true
  * hue rather than an inverted one. That is what two layers buy, and it is why
- * this is mounted on the sheet with `cursor: none` over it.
+ * the sheet takes `cursor: none` while one is up.
+ *
+ * It is drawn into the body rather than into the sheet. The sheet clips what it
+ * holds, and a glyph sits beside the arrow rather than under it, so near an edge
+ * the sheet would cut the glyph off while the arrow stayed whole. Nothing clips
+ * the platform's own cursor, and nothing may clip this one. The body is also
+ * where the difference blend still has the sheet in its backdrop, which is what
+ * the outline is for.
  */
 export function ToolCursor({ tool, arrowKind, hold, showing }: ToolCursorProps) {
   const glyph = CURSORS[tool];
@@ -136,16 +143,19 @@ export function ToolCursor({ tool, arrowKind, hold, showing }: ToolCursorProps) 
     "aria-hidden": true,
   } as const;
 
-  return (
+  return createPortal(
     <>
       {/* biome-ignore lint/a11y/noSvgWithoutTitle: a cursor is not content; it is aria-hidden and has nothing to announce */}
       <svg className={`${layer} tool-cursor--outline`} {...shared}>
-        {marks.map((one, nth) => markOf({ ...one, ink: OUTLINE_COLOUR }, OUTLINE_WIDEN, nth))}
+        {marks.map((one, nth) =>
+          markOf({ ...one, ink: OUTLINE_COLOUR }, OUTLINE_WIDEN / scaleOf(one.transform), nth),
+        )}
       </svg>
       {/* biome-ignore lint/a11y/noSvgWithoutTitle: as above */}
       <svg className={layer} {...shared}>
         {marks.map((one, nth) => markOf(one, 0, nth))}
       </svg>
-    </>
+    </>,
+    document.body,
   );
 }

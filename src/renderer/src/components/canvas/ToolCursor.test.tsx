@@ -11,23 +11,29 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ARROW_PATH } from "../icons/frame";
 import { TOOLS } from "../tools";
 import {
-  ANCHOR,
-  ARROW_TIP,
+  ARROW_AT,
   BADGES,
   CURSOR_BOX,
   CURSORS,
   cursorDrawnFor,
   HOTSPOT,
-  hotspotFor,
   OUTLINE_WIDEN,
-  SHIFT,
 } from "./cursorGeometry";
 import { ToolCursor } from "./ToolCursor";
 
 afterEach(cleanup);
 
+/**
+ * The layers, wherever they are drawn. They are portalled into the body, so
+ * that nothing on the page can clip them, which is why this is not the
+ * container the render returns.
+ */
 function drawn(tool: string, arrowKind?: string) {
-  return render(<ToolCursor tool={tool} arrowKind={arrowKind} hold={() => {}} showing />).container;
+  // Portalled layers outlive their render's container, so the last one goes
+  // before the next arrives and a query cannot pick up two cursors at once.
+  cleanup();
+  render(<ToolCursor tool={tool} arrowKind={arrowKind} hold={() => {}} showing />);
+  return document.body;
 }
 
 /** The glyph layer, which is the one drawn in the tool's own ink. */
@@ -50,60 +56,44 @@ describe("which tools GRASP draws a cursor for", () => {
 });
 
 describe("the geometry every cursor is built from", () => {
-  it("puts the hotspot at the crosshair's centre, where the arms point", () => {
-    // The arms stop at 7 and start again at 15, so they point at 11; the shift
-    // moves the whole drawing in from the corner by the same amount twice.
-    const shift = Number(/translate\((\d+)/.exec(SHIFT)?.[1]);
-    expect(HOTSPOT.x).toBe(11 + shift);
-    expect(HOTSPOT.y).toBe(11 + shift);
-  });
-
-  it("leaves the widest halo on a crosshair arm inside the box", () => {
-    const arm = ANCHOR[0];
-    const widest = ("w" in arm ? (arm.w ?? 0) : 0) + OUTLINE_WIDEN;
-    const shift = Number(/translate\((\d+)/.exec(SHIFT)?.[1]);
-    // Half the stroke hangs outside the arm's own end, at 1 near the box's
-    // corner and at 21 at the far one, so the halo has to clear both.
-    expect(shift + 1).toBeGreaterThanOrEqual(widest / 2);
-    expect(shift + 21 + widest / 2).toBeLessThanOrEqual(CURSOR_BOX);
-  });
-
-  it("points the Arrow with its own tip rather than with a crosshair", () => {
-    // An arrow beside a crosshair says the same thing twice, and an arrow
-    // cursor has always clicked at its tip.
-    const arrow = glyphLayer("arrow");
-    const paths = [...arrow.querySelectorAll("path")];
-    expect(paths).toHaveLength(1);
-    expect(paths[0]?.getAttribute("d")).toBe(ARROW_PATH);
-    expect(hotspotFor("arrow")).toBe(ARROW_TIP);
-    expect(hotspotFor("arrow")).not.toEqual(HOTSPOT);
-  });
-
-  it("puts the Arrow's hotspot where its drawn tip is, and the whole arrow in the box", () => {
-    const at = CURSORS.arrow?.points;
+  it("clicks at the arrow's own tip, which every cursor is drawn from", () => {
     const [, from, scale] = /translate\((\d+(?:\.\d+)?) \d+\) scale\((\d+(?:\.\d+)?)\)/.exec(
-      at?.transform ?? "",
+      ARROW_AT,
     ) as RegExpExecArray;
-    // The first point of the path is the tip, which is what the click lands on.
+    // The first point of the path is the tip.
     const [tipX, tipY] = /M([\d.]+) ([\d.]+)/.exec(ARROW_PATH)?.slice(1) ?? [];
-    expect(at?.hotspot.x).toBeCloseTo(Number(from) + Number(tipX) * Number(scale));
-    expect(at?.hotspot.y).toBeCloseTo(Number(from) + Number(tipY) * Number(scale));
-
-    // Every point of the path, drawn, plus the outline's own width.
-    const far = Math.max(
-      ...[...ARROW_PATH.matchAll(/([\d.]+) ([\d.]+)/g)].flatMap((point) => [
-        Number(point[1]),
-        Number(point[2]),
-      ]),
-    );
-    expect(Number(from) + far * Number(scale) + OUTLINE_WIDEN / 2).toBeLessThanOrEqual(CURSOR_BOX);
+    expect(HOTSPOT.x).toBeCloseTo(Number(from) + Number(tipX) * Number(scale));
+    expect(HOTSPOT.y).toBeCloseTo(Number(from) + Number(tipY) * Number(scale));
   });
 
-  it("keeps the crosshair for every tool that does not point for itself", () => {
+  it("draws the arrow for every tool, in that tool's own ink", () => {
     for (const tool of Object.keys(CURSORS)) {
-      const arms = glyphLayer(tool).querySelectorAll(`path[d="${ANCHOR[0]?.d}"]`);
-      expect([tool, arms.length]).toEqual([tool, CURSORS[tool]?.points ? 0 : 1]);
+      const arrows = [...glyphLayer(tool).querySelectorAll("path")].filter(
+        (one) => one.getAttribute("d") === ARROW_PATH,
+      );
+      expect([tool, arrows.length]).toEqual([tool, 1]);
+      expect([tool, arrows[0]?.getAttribute("fill")]).toEqual([tool, CURSORS[tool]?.ink]);
     }
+  });
+
+  /**
+   * A glyph may sit above or left of the arrow, and a shape at a negative
+   * coordinate is simply not drawn, so the box has to hold every one of them
+   * whole, the outline's own width included.
+   */
+  it("leaves room in the box for every glyph, wherever it was put", () => {
+    const outside: string[] = [];
+    for (const tool of Object.keys(CURSORS)) {
+      const at = CURSORS[tool]?.at;
+      if (!at) continue;
+      const [, x, y, size] = /translate\((-?[\d.]+) (-?[\d.]+)\) scale\(([\d.]+)\)/.exec(at) ?? [];
+      // The icons' own box, which is the widest a glyph can be.
+      const near = Math.min(Number(x), Number(y)) - (OUTLINE_WIDEN * Number(size)) / 2;
+      const far =
+        Math.max(Number(x), Number(y)) + 20 * Number(size) + (OUTLINE_WIDEN * Number(size)) / 2;
+      if (near < 0 || far > CURSOR_BOX) outside.push(tool);
+    }
+    expect(outside).toEqual([]);
   });
 
   it("badges every arming of the Arrow but the plain one, and nothing else", () => {
@@ -121,14 +111,17 @@ describe("the geometry every cursor is built from", () => {
   it("draws every glyph and every badge in an ink of its own", () => {
     for (const one of [...Object.values(CURSORS), ...Object.values(BADGES)]) {
       expect(one.ink).toMatch(/^var\(--color-/);
-      expect(one.marks.length).toBeGreaterThan(0);
+      // The Arrow's glyph is the arrow itself, which every cursor is drawn
+      // with, so it is the one entry with no marks of its own.
+      expect(one.marks.length).toBeGreaterThan(one === CURSORS.arrow ? -1 : 0);
     }
   });
 });
 
 describe("the cursor on the sheet", () => {
   it("waits out of sight with the pointer off the sheet", () => {
-    const container = render(<ToolCursor tool="point" hold={() => {}} showing={false} />).container;
+    render(<ToolCursor tool="point" hold={() => {}} showing={false} />);
+    const container = document.body;
     // Both of them, and still in the tree, so the place written to them is
     // right when the pointer comes back. One left showing would be half a
     // cursor stranded where the pointer last was.
@@ -144,8 +137,8 @@ describe("the cursor on the sheet", () => {
     // Straight into what holds them, not into a box of their own: a box would
     // have to be raised and moved, either of which makes it a stacking context,
     // and that isolates the blending group so the outline stops inverting.
-    expect(layers[0].parentElement).toBe(container);
-    expect(layers[1].parentElement).toBe(container);
+    expect(layers[0].parentElement).toBe(document.body);
+    expect(layers[1].parentElement).toBe(document.body);
   });
 
   it("draws the same marks in both layers, so the outline cannot miss one", () => {
@@ -153,21 +146,30 @@ describe("the cursor on the sheet", () => {
     const shapes = (layer: Element) =>
       [...layer.querySelectorAll("path, text, circle")].map((one) => one.tagName);
     expect(shapes(layers[0])).toEqual(shapes(layers[1]));
-    expect(shapes(layers[0]).length).toBe(ANCHOR.length + CURSORS.marker.marks.length);
+    expect(shapes(layers[0]).length).toBe(1 + CURSORS.marker.marks.length);
   });
 
-  it("runs every mark of the outline wider than the glyph's, halo and all", () => {
-    const layers = drawn("compass").querySelectorAll(".tool-cursor");
-    const widths = (layer: Element) =>
-      [...layer.querySelectorAll("path, circle")].map((one) =>
-        Number(one.getAttribute("stroke-width")),
-      );
-    const outline = widths(layers[0]);
-    const glyph = widths(layers[1]);
-    expect(outline.length).toBe(glyph.length);
-    // Every one, not merely the first: the crosshair is the first path, and an
-    // outline that widened only that would leave the glyph with no halo at all.
-    expect(outline).toEqual(glyph.map((wide) => wide + OUTLINE_WIDEN));
+  /**
+   * The halo has to come out the same width on screen for every mark. A stroke
+   * inside a scaled transform is scaled with everything else, so a glyph drawn
+   * at 0.59 took 59% of a halo and all but lost it beside the arrow's.
+   */
+  it("runs the same width of halo round every mark, whatever its scale", () => {
+    for (const tool of Object.keys(CURSORS)) {
+      const layers = drawn(tool).querySelectorAll(".tool-cursor");
+      const marks = (layer: Element) => [...layer.querySelectorAll("path, circle, text")];
+      const outline = marks(layers[0]);
+      const glyph = marks(layers[1]);
+      expect([tool, outline.length]).toEqual([tool, glyph.length]);
+      for (const [nth, one] of outline.entries()) {
+        const scale = Number(/scale\(([\d.]+)/.exec(one.getAttribute("transform") ?? "")?.[1] ?? 1);
+        const under = Number(glyph[nth]?.getAttribute("stroke-width") ?? 0);
+        const wide = Number(one.getAttribute("stroke-width"));
+        // What the halo comes to on screen, once its transform has had it.
+        expect([tool, nth]).toEqual([tool, nth]);
+        expect((wide - under) * scale).toBeCloseTo(OUTLINE_WIDEN);
+      }
+    }
   });
 
   it("badges the Arrow with what it is armed to pick up, and only the Arrow", () => {
@@ -177,9 +179,7 @@ describe("the cursor on the sheet", () => {
     );
     // A drawing tool's variant changes what the click makes, which the sheet
     // shows as it is made, so it carries no badge.
-    expect(marks(glyphLayer("straightedge", "points"))).toBe(
-      ANCHOR.length + CURSORS.straightedge.marks.length,
-    );
+    expect(marks(glyphLayer("straightedge", "points"))).toBe(1 + CURSORS.straightedge.marks.length);
   });
 
   it("draws each tool in the hue its rail key is drawn in", () => {
@@ -197,8 +197,21 @@ describe("the cursor on the sheet", () => {
     }
   });
 
-  it("turns the Measure ruler, which is the one glyph that is not upright", () => {
-    const glyph = glyphLayer("measure").querySelectorAll("path")[ANCHOR.length];
-    expect(glyph.getAttribute("transform")).toContain("rotate(-45");
+  it("leaves the ruler flat, which is how it was placed", () => {
+    expect(CURSORS.measure?.at).not.toContain("rotate");
+  });
+
+  it("turns the glyphs that were placed turned, about their own middle", () => {
+    // The arrow is drawn first, so the glyph's own marks follow it.
+    for (const [tool, turn] of [
+      ["straightedge", "rotate(-23"],
+      ["marker", "rotate(-15"],
+    ]) {
+      const glyph = glyphLayer(tool).querySelectorAll("path, text, circle")[1];
+      expect([tool, glyph?.getAttribute("transform")?.includes(turn as string)]).toEqual([
+        tool,
+        true,
+      ]);
+    }
   });
 });

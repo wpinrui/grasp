@@ -20,7 +20,7 @@ import {
 } from "react";
 import { HOST_MOVED } from "../../../../shared/embed";
 import type { Position } from "../../sketch/model";
-import { cursorDrawnFor, type Hotspot, hotspotFor } from "./cursorGeometry";
+import { cursorDrawnFor, HOTSPOT, type Hotspot } from "./cursorGeometry";
 
 /** What the sheet answers when asked what is under a point in the window. */
 type Reader = (event: { clientX: number; clientY: number }) => Position | null;
@@ -52,10 +52,16 @@ function nothingYet(read: Reader, hotspot: Hotspot): Following {
   return { layers: [], spot: null, inWindow: null, read, hotspot };
 }
 
-/** Put the layers where the pointer is. Runs on every move, so it does no work. */
-function place(one: Following, at: Position | null) {
+/**
+ * Put the layers where the pointer is. Runs on every move, so it does no work.
+ *
+ * In window coordinates, because the layers are drawn into the body rather than
+ * into the sheet, so that nothing clips them.
+ */
+function place(one: Following) {
+  const at = one.inWindow;
   if (!at) return;
-  const put = `translate(${at.x - one.hotspot.x}px, ${at.y - one.hotspot.y}px)`;
+  const put = `translate(${at.clientX - one.hotspot.x}px, ${at.clientY - one.hotspot.y}px)`;
   for (const layer of one.layers) layer.style.transform = put;
 }
 
@@ -81,7 +87,7 @@ function useResettle(following: RefObject<Following>, drawn: boolean, away: () =
         return;
       }
       one.spot = at;
-      place(one, at);
+      place(one);
     };
     const moved = (event: MessageEvent) => {
       if (event.data === HOST_MOVED) away();
@@ -102,16 +108,16 @@ export function useToolCursor(tool: string, screenOf: Reader) {
   const [onPaper, setOnPaper] = useState(false);
   const hasCursor = cursorDrawnFor(tool);
 
-  const following = useRef<Following>(nothingYet(screenOf, hotspotFor(tool)));
+  const following = useRef<Following>(nothingYet(screenOf, HOTSPOT));
   following.current.read = screenOf;
-  following.current.hotspot = hotspotFor(tool);
+  following.current.hotspot = HOTSPOT;
 
   const away = useCallback(() => setOnPaper(false), []);
 
   // A tool that had no cursor a moment ago has one now, so its layers are new
   // and have yet to be put anywhere. Before the paint, so they are never seen
   // at the sheet's corner on the way.
-  useLayoutEffect(() => place(following.current, following.current.spot));
+  useLayoutEffect(() => place(following.current));
   useResettle(following, hasCursor && onPaper, away);
 
   /**
@@ -156,7 +162,7 @@ export function useToolCursor(tool: string, screenOf: Reader) {
       // starts where the pointer actually is.
       following.current.spot = at;
       following.current.inWindow = { clientX: event.clientX, clientY: event.clientY };
-      place(following.current, at);
+      place(following.current);
       if (!onPaper) setOnPaper(true);
     },
     /** The pointer left the sheet, and the cursor goes with it. */

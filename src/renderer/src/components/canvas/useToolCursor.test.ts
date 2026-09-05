@@ -9,7 +9,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { PointerEvent } from "react";
 import { describe, expect, it } from "vitest";
 import { HOST_MOVED } from "../../../../shared/embed";
-import { ARROW_TIP, HOTSPOT } from "./cursorGeometry";
+import { HOTSPOT } from "./cursorGeometry";
 import { useToolCursor } from "./useToolCursor";
 
 /** Where the sheet says the pointer is, whatever the event carried. */
@@ -22,6 +22,9 @@ function sliding() {
   return { reading, screenOf: () => reading.at };
 }
 
+/** Where in the window the pointer is, which is where the layers are put. */
+const IN_WINDOW = { clientX: 320, clientY: 240 };
+
 /**
  * A pointer move of the kind the sheet hands the hook. `over` is what the
  * pointer is on: the sheet itself by default, which is bare paper.
@@ -32,6 +35,7 @@ function moved(kind = "mouse", over?: Element) {
     pointerType: kind,
     currentTarget: sheet,
     target: over ?? sheet,
+    ...IN_WINDOW,
   } as unknown as PointerEvent<HTMLDivElement>;
 }
 
@@ -61,6 +65,11 @@ function movedIn(clientX: number, clientY: number) {
   return { ...moved(), clientX, clientY } as unknown as PointerEvent<HTMLDivElement>;
 }
 
+/** Where the layers are put for a pointer at that place in the window. */
+function put(clientX = IN_WINDOW.clientX, clientY = IN_WINDOW.clientY) {
+  return `translate(${clientX - HOTSPOT.x}px, ${clientY - HOTSPOT.y}px)`;
+}
+
 describe("where the drawn cursor is", () => {
   it("is nowhere until the pointer has been on the sheet", () => {
     const { cursor } = held("point");
@@ -71,7 +80,7 @@ describe("where the drawn cursor is", () => {
     const { cursor, box } = held("point");
     act(() => cursor.result.current.follow(moved()));
     expect(cursor.result.current.showing).toBe(true);
-    expect(box.style.transform).toBe(`translate(${AT.x - HOTSPOT.x}px, ${AT.y - HOTSPOT.y}px)`);
+    expect(box.style.transform).toBe(put());
   });
 
   it("goes with the pointer when it leaves the sheet", () => {
@@ -134,7 +143,7 @@ describe("where the drawn cursor is", () => {
       cursor.result.current.hold(box);
     });
     cursor.rerender({ tool: "point" });
-    expect(box.style.transform).toBe(`translate(${AT.x - HOTSPOT.x}px, ${AT.y - HOTSPOT.y}px)`);
+    expect(box.style.transform).toBe(put());
   });
 
   it("draws none over something that carries a cursor of its own", () => {
@@ -160,14 +169,14 @@ describe("the sheet moving under a pointer that has not moved", () => {
     const sheet = sliding();
     const { cursor, box } = held("point", sheet.screenOf);
     act(() => cursor.result.current.follow(movedIn(320, 240)));
-    expect(box.style.transform).toBe(`translate(${AT.x - HOTSPOT.x}px, ${AT.y - HOTSPOT.y}px)`);
+    expect(box.style.transform).toBe(put());
 
     // The view is panned: the same pointer is over a different part of it.
     sheet.reading.at = { x: 60, y: 30 };
     act(() => {
       window.dispatchEvent(new Event("scroll"));
     });
-    expect(box.style.transform).toBe(`translate(${60 - HOTSPOT.x}px, ${30 - HOTSPOT.y}px)`);
+    expect(box.style.transform).toBe(put(320, 240));
     expect(cursor.result.current.showing).toBe(true);
   });
 
@@ -214,6 +223,6 @@ describe("the sheet moving under a pointer that has not moved", () => {
     act(() => {
       window.dispatchEvent(new Event("scroll"));
     });
-    expect(box.style.transform).toBe(`translate(${90 - ARROW_TIP.x}px, ${70 - ARROW_TIP.y}px)`);
+    expect(box.style.transform).toBe(put(320, 240));
   });
 });
