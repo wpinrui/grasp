@@ -74,4 +74,12 @@ describe("opening a sketch older than kept names", () => {
     });
     expect(() => parse(versionless)).toThrow(/damaged/);
   });
+
+  it("refuses a sketch holding a kind it does not know", () => {
+    // A file written by a build that had a kind this one does not is refused
+    // whole rather than opened with the unknown object dropped: what is left
+    // would be a figure missing a piece, saved back over the one that had it.
+    const stranger = file(11, [stored("p1", 0), { id: "x1", kind: "sundial", x: 0, y: 0 }]);
+    expect(() => parse(stranger)).toThrow(/damaged/);
+  });
 });
