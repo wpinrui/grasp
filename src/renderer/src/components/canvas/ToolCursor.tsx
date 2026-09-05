@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { RefCallback } from "react";
 import {
   ANCHOR,
   BADGE_TRANSFORM,
@@ -19,10 +19,11 @@ interface ToolCursorProps {
   tool: string;
   arrowKind?: string;
   /**
-   * The box both layers ride in. It is moved to the pointer directly rather
-   * than through a render, so a pointer moving over the sheet costs nothing.
+   * Takes each layer as it mounts. They are moved to the pointer directly
+   * rather than through a render, so a pointer moving over the sheet costs
+   * nothing.
    */
-  box: Ref<HTMLDivElement>;
+  hold: RefCallback<SVGSVGElement>;
   /** Whether the pointer is on the sheet. Off it, the cursor waits out of sight. */
   showing: boolean;
 }
@@ -114,30 +115,31 @@ function marksOf(glyph: Cursor, badge: Cursor | undefined): Drawn[] {
  * hue rather than an inverted one. That is what two layers buy, and it is why
  * this is mounted on the sheet with `cursor: none` over it.
  */
-export function ToolCursor({ tool, arrowKind, box, showing }: ToolCursorProps) {
+export function ToolCursor({ tool, arrowKind, hold, showing }: ToolCursorProps) {
   const glyph = CURSORS[tool];
   if (!glyph) return null;
 
   // The prefix is the rule: no other tool has a badge to find.
   const marks = marksOf(glyph, BADGES[`${tool}.${arrowKind}`]);
-  const size = { width: `${CURSOR_BOX}px`, height: `${CURSOR_BOX}px` };
-  const viewBox = `0 0 ${CURSOR_BOX} ${CURSOR_BOX}`;
+  const layer = `tool-cursor${showing ? "" : " tool-cursor--away"}`;
+  const shared = {
+    ref: hold,
+    width: CURSOR_BOX,
+    height: CURSOR_BOX,
+    viewBox: `0 0 ${CURSOR_BOX} ${CURSOR_BOX}`,
+    "aria-hidden": true,
+  } as const;
 
   return (
-    <div
-      ref={box}
-      className={`tool-cursor${showing ? "" : " tool-cursor--away"}`}
-      style={size}
-      aria-hidden
-    >
-      {/* biome-ignore lint/a11y/noSvgWithoutTitle: the box around both layers is aria-hidden; a cursor is not content and has nothing to announce */}
-      <svg className="tool-cursor__layer tool-cursor__layer--outline" viewBox={viewBox}>
+    <>
+      {/* biome-ignore lint/a11y/noSvgWithoutTitle: a cursor is not content; it is aria-hidden and has nothing to announce */}
+      <svg className={`${layer} tool-cursor--outline`} {...shared}>
         {marks.map((one, nth) => markOf({ ...one, ink: OUTLINE_COLOUR }, OUTLINE_WIDEN, nth))}
       </svg>
       {/* biome-ignore lint/a11y/noSvgWithoutTitle: as above */}
-      <svg className="tool-cursor__layer" viewBox={viewBox}>
+      <svg className={layer} {...shared}>
         {marks.map((one, nth) => markOf(one, 0, nth))}
       </svg>
-    </div>
+    </>
   );
 }

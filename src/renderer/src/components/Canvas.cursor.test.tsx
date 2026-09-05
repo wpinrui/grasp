@@ -89,8 +89,7 @@ describe("the cursor the sheet draws", () => {
 
   it("badges the Arrow with the arming the window is holding", () => {
     const marks = (container: HTMLElement) =>
-      container.querySelectorAll(".tool-cursor__layer")[1].querySelectorAll("path, text, circle")
-        .length;
+      container.querySelectorAll(".tool-cursor")[1].querySelectorAll("path, text, circle").length;
     const plain = put([], "arrow", { arrowKind: "all" });
     moveTo(sheetOf(plain.container), { x: 200, y: 200 });
     const armed = put([], "arrow", { arrowKind: "points" });

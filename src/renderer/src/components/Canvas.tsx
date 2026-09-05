@@ -2063,7 +2063,7 @@ export function Canvas({
           <ToolCursor
             tool={cursor}
             arrowKind={arrowKind}
-            box={toolCursor.box}
+            hold={toolCursor.hold}
             showing={toolCursor.showing}
           />
 

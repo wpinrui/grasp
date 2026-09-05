@@ -7,7 +7,6 @@
  */
 
 import { cleanup, render } from "@testing-library/react";
-import { createRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { TOOLS } from "../tools";
 import {
@@ -25,13 +24,12 @@ import { ToolCursor } from "./ToolCursor";
 afterEach(cleanup);
 
 function drawn(tool: string, arrowKind?: string) {
-  return render(<ToolCursor tool={tool} arrowKind={arrowKind} box={createRef()} showing />)
-    .container;
+  return render(<ToolCursor tool={tool} arrowKind={arrowKind} hold={() => {}} showing />).container;
 }
 
 /** The glyph layer, which is the one drawn in the tool's own ink. */
 function glyphLayer(tool: string, arrowKind?: string) {
-  return drawn(tool, arrowKind).querySelectorAll(".tool-cursor__layer")[1];
+  return drawn(tool, arrowKind).querySelectorAll(".tool-cursor")[1];
 }
 
 describe("which tools GRASP draws a cursor for", () => {
@@ -89,22 +87,24 @@ describe("the geometry every cursor is built from", () => {
 
 describe("the cursor on the sheet", () => {
   it("waits out of sight with the pointer off the sheet", () => {
-    const container = render(
-      <ToolCursor tool="point" box={createRef()} showing={false} />,
-    ).container;
+    const container = render(<ToolCursor tool="point" hold={() => {}} showing={false} />).container;
     // Still in the tree, so the place written to it is right when it comes back.
     expect(container.querySelector(".tool-cursor--away")).toBeTruthy();
   });
 
   it("draws two layers, the outline and the glyph over it", () => {
-    const layers = drawn("point").querySelectorAll(".tool-cursor__layer");
+    const layers = drawn("point").querySelectorAll(".tool-cursor");
     expect(layers.length).toBe(2);
-    expect(layers[0].classList.contains("tool-cursor__layer--outline")).toBe(true);
-    expect(layers[1].classList.contains("tool-cursor__layer--outline")).toBe(false);
+    expect(layers[0].classList.contains("tool-cursor--outline")).toBe(true);
+    expect(layers[1].classList.contains("tool-cursor--outline")).toBe(false);
+    // Siblings on the sheet, not a pair inside a box: a box would be a stacking
+    // context, which isolates the blending group, and the outline would stop
+    // inverting against the paper.
+    expect(layers[0].parentElement).toBe(layers[1].parentElement);
   });
 
   it("draws the same marks in both layers, so the outline cannot miss one", () => {
-    const layers = drawn("marker").querySelectorAll(".tool-cursor__layer");
+    const layers = drawn("marker").querySelectorAll(".tool-cursor");
     const shapes = (layer: Element) =>
       [...layer.querySelectorAll("path, text, circle")].map((one) => one.tagName);
     expect(shapes(layers[0])).toEqual(shapes(layers[1]));
@@ -112,7 +112,7 @@ describe("the cursor on the sheet", () => {
   });
 
   it("runs every mark of the outline wider than the glyph's, halo and all", () => {
-    const layers = drawn("compass").querySelectorAll(".tool-cursor__layer");
+    const layers = drawn("compass").querySelectorAll(".tool-cursor");
     const widths = (layer: Element) =>
       [...layer.querySelectorAll("path, circle")].map((one) =>
         Number(one.getAttribute("stroke-width")),

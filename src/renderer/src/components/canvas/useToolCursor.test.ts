@@ -26,13 +26,20 @@ function moved(kind = "mouse", over?: Element) {
   } as unknown as PointerEvent<HTMLDivElement>;
 }
 
-/** The hook with a box to move, the way the sheet gives it one. */
+/** A layer of the cursor, as the sheet mounts one. */
+function layer() {
+  return document.createElementNS("http://www.w3.org/2000/svg", "svg");
+}
+
+/** The hook holding one layer, the way the sheet hands it one. */
 function held(tool: string) {
-  const box = document.createElement("div");
+  const box = layer();
   const cursor = renderHook(() => useToolCursor(tool, screenOf));
-  // React only fills the ref once the element is rendered, which is the sheet's
-  // job rather than the hook's.
-  cursor.result.current.box.current = box;
+  // The sheet mounts the layers and hands each one over; the hook holds no
+  // element of its own.
+  act(() => {
+    cursor.result.current.hold(box);
+  });
   return { cursor, box };
 }
 
@@ -82,19 +89,20 @@ describe("where the drawn cursor is", () => {
     // under the pointer rather than where the pan began. One hook throughout,
     // so this fails both if the pointer stops being recorded under the hand and
     // if nothing puts the box in its place when the cursor comes back.
-    const box = document.createElement("div");
+    const box = layer();
     const cursor = renderHook(({ tool }) => useToolCursor(tool, screenOf), {
       initialProps: { tool: "hand" },
     });
-    // The hand draws no cursor, so there is no element on the sheet to move.
-    cursor.result.current.box.current = null;
+    // The hand draws no cursor, so the sheet mounts no layer to move.
     act(() => cursor.result.current.follow(moved()));
     expect(box.style.transform).toBe("");
 
-    // Letting go of the space bar puts a tool with a cursor back, and with it
-    // the element. It has to land where the pointer is now, not where the pan
-    // began, and nothing but the pointer moved.
-    cursor.result.current.box.current = box;
+    // Letting go of the space bar puts a tool with a cursor back, and the sheet
+    // mounts its layers. They have to land where the pointer is now, not where
+    // the pan began, and nothing but the pointer moved.
+    act(() => {
+      cursor.result.current.hold(box);
+    });
     cursor.rerender({ tool: "point" });
     expect(box.style.transform).toBe(`translate(${AT.x - HOTSPOT.x}px, ${AT.y - HOTSPOT.y}px)`);
   });

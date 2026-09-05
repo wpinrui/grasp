@@ -8,7 +8,7 @@
  * visit.
  */
 
-import { type PointerEvent, useLayoutEffect, useRef, useState } from "react";
+import { type PointerEvent, type RefCallback, useLayoutEffect, useRef, useState } from "react";
 import type { Position } from "../../sketch/model";
 import { cursorDrawnFor, HOTSPOT } from "./cursorGeometry";
 
@@ -16,7 +16,8 @@ export function useToolCursor(
   tool: string,
   screenOf: (event: { clientX: number; clientY: number }) => Position | null,
 ) {
-  const box = useRef<HTMLDivElement>(null);
+  /** The layers on the sheet, however many the cursor is drawn in. */
+  const layers = useRef<SVGSVGElement[]>([]);
   /**
    * Where the pointer last was. Kept whatever the tool in hand, so that letting
    * go of the space bar after a pan does not bring the cursor back where the
@@ -27,22 +28,30 @@ export function useToolCursor(
   const [onPaper, setOnPaper] = useState(false);
   const hasCursor = cursorDrawnFor(tool);
 
-  /** Put the box where the pointer is. Runs on every move, so it does no work. */
+  /** Put the layers where the pointer is. Runs on every move, so it does no work. */
   function place() {
-    const element = box.current;
     const at = spot.current;
-    if (!element || !at) return;
-    element.style.transform = `translate(${at.x - HOTSPOT.x}px, ${at.y - HOTSPOT.y}px)`;
+    if (!at) return;
+    const put = `translate(${at.x - HOTSPOT.x}px, ${at.y - HOTSPOT.y}px)`;
+    for (const layer of layers.current) layer.style.transform = put;
   }
 
-  // A tool that had no cursor a moment ago has one now, so the box is new and
-  // has yet to be put anywhere. Before the paint, so it is never seen at the
-  // sheet's corner on the way.
+  // A tool that had no cursor a moment ago has one now, so its layers are new
+  // and have yet to be put anywhere. Before the paint, so they are never seen
+  // at the sheet's corner on the way.
   useLayoutEffect(place);
 
   return {
-    /** The box both layers ride in, moved by `follow` below. */
-    box,
+    /**
+     * Takes each layer as it mounts and lets it go as it unmounts, so `place`
+     * writes to what is on the sheet and to nothing else.
+     */
+    hold: ((element: SVGSVGElement) => {
+      layers.current.push(element);
+      return () => {
+        layers.current = layers.current.filter((one) => one !== element);
+      };
+    }) as RefCallback<SVGSVGElement>,
     /**
      * Whether the cursor is drawn, which is also when the sheet gives up its
      * own. A tool with none keeps the stylesheet's, and so does a pointer that
