@@ -17,6 +17,25 @@ test("accepts a prepared draft at the build revision", () => {
   assert.doesNotThrow(() => checkRelease(valid));
 });
 
+test("accepts filenames produced by the first hosted three-platform build", (t) => {
+  mkdirSync("temp", { recursive: true });
+  const directory = mkdtempSync(resolve("temp", "hosted-artifacts-"));
+  t.after(() => rmSync(directory, { recursive: true }));
+  // Observed outputs from Actions run 33988822332, independent of artifactNames.
+  const names = [
+    "GRASP-1.7.0-setup.exe",
+    "GRASP-1.7.0-portable.exe",
+    "GRASP-1.7.0-x86_64.AppImage",
+    "GRASP-1.7.0-amd64.deb",
+    "GRASP-1.7.0-universal.dmg",
+  ];
+  for (const name of names) writeFileSync(resolve(directory, name), "package");
+  assert.deepEqual(
+    checkArtifacts(directory, "1.7.0"),
+    names.map((name) => resolve(directory, name)),
+  );
+});
+
 function releaseFixture(t, scenario = {}) {
   mkdirSync("temp", { recursive: true });
   const directory = mkdtempSync(resolve("temp", "publish-test-"));

@@ -18,8 +18,8 @@ export function artifactNames(version) {
   return [
     `GRASP-${version}-setup.exe`,
     `GRASP-${version}-portable.exe`,
-    `GRASP-${version}-x64.AppImage`,
-    `GRASP-${version}-x64.deb`,
+    `GRASP-${version}-x86_64.AppImage`,
+    `GRASP-${version}-amd64.deb`,
     `GRASP-${version}-universal.dmg`,
   ];
 }
