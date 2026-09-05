@@ -14,84 +14,8 @@
  * unpacked on the way out: `unpack-landing.test.ts` covers that shape.
  */
 
-import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { islandText } from "../../scripts/unpack-landing";
-
-const BUNDLE = "grasp-landing.html";
-
-/** What an asset is called in the payload, before the build gives it a path. */
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
-/** Elements HTML closes for you, so an unmatched one is not a defect. */
-const VOID = new Set([
-  "area",
-  "base",
-  "br",
-  "col",
-  "embed",
-  "hr",
-  "img",
-  "input",
-  "link",
-  "meta",
-  "param",
-  "source",
-  "track",
-  "wbr",
-]);
-
-/**
- * The payload, read the same way the build reads it, so the two cannot come
- * to disagree about where an island begins. Read once; the file cannot change
- * under a run, and it is 9MB.
- */
-let read: { encoded: string; html: string } | null = null;
-function payload(): { encoded: string; html: string } {
-  if (read) return read;
-  const encoded = islandText(readFileSync(BUNDLE, "utf8"), "template");
-  read = { encoded, html: JSON.parse(encoded) as string };
-  return read;
-}
-
-/** The page, parsed, so a selector can be asked what it really matches. */
-let tree: Document | null = null;
-function page(): Document {
-  if (!tree) tree = new DOMParser().parseFromString(payload().html, "text/html");
-  return tree;
-}
-
-/** Just the stylesheet bodies, so a rule can be told apart from a mention. */
-function styles(): string {
-  return [...payload().html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)]
-    .map((block) => block[1])
-    .join("\n");
-}
-
-/** The page's own script, which is where the embed behaviour lives. */
-function script(): string {
-  const found = /<script type="text\/x-dc"[^>]*>([\s\S]*?)<\/script>/.exec(payload().html);
-  if (!found) throw new Error("no text/x-dc script in the payload");
-  return found[1];
-}
-
-/** Every closing tag that closed the wrong thing, plus anything left open. */
-function unbalanced(markup: string): string[] {
-  const stack: string[] = [];
-  const problems: string[] = [];
-  for (const tag of markup.matchAll(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*?(\/?)>/g)) {
-    const [, closing, name, selfClosing] = tag;
-    if (VOID.has(name) || selfClosing === "/") continue;
-    if (!closing) {
-      stack.push(name);
-    } else if (stack[stack.length - 1] === name) {
-      stack.pop();
-    } else {
-      problems.push(`</${name}> closes <${stack[stack.length - 1] ?? "nothing"}>`);
-    }
-  }
-  return [...problems, ...stack.map((name) => `<${name}> never closed`)];
-}
+import { page, payload, script, styles, UUID, unbalanced } from "./testing/landing";
 
 describe("landing page bundle", () => {
   it("decodes to the page", () => {
