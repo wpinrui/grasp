@@ -32,19 +32,17 @@ export function checkArtifacts(directory, version) {
   });
 }
 
-function main(command) {
+export function runRelease({ command, context, gh, version, directory = "dist/desktop" }) {
   assert.ok(["check", "publish"].includes(command), "Use check or publish");
   const {
     GITHUB_REF_NAME: tag,
     GITHUB_REF_TYPE: refType,
     GITHUB_SHA: sha,
     GITHUB_REPOSITORY: repository,
-  } = process.env;
+  } = context;
   assert.equal(refType, "tag", "Dispatch this workflow against a release tag");
   assert.match(tag, /^v\d+\.\d+\.\d+$/);
   assert.ok(repository && sha, "GitHub Actions context is required");
-  const gh = (...args) => execFileSync("gh", args, { encoding: "utf8" }).trim();
-  const version = JSON.parse(readFileSync("package.json", "utf8")).version;
   const inspect = () => {
     const release = JSON.parse(
       gh("release", "view", tag, "--repo", repository, "--json", "tagName,isDraft,body,assets"),
@@ -55,7 +53,7 @@ function main(command) {
   };
   inspect();
   if (command === "check") return;
-  const files = checkArtifacts("dist/desktop", version);
+  const files = checkArtifacts(directory, version);
   // Replacement is limited to the four expected files on an unpublished draft.
   gh("release", "upload", tag, ...files, "--repo", repository, "--clobber");
   const release = inspect();
@@ -63,7 +61,7 @@ function main(command) {
     const asset = release.assets.find((item) => item.name === name);
     assert.equal(
       asset?.size,
-      statSync(resolve("dist/desktop", name)).size,
+      statSync(resolve(directory, name)).size,
       `Uploaded package size does not match: ${name}`,
     );
   }
@@ -72,5 +70,10 @@ function main(command) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  main(process.argv[2]);
+  runRelease({
+    command: process.argv[2],
+    context: process.env,
+    gh: (...args) => execFileSync("gh", args, { encoding: "utf8" }).trim(),
+    version: JSON.parse(readFileSync("package.json", "utf8")).version,
+  });
 }
