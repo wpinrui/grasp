@@ -4,12 +4,12 @@
   drawn over it at the tool's own hue.
 
   They are siblings on the sheet rather than a pair inside a box of their own,
-  and that is load-bearing. A box would have to be positioned and moved, and
-  either makes it a stacking context, which isolates the blending group: the
-  outline would then difference itself against nothing and paint flat white,
-  invisible on white paper, which is the one thing the two layers exist to
-  prevent. As the sheet's own children they blend against the paper and the
-  figure, which is what was wanted.
+  and that is load-bearing. A box would have to be moved, and raised above the
+  panels, and either of those makes it a stacking context, which isolates the
+  blending group: the outline would then difference itself against nothing and
+  paint flat white, invisible on white paper, which is the one thing the two
+  layers exist to prevent. As the sheet's own children they blend against the
+  paper and the figure, which is what was wanted.
 
   Both are moved to the pointer by writing their transform directly rather than
   by rendering, so a pointer crossing the sheet costs no render at all.

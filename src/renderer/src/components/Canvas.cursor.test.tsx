@@ -16,6 +16,19 @@ afterEach(cleanup);
 /** The stubbed sheet sits at the window's corner, so a client point is a sheet point. */
 const ORIGIN = { x: 0, y: 0 };
 
+/** Where each layer of the cursor has been put. Both must agree, or the outline
+ *  and the glyph come apart. */
+function placedIn(container: HTMLElement): string[] {
+  return [...container.querySelectorAll<HTMLElement>(".tool-cursor")].map(
+    (layer) => layer.style.transform,
+  );
+}
+
+/** How many of the layers are out of sight. Half of them is as wrong as none. */
+function hiddenIn(container: HTMLElement): number {
+  return container.querySelectorAll(".tool-cursor--away").length;
+}
+
 function moveTo(sheet: HTMLElement, at: { x: number; y: number }) {
   act(() => {
     fireEvent.pointerMove(sheet, {
@@ -31,16 +44,17 @@ describe("the cursor the sheet draws", () => {
   it("comes up under the pointer, and takes the browser's cursor away", () => {
     const { container } = put([], "point");
     const sheet = sheetOf(container);
-    // Nothing until the pointer has been on the sheet.
-    expect(container.querySelector(".tool-cursor--away")).not.toBe(null);
+    // Nothing until the pointer has been on the sheet, and nothing by halves:
+    // one layer left showing is the outline or the glyph on its own.
+    expect(hiddenIn(container)).toBe(2);
     expect(sheet.className).not.toContain("canvas__sheet--drawn-cursor");
 
     moveTo(sheet, { x: 220, y: 160 });
-    expect(container.querySelector(".tool-cursor--away")).toBe(null);
+    expect(hiddenIn(container)).toBe(0);
     expect(sheet.className).toContain("canvas__sheet--drawn-cursor");
-    expect((container.querySelector(".tool-cursor") as HTMLElement).style.transform).toBe(
-      `translate(${220 - HOTSPOT.x}px, ${160 - HOTSPOT.y}px)`,
-    );
+    const spot = `translate(${220 - HOTSPOT.x}px, ${160 - HOTSPOT.y}px)`;
+    // Both layers, together: they only read as one cursor while they agree.
+    expect(placedIn(container)).toEqual([spot, spot]);
   });
 
   it("follows the pointer across the sheet", () => {
@@ -48,9 +62,8 @@ describe("the cursor the sheet draws", () => {
     const sheet = sheetOf(container);
     moveTo(sheet, { x: 100, y: 100 });
     moveTo(sheet, { x: 340, y: 260 });
-    expect((container.querySelector(".tool-cursor") as HTMLElement).style.transform).toBe(
-      `translate(${340 - HOTSPOT.x}px, ${260 - HOTSPOT.y}px)`,
-    );
+    const spot = `translate(${340 - HOTSPOT.x}px, ${260 - HOTSPOT.y}px)`;
+    expect(placedIn(container)).toEqual([spot, spot]);
   });
 
   it("goes when the pointer leaves, and gives the browser its cursor back", () => {
@@ -60,7 +73,7 @@ describe("the cursor the sheet draws", () => {
     act(() => {
       fireEvent.pointerLeave(sheet);
     });
-    expect(container.querySelector(".tool-cursor--away")).not.toBe(null);
+    expect(hiddenIn(container)).toBe(2);
     expect(sheet.className).not.toContain("canvas__sheet--drawn-cursor");
   });
 
@@ -75,7 +88,7 @@ describe("the cursor the sheet draws", () => {
         pointerType: "touch",
       });
     });
-    expect(container.querySelector(".tool-cursor--away")).not.toBe(null);
+    expect(hiddenIn(container)).toBe(2);
     expect(sheet.className).not.toContain("canvas__sheet--drawn-cursor");
   });
 

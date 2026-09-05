@@ -1,6 +1,8 @@
 /**
- * Where GRASP's own cursor is. None of this is reached by the sheet's own
- * tests, which never ask what the pointer did with a tool that draws one.
+ * Where GRASP's own cursor is. `Canvas.cursor.test.tsx` drives the same hook
+ * through the sheet; what this adds is everything the sheet cannot easily be
+ * asked about: a finger, a tool that draws no cursor, and the pointer being
+ * kept across a change from one to the other.
  */
 
 import { act, renderHook } from "@testing-library/react";
@@ -36,11 +38,12 @@ function held(tool: string) {
   const box = layer();
   const cursor = renderHook(() => useToolCursor(tool, screenOf));
   // The sheet mounts the layers and hands each one over; the hook holds no
-  // element of its own.
+  // element of its own. `drop` is what React calls when the layer unmounts.
+  let drop: (() => void) | undefined;
   act(() => {
-    cursor.result.current.hold(box);
+    drop = cursor.result.current.hold(box) ?? undefined;
   });
-  return { cursor, box };
+  return { cursor, box, drop };
 }
 
 describe("where the drawn cursor is", () => {
@@ -67,6 +70,18 @@ describe("where the drawn cursor is", () => {
     const { cursor, box } = held("point");
     act(() => cursor.result.current.follow(moved("touch")));
     expect(cursor.result.current.showing).toBe(false);
+    expect(box.style.transform).toBe("");
+  });
+
+  it("lets a layer go when the sheet takes it off, and stops moving it", () => {
+    const { cursor, box, drop } = held("point");
+    act(() => cursor.result.current.follow(moved()));
+    expect(box.style.transform).not.toBe("");
+
+    // The sheet unmounts the layer, which is what the ref's cleanup is for.
+    act(() => drop?.());
+    box.style.transform = "";
+    act(() => cursor.result.current.follow(moved()));
     expect(box.style.transform).toBe("");
   });
 

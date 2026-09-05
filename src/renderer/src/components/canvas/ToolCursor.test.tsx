@@ -88,19 +88,23 @@ describe("the geometry every cursor is built from", () => {
 describe("the cursor on the sheet", () => {
   it("waits out of sight with the pointer off the sheet", () => {
     const container = render(<ToolCursor tool="point" hold={() => {}} showing={false} />).container;
-    // Still in the tree, so the place written to it is right when it comes back.
-    expect(container.querySelector(".tool-cursor--away")).toBeTruthy();
+    // Both of them, and still in the tree, so the place written to them is
+    // right when the pointer comes back. One left showing would be half a
+    // cursor stranded where the pointer last was.
+    expect(container.querySelectorAll(".tool-cursor--away").length).toBe(2);
   });
 
   it("draws two layers, the outline and the glyph over it", () => {
-    const layers = drawn("point").querySelectorAll(".tool-cursor");
+    const container = drawn("point");
+    const layers = container.querySelectorAll(".tool-cursor");
     expect(layers.length).toBe(2);
     expect(layers[0].classList.contains("tool-cursor--outline")).toBe(true);
     expect(layers[1].classList.contains("tool-cursor--outline")).toBe(false);
-    // Siblings on the sheet, not a pair inside a box: a box would be a stacking
-    // context, which isolates the blending group, and the outline would stop
-    // inverting against the paper.
-    expect(layers[0].parentElement).toBe(layers[1].parentElement);
+    // Straight into what holds them, not into a box of their own: a box would
+    // have to be raised and moved, either of which makes it a stacking context,
+    // and that isolates the blending group so the outline stops inverting.
+    expect(layers[0].parentElement).toBe(container);
+    expect(layers[1].parentElement).toBe(container);
   });
 
   it("draws the same marks in both layers, so the outline cannot miss one", () => {
