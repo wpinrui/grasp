@@ -4,7 +4,7 @@
 
 A free and open-source geometry sketchpad for your classroom. Draw accurate figures, measure them, produce visual proofs. Help your students grasp geometric intuition.
 
-Check out the online version of GRASP [here](https://grasp-math.netlify.app). A Windows version is also available.
+[Try GRASP in your browser](https://grasp-math.netlify.app). A Windows version is also available.
 
 ![The GRASP window: a labelled triangle with its angles, side and area measured](docs/images/window.png)
 
