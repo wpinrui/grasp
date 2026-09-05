@@ -97,7 +97,7 @@ describe("landing page bundle", () => {
     expect(still?.getAttribute("style")).not.toContain("display");
 
     const shown = (source: string, handle: string): string | undefined =>
-      new RegExp(`\.${handle} \{ display: ([a-z]+); \}`).exec(source)?.[1];
+      new RegExp(String.raw`\.${handle} \{ display: ([a-z]+); \}`).exec(source)?.[1];
     const reduced = styles().split("@media (prefers-reduced-motion: reduce)")[1] ?? "";
     const base = styles().split("@media (prefers-reduced-motion: reduce)")[0] as string;
     expect([shown(base, "r-hero-clip"), shown(base, "r-hero-still")]).toEqual(["block", "none"]);
