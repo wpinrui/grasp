@@ -22,17 +22,11 @@ Selected lines combine a blue highlight with thin blue dashed outlines, and sele
 
 - **Construct.** Points, segments, rays, lines, circles, arcs and fills. Midpoints, intersections, parallels, perpendiculars, angle bisectors, regular polygons, points that slide along a path, and loci.
 - **Transform.** Translate, rotate, dilate and reflect to create more advanced sketches.
-- **Measure.** Keep track of lengths, areas, angles, ratios and more as you iterate your sketch. The Measure menu can create multiple measurements of the same object; the Measure tool reuses its own existing reading. New segment readings from the tool start with full-length arrows and dotted extension lines. Selected measurements support bold, italic, and underline in the palette. Their floating toolbar can change units or hide the unit suffix independently of caption links.
-- **Captions.** With nothing else selected, double-click a caption to switch to the Text tool and edit it. The palette has direct buttons for +, −, ×, ÷, fractions, △, ∠, °, ≤, ≥, <, and >, with more choices in Notation and Symbols. Stacked fractions grow to fit their numerator and denominator and reserve enough line spacing. In a fraction, Tab moves from numerator to denominator, then out into the sentence. Right Arrow at the end also exits; Shift+Tab or Left Arrow at the start moves out before it. Click a measurement while writing a caption to insert a dynamic link, then continue typing after it. Click a link inside the caption to change its rounding, choose its unit, or hide the unit using the floating toolbar. These settings affect only that link. Each caption has one colour, set from the palette, shared by all its text, fractions, and measurement links.
-- **Numbers.** Set parameters, do step-by-step calculations and watch them update. Click a measurement while Calculate is open to insert it. References use geometry names such as AB, with distinct names when multiple measurements would otherwise match.
+- **Measure.** Keep track of lengths, areas, angles, ratios and more as you iterate your sketch.
+- **Numbers.** Set parameters, do step-by-step calculations and watch them update. Click a measurement while Calculate is open to insert it.
 - **Mark up.** Label sides of a polygon as equal, parallel, or add angle arcs for more polished classroom demos or for worksheet printing.
 - **Export.** Export a selection or a page to an image file or to your clipboard. Optimise it for your printed worksheet or your colourful slideshow.
 
-Caption font, size, bold, italic, and underline formatting applies to dynamic measurement links as well as ordinary text. Select a caption to format it as a whole, or select text while editing to format that selection.
-
-Click a calculation while editing a caption to insert its live final answer. Select that link and choose **Full equation** to include the expression and answer, or **Final answer** to show only the result. Each link keeps its own display and number formatting settings.
-
-With the angle Measure or Marker tool, drag from one arm to another around their vertex. The path you trace chooses the smaller or reflex angle. Segments, rays, lines, and constructed straight objects are supported at an existing vertex, including interior crossings. Clicking the vertex offers its distinct nonzero, nonstraight angles; overlapping arms share one direction.
 
 ## AI-powered scripting
 
@@ -70,7 +64,7 @@ If SmartScreen says **Windows protected your PC**, select **More info**, then **
 
 [Apple's instructions](https://support.apple.com/en-us/102445). These steps are for an unrecognized developer warning, not a malware alert.
 
-If a school or work device blocks these options, use the [browser version](https://grasp-math.netlify.app/launch) or ask its administrator. Keep system-wide protection enabled.
+If a school or work device blocks these options, use the [browser version](https://grasp-math.netlify.app/launch) or ask its administrator.
 
 ## Building desktop packages
 
@@ -83,8 +77,6 @@ Install dependencies with `yarn install --frozen-lockfile`, then run the command
 | macOS | `yarn package:mac` | Universal DMG for Apple Silicon and Intel |
 
 Packages are saved to `dist/desktop/`.
-
-For releases, the [Release desktop workflow](https://github.com/wpinrui/grasp/actions/workflows/release-desktop.yml) builds all three platforms on demand. Start it against a version tag matching `package.json`, with a draft release and notes already prepared. It publishes the draft only after all builds succeed. Ordinary pushes do not start desktop builds; pushing `deploy` deploys only the website.
 
 ## Acknowledgements
 
