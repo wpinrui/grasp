@@ -23,23 +23,32 @@ const STRIPE_WIDTH = 5;
 /** How far the stripes shade the fills they cover, all of them together. */
 const STRIPE_SHADE = 0.15;
 
-/**
- * The bands laid along a selected path, widest first, each so many screen
- * pixels wider than the object's own stroke. Paper, blue, then paper again
- * leaves the blue reading as a dashed ring standing clear of the object,
- * whatever the object happens to be drawn over.
- */
-const BANDS = [
-  { className: "canvas__selection-paper", beyond: 8 },
-  { className: "canvas__selection-dashes", beyond: 6 },
-  { className: "canvas__selection-paper", beyond: 4 },
-];
+/** The width `.canvas__circle` and `.canvas__line` are drawn at by default. */
+const STROKE_WIDTH = 1.5;
 
 /** The blue band along the object itself, at one width whatever the object's. */
 const HIGHLIGHT = 7;
 
+/**
+ * The bands laid along a selected path, widest first. The first three stand so
+ * many screen pixels outside the object's own stroke: paper, blue, then paper
+ * again leaves the blue reading as a dashed ring standing clear of the object,
+ * whatever the object happens to be drawn over. The last runs along the object
+ * itself, at one width however heavily the object is drawn.
+ */
+const BANDS = [
+  { band: "outer-rail", className: "canvas__selection-paper", widthOn: (own: number) => own + 8 },
+  { band: "dashes", className: "canvas__selection-dashes", widthOn: (own: number) => own + 6 },
+  { band: "inner-rail", className: "canvas__selection-paper", widthOn: (own: number) => own + 4 },
+  { band: "highlight", className: "canvas__selection-highlight", widthOn: () => HIGHLIGHT },
+];
+
 function hasPath(object: SketchObject): boolean {
   return isLine(object) || isArc(object) || isCircle(object);
+}
+
+function strokeWidthOf(object: SketchObject): number {
+  return Number(strokeLook(object).strokeWidth ?? STROKE_WIDTH);
 }
 
 /**
@@ -89,32 +98,18 @@ function SelectionFills({ fills }: { fills: SketchInterior[] }) {
  */
 function SelectionPaths({ paths }: { paths: SketchObject[] }) {
   if (paths.length === 0) return null;
-  return (
-    <>
-      {BANDS.map((band) => (
-        <g key={`${band.className}-${band.beyond}`}>
-          {paths.map((object) => (
-            <PathGlyph
-              key={object.id}
-              object={object}
-              className={band.className}
-              look={{ strokeWidth: Number(strokeLook(object).strokeWidth ?? 1.5) + band.beyond }}
-            />
-          ))}
-        </g>
+  return BANDS.map((band) => (
+    <g key={band.band}>
+      {paths.map((object) => (
+        <PathGlyph
+          key={object.id}
+          object={object}
+          className={band.className}
+          look={{ strokeWidth: band.widthOn(strokeWidthOf(object)) }}
+        />
       ))}
-      <g>
-        {paths.map((object) => (
-          <PathGlyph
-            key={object.id}
-            object={object}
-            className="canvas__selection-highlight"
-            look={{ strokeWidth: HIGHLIGHT }}
-          />
-        ))}
-      </g>
-    </>
-  );
+    </g>
+  ));
 }
 
 /**

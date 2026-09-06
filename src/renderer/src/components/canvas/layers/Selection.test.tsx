@@ -57,7 +57,11 @@ function polygons(colours: string[]) {
   });
 }
 
-/** Whether one element is painted after another, so it covers it. */
+/**
+ * Whether one element is painted after another, so it covers it. Within this
+ * suite the layers are written in the order `draw` lists them; what it is worth
+ * asserting here is that the overlay does not slip a fill in among them.
+ */
 function paintedAfter(later: Element, earlier: Element): boolean {
   return (earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
 }
@@ -122,7 +126,7 @@ describe("geometry selection contrast", () => {
     );
   });
 
-  it("keeps every fill's stripes parallel at 45 degrees after deselection", () => {
+  it("keeps the stripes at 45 degrees however many fills are held", () => {
     const objects = polygons(Array(5).fill("--color-ink-blue"));
     const all = draw(objects, ["fill-0", "fill-1", "fill-2", "fill-3", "fill-4"]);
     const direction = all.querySelector("pattern")?.getAttribute("patternTransform");
@@ -174,9 +178,9 @@ describe("geometry selection contrast", () => {
       if (!overlay || !original) throw new Error("The line is not drawn with its selection.");
       expect(highlight?.style.strokeWidth).toBe("7");
       expect(highlight?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
-      // The object is painted over its own decoration, so the rails never eat
-      // into it and the dashes read as a ring standing clear of the stroke.
-      expect(paintedAfter(original, overlay)).toBe(true);
+      // The overlay never draws the object, only the bands around it. Paths
+      // paints the stroke one layer up, which is what the snapshot pins.
+      expect(overlay.querySelector(".canvas__line")).toBe(null);
       expect(original.style.stroke).toBe("var(--color-ink-blue)");
       expect(original.style.strokeDasharray).toBe("6 4");
       expect(Number(blue?.style.strokeWidth)).toBe(Number(original.style.strokeWidth) + 6);

@@ -1885,9 +1885,9 @@ export function Canvas({
           <svg className="canvas__objects" aria-hidden="true">
             <g transform={`scale(${scale}) translate(${-view.x} ${-view.y})`}>
               <Fills />
+              <Selection />
               <Loci />
               <Handles />
-              <Selection />
               <Paths />
               <Drawing tracing={tracing} pending={pending} middle={middle} />
               <Marks />
