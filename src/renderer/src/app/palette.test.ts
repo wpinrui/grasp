@@ -1,8 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { linkHtml } from "../sketch/captions";
-import { createCaption, isCaption } from "../sketch/model";
+import { parse, serialise } from "../sketch/format";
+import { createCaption, createMeasurement, isCaption, isMeasurement } from "../sketch/model";
 import { DEFAULT_PREFS } from "../sketch/prefs";
+import { drawnAs } from "../sketch/text";
 import { useSketch } from "../sketch/useSketch";
 import { paletteState } from "./palette";
 
@@ -47,4 +49,61 @@ it("changes the size and face of entire selected captions, including old nested 
     expect(caption.html).toContain("<b>");
     expect(caption.html).toContain('data-link="m"');
   }
+});
+
+it("styles selected measurements, preserves them on save, and undoes each toggle", () => {
+  const { result } = renderHook(() => useSketch());
+  const measurement = {
+    ...createMeasurement("length", ["segment"], { x: 0, y: 0 }),
+    unit: "mm",
+    showUnit: false,
+  };
+  act(() => result.current.commit({ objects: [measurement], selection: [measurement.id] }));
+  function palette() {
+    return paletteState({
+      sketch: result.current,
+      objects: result.current.state.objects,
+      selected: result.current.state.objects,
+      selection: [measurement.id],
+      editing: null,
+      labelPick: [],
+      prefs: DEFAULT_PREFS,
+      armed: {},
+      setArmed: () => {},
+      activeTool: "arrow",
+      variants: {
+        arrow: "all",
+        straightedge: "segment",
+        polygon: "interior-edges",
+        text: "caption",
+        measure: "length",
+        marker: "equal",
+      },
+    });
+  }
+  for (const mark of ["bold", "italic", "underline"] as const) {
+    expect(palette().selectionMarks?.[mark]).toBe(false);
+    act(() => palette().styleMark(mark, true));
+    expect(palette().selectionMarks?.[mark]).toBe(true);
+  }
+  const saved = parse(
+    serialise([{ name: "Page 1", objects: result.current.state.objects }], DEFAULT_PREFS),
+  );
+  const reading = saved.pages[0].objects.find(isMeasurement);
+  expect(reading).toMatchObject({
+    bold: true,
+    italic: true,
+    underline: true,
+    unit: "mm",
+    showUnit: false,
+  });
+  expect(reading && drawnAs(reading)).toMatchObject({
+    fontWeight: "bold",
+    fontStyle: "italic",
+    textDecoration: "underline",
+  });
+  act(() => result.current.undo());
+  expect(palette().selectionMarks).toEqual({ bold: true, italic: true, underline: false });
+  act(() => palette().styleMark("bold", false));
+  expect(palette().selectionMarks?.bold).toBe(false);
 });

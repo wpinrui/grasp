@@ -542,6 +542,7 @@ export function Canvas({
     setLeaders,
     setTied,
     setPlaces,
+    setFormat,
     setReflex: setReadingReflex,
   } = useReading(sketch);
 
@@ -1961,6 +1962,7 @@ export function Canvas({
               onReflex={setReadingReflex}
               places={readingOpen.places ?? placesFor(readingOpen.measure)}
               onPlaces={setPlaces}
+              onFormat={setFormat}
             />
           )}
 

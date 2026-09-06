@@ -88,7 +88,12 @@ function newReading(
   measuring: Measuring,
 ): SketchMeasurement {
   const { measure, of, at } = taken;
-  const made = { ...createMeasurement(measure, of, at), size: READING_POINTS, bare: true };
+  const made = {
+    ...createMeasurement(measure, of, at),
+    size: READING_POINTS,
+    bare: true,
+    ...(measure === "length" ? { bounds: "full" as const, leaders: true } : {}),
+  };
   const box = readingBox(made, measuring);
   const { scale } = measuring;
   return { ...made, x: at.x - box.width / 2 / scale, y: at.y - box.height / 2 / scale };

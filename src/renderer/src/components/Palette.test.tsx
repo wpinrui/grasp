@@ -31,6 +31,8 @@ function palette(html: string, editing = true) {
     editing,
     editor: { current: editing ? field : null },
     text: { font: "Arial", size: 14, smallest: 14, colour: "--color-ink-black" },
+    selectionMarks: null,
+    onSelectionMark: vi.fn(),
     labelMarks: null,
     onLabelMark: vi.fn(),
     armedText: null,
@@ -119,4 +121,27 @@ it("clears nested size overrides when sizing the entire caption at a collapsed c
   fireEvent.click(shown.getByRole("button", { name: "28" }));
   expect(shown.onCaption).toHaveBeenCalledWith({ size: 28, html: shown.field.innerHTML });
   expect(shown.field.innerHTML).not.toContain("10pt");
+});
+
+it("enables style controls for standalone measurements and reports toggles", () => {
+  const shown = palette("", false);
+  const onSelectionMark = vi.fn();
+  shown.rerender(
+    <Palette
+      {...shown.props}
+      caption={null}
+      selectionMarks={{ bold: false, italic: false, underline: false }}
+      onSelectionMark={onSelectionMark}
+    />,
+  );
+  for (const [name, mark] of [
+    ["Bold", "bold"],
+    ["Italic", "italic"],
+    ["Underline", "underline"],
+  ]) {
+    const button = shown.getByRole("button", { name });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(button);
+    expect(onSelectionMark).toHaveBeenCalledWith(mark, true);
+  }
 });

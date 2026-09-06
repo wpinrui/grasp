@@ -143,6 +143,8 @@ export function Workspace({
             caption={palette.chosenCaption}
             text={palette.chosenText ?? palette.armedWriting}
             editing={tools.editing !== null}
+            selectionMarks={palette.selectionMarks}
+            onSelectionMark={palette.styleMark}
             labelMarks={palette.labelMarks}
             onLabelMark={(mark, on) => palette.styleLabel({ [mark]: on })}
             armedText={palette.armedMarks}

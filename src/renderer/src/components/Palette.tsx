@@ -83,6 +83,8 @@ interface PaletteProps {
    * rather than following where the next keystroke would land, and a key the
    * picked labels do not agree on reads off.
    */
+  selectionMarks: LabelMarks | null;
+  onSelectionMark: (mark: TextMark, on: boolean) => void;
   labelMarks: LabelMarks | null;
   onLabelMark: (mark: TextMark, on: boolean) => void;
   /**
@@ -119,6 +121,8 @@ export function Palette({
   editing,
   labelMarks,
   onLabelMark,
+  selectionMarks,
+  onSelectionMark,
   armedText,
   onArmText,
   onCaption,
@@ -168,6 +172,10 @@ export function Palette({
       onLabelMark(command, !labelMarks[command]);
       return;
     }
+    if (!editing && selectionMarks) {
+      onSelectionMark(command, !selectionMarks[command]);
+      return;
+    }
     if (!editing && caption) {
       onCaption({ html: markCaption(caption.html, command, !htmlMarks(caption.html)[command]) });
       return;
@@ -196,6 +204,7 @@ export function Palette({
   const here = editing ? caretLook(editor.current) : {};
   const marks =
     labelMarks ??
+    (!editing ? selectionMarks : null) ??
     (editing
       ? caretMarks(editor.current)
       : caption
@@ -205,7 +214,7 @@ export function Palette({
    * The three keys go in at the caret, so they want a caption open or a label
    * picked, and failing both a tool armed to write the next caption.
    */
-  const marksOff = !editing && !caption && !labelMarks && !armedText;
+  const marksOff = !editing && !caption && !labelMarks && !selectionMarks && !armedText;
   /** The ranging: the caption it is set on, or the one about to be written. */
   const ranged = caption ? caption.align : armedText?.align;
   const rangeOff = !caption && !armedText;

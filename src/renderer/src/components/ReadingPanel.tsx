@@ -1,3 +1,4 @@
+import { measurementUnits, units } from "../sketch/measure/units";
 import type { Position, SketchMeasurement } from "../sketch/model";
 import { PLACES } from "../sketch/prefs";
 import {
@@ -27,6 +28,7 @@ interface ReadingPanelProps {
   /** How many places this reading is written to now, its kind's default included. */
   places: number;
   onPlaces: (id: string, places: number) => void;
+  onFormat: (id: string, part: Pick<Partial<SketchMeasurement>, "unit" | "showUnit">) => void;
 }
 
 /**
@@ -58,6 +60,7 @@ export function ReadingPanel({
   onReflex,
   places,
   onPlaces,
+  onFormat,
 }: ReadingPanelProps) {
   const bounds = reading.bounds;
   const least = PLACES[0];
@@ -77,8 +80,40 @@ export function ReadingPanel({
       <PanelSplit />
     </>
   ) : null;
+  const available = measurementUnits(reading.measure);
+  const unit =
+    reading.unit && available.includes(reading.unit)
+      ? reading.unit
+      : reading.measure === "angle" || reading.measure === "arc-angle"
+        ? units.angle
+        : units.distance;
   const decimals = (
     <>
+      {available.length > 0 && (
+        <>
+          <PanelButton
+            label="Show units"
+            on={reading.showUnit !== false}
+            onClick={() => onFormat(reading.id, { showUnit: reading.showUnit === false })}
+          >
+            u
+          </PanelButton>
+          <select
+            className="caption-link-unit"
+            aria-label="Measurement unit"
+            value={unit}
+            onMouseDown={(event) => event.stopPropagation()}
+            onChange={(event) => onFormat(reading.id, { unit: event.target.value })}
+          >
+            {available.map((choice) => (
+              <option key={choice} value={choice}>
+                {choice}
+              </option>
+            ))}
+          </select>
+          <PanelSplit />
+        </>
+      )}
       <PanelButton
         label="One fewer decimal place"
         tip={`One fewer decimal place (${places} now)`}

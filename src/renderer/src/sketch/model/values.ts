@@ -156,6 +156,11 @@ export type MeasureKind = (typeof MEASURES)[number];
 export interface SketchMeasurement extends Labelled {
   id: string;
   kind: "measurement";
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  unit?: string;
+  showUnit?: boolean;
   measure: MeasureKind;
   /** What it reads, in the order those objects were picked. */
   of: string[];
