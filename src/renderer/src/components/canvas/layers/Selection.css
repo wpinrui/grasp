@@ -22,5 +22,4 @@
 
 .canvas__selection-stripe {
   stroke: var(--color-selection-shade);
-  stroke-width: 5;
 }

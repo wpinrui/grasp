@@ -7,20 +7,21 @@ import { arcPath } from "../shapes";
 export function PathGlyph({
   object,
   className,
-  style,
+  look,
 }: {
   object: SketchObject;
   className?: string;
-  style?: CSSProperties;
+  /** Replaces the object's own look outright, rather than adding to it. */
+  look?: CSSProperties;
 }) {
   const { settled, spanOf } = useSheet();
-  const look = style ?? strokeLook(object);
+  const style = look ?? strokeLook(object);
   if (isArc(object)) {
     const arc = settled.arcs.get(object.id);
     return arc ? (
       <path
         className={className ?? "canvas__circle"}
-        style={look}
+        style={style}
         d={arcPath(arc)}
         vectorEffect="non-scaling-stroke"
       />
@@ -31,7 +32,7 @@ export function PathGlyph({
     return round ? (
       <circle
         className={className ?? "canvas__circle"}
-        style={look}
+        style={style}
         cx={round.at.x}
         cy={round.at.y}
         r={round.radius}
@@ -44,7 +45,7 @@ export function PathGlyph({
   return span ? (
     <line
       className={className ?? "canvas__line"}
-      style={look}
+      style={style}
       x1={span[0].x}
       y1={span[0].y}
       x2={span[1].x}

@@ -1885,6 +1885,7 @@ export function Canvas({
               <Fills />
               <Loci />
               <Handles />
+              <Selection />
               <Paths />
               <Drawing tracing={tracing} pending={pending} middle={middle} />
               <Marks />
@@ -1897,7 +1898,6 @@ export function Canvas({
                 marks={markingNow()}
               />
               <Showing corner={choosing?.corner ?? null} arms={showingArms} marks={markingNow()} />
-              <Selection />
               <Points />
               {spotlight && <Lit ids={litWith(spotlight, everything)} />}
               {lit && lit !== spotlight && <Lit ids={litWith(lit, everything)} />}
