@@ -98,6 +98,9 @@
 .cap-slot {
   padding: 0 1px;
   border-radius: 2px;
+}
+
+.caption--editing .cap-slot {
   background: var(--color-slot);
 }
 
