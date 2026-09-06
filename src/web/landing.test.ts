@@ -55,6 +55,19 @@ describe("landing page bundle", () => {
     expect(viewport?.getAttribute("content")).toBe("width=device-width, initial-scale=1");
   });
 
+  it("keeps demo controls enabled through the template runtime", () => {
+    const videos = page().querySelectorAll("#see-it-in-action video");
+    expect(videos).toHaveLength(2);
+    for (const video of videos) {
+      // The runtime passes attribute strings to React. A bare boolean becomes
+      // an empty string, so React removes it even though HTML would enable it.
+      expect(video.getAttribute("controls")).toBeTruthy();
+      expect(video.getAttribute("playsinline")).toBeTruthy();
+      expect(video.hasAttribute("autoplay")).toBe(false);
+      expect(video.getAttribute("style")).toContain("max-height: min(70vh, 720px)");
+    }
+  });
+
   /**
    * The hero is a clip rather than a screenshot, and every attribute holding
    * it up fails silently: without `muted` no browser will autoplay it, without
