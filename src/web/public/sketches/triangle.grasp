@@ -381,8 +381,8 @@
         {
           "id": "caption-42-160k3q",
           "kind": "caption",
-          "x": 590,
-          "y": 246,
+          "x": 32,
+          "y": 548,
           "width": 414,
           "html": "Area of △ABC = <span class=\"cap-frac\"><span class=\"cap-frac__top\"><span class=\"cap-slot\">1</span></span><span class=\"cap-frac__bottom\"><span class=\"cap-slot\">2</span></span></span>​ × <span class=\"cap-link\" data-link=\"measure-97-r40kep\" contenteditable=\"false\" data-show-unit=\"false\">12.89</span> × <span class=\"cap-link\" data-link=\"measure-39-160k3q\" contenteditable=\"false\" data-show-unit=\"false\">7.80</span> <div>                          = <span class=\"cap-link\" data-link=\"measure-266-r40kep\" contenteditable=\"false\">50.28 cm²</span>​​</div>",
           "align": "left",
