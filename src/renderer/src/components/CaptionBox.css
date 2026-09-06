@@ -68,13 +68,23 @@
 
 /* A Hot Text link: what it reads is filled in every time it is drawn. */
 .cap-link {
-  color: var(--color-canvas-accent);
+  color: inherit;
   cursor: pointer;
 }
 
 .cap-link:hover {
   background: var(--color-selection-halo);
   border-radius: 2px;
+}
+
+.caption-link-unit {
+  font:
+    13px "Segoe UI",
+    sans-serif;
+  color: var(--color-text-menu);
+  background: var(--color-flyout);
+  padding: 3px;
+  border-radius: 4px;
 }
 
 /* The mark a notation leaves for the part still to be typed. */
@@ -92,6 +102,10 @@
   vertical-align: middle;
   text-align: center;
   line-height: 1.15;
+  width: max-content;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  margin-block: 0.15em;
 }
 
 .cap-frac__top {

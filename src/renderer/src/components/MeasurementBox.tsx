@@ -126,6 +126,7 @@ export function MeasurementBox({
     // A caption is open: a press drops a link to the value into the sentence
     // rather than doing anything to the measurement itself.
     if (linking) {
+      event.preventDefault();
       onLink(measurement.id);
       return;
     }

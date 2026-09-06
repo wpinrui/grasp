@@ -6,10 +6,11 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { withNames } from "../sketch/captions";
+import type { CaptionReading } from "../sketch/captionLinks";
+import { refreshLinks, withNames } from "../sketch/captions";
 import type { CaptionAlign, Position, SketchCaption, View } from "../sketch/model";
 import { drawnAs } from "../sketch/text";
-import { SLOT } from "./typeset";
+import { CaptionLinkPanel, selectCaptionLink } from "./CaptionLinkPanel";
 import "./CaptionBox.css";
 
 /** The least a caption can be dragged down to, in screen pixels. */
@@ -22,6 +23,7 @@ interface CaptionBoxProps {
   caption: SketchCaption;
   /** What everything on the page is called, for the links to read. */
   names: Map<string, string>;
+  readings: Map<string, CaptionReading>;
   view: View;
   scale: number;
   selected: boolean;
@@ -139,6 +141,7 @@ function freeTheCaret(editor: HTMLElement, forward: boolean): void {
 export function CaptionBox({
   caption,
   names,
+  readings,
   view,
   scale,
   selected,
@@ -171,7 +174,7 @@ export function CaptionBox({
   useLayoutEffect(() => {
     const element = body.current;
     if (!editing || !element) return;
-    element.innerHTML = withNames(caption.html, names);
+    element.innerHTML = withNames(caption.html, names, readings);
     editor.current = element;
     element.focus();
     const spot = opened.current;
@@ -192,6 +195,10 @@ export function CaptionBox({
     };
   }, [editing]);
 
+  useLayoutEffect(() => {
+    if (editing && body.current) refreshLinks(body.current, names, readings);
+  }, [editing, names, readings]);
+
   useEffect(() => {
     const element = root.current;
     if (!element) return;
@@ -207,7 +214,15 @@ export function CaptionBox({
     // The sheet never sees a press that landed in a caption. Open, the press is
     // the browser's: it moves the caret and selects text.
     event.stopPropagation();
-    if (editing) return;
+    if (editing) {
+      const link = (event.target as HTMLElement).closest("[data-link]");
+      if (link && body.current?.contains(link)) {
+        event.preventDefault();
+        body.current.focus();
+        selectCaptionLink(link);
+      }
+      return;
+    }
     // The Text tool writes in a caption rather than carrying it about, so a
     // press with it goes straight to the caret.
     if (tool === "text") {
@@ -300,7 +315,7 @@ export function CaptionBox({
       freeTheCaret(element, event.key === "ArrowRight");
       return;
     }
-    if (event.key === "Tab" && element.textContent?.includes(SLOT)) {
+    if (event.key === "Tab") {
       if (stepSlot(element, event.shiftKey)) event.preventDefault();
     }
   }
@@ -357,7 +372,14 @@ export function CaptionBox({
         <div
           className="caption__body"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: the caption's own markup, written here
-          dangerouslySetInnerHTML={{ __html: withNames(caption.html, names) }}
+          dangerouslySetInnerHTML={{ __html: withNames(caption.html, names, readings) }}
+        />
+      )}
+      {editing && (
+        <CaptionLinkPanel
+          editor={body}
+          readings={readings}
+          onCommit={() => onCommit(caption.id, body.current?.innerHTML ?? caption.html)}
         />
       )}
       {(selected || editing) && (

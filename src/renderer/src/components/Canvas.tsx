@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { captionReadings } from "../sketch/captionLinks";
 import { type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
 import {
   anglesAt,
@@ -1709,6 +1710,7 @@ export function Canvas({
    * a sentence that quotes a measurement reads the number as it stands now.
    */
   const linkNames = new Map(names);
+  const linkReadings = captionReadings(everything, settled);
   for (const measurement of everything.filter(isMeasurement)) {
     linkNames.set(measurement.id, readingFor(measurement).value);
   }
@@ -1999,6 +2001,7 @@ export function Canvas({
                 settleCaption(id, html);
               }}
               onLit={setLit}
+              readings={linkReadings}
               onMeasure={measureWriting}
             />
           ))}
@@ -2089,7 +2092,13 @@ export function Canvas({
 
           {/* Hidden writing pointed at in the dock. Nothing else says where it
             sits, since a hidden object is not drawn at all. */}
-          <GhostCaption caption={ghostAt(spotlight)} names={linkNames} view={view} scale={scale} />
+          <GhostCaption
+            caption={ghostAt(spotlight)}
+            names={linkNames}
+            readings={linkReadings}
+            view={view}
+            scale={scale}
+          />
           {(() => {
             const hidden = ghostReadingAt(spotlight);
             return hidden ? (
