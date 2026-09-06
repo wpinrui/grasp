@@ -178,11 +178,28 @@ describe("dragging selected labels", () => {
     const second = moved(b.id);
     if (!first || !second) throw new Error("Missing dragged label offsets");
     // One delta for the whole group, so the two keep the gap they started with.
-    expect({ x: first.x - 0, y: first.y - 4 }).toEqual({ x: second.x - 0, y: second.y - 40 });
+    expect(first.x).toBeCloseTo(second.x);
+    expect(first.y - 4).toBeCloseTo(second.y - 40);
     // And neither is dragged past its reach: the one that started further out
     // binds the group, and the near one comes to rest inside the limit.
     expect(Math.hypot(second.x, second.y)).toBeCloseTo(LABEL_REACH);
     expect(Math.hypot(first.x, first.y)).toBeLessThan(LABEL_REACH);
+  });
+
+  it("holds every label inside its reach even where two of them pull opposite ways", () => {
+    // Two labels already on their limits, on opposite sides of their objects,
+    // leave the group no room at all: sliding one out is dragging the other in.
+    const east = { ...a, label: { name: "A", shown: true, off: { x: LABEL_REACH, y: 0 } } };
+    const west = { ...b, label: { name: "B", shown: true, off: { x: -LABEL_REACH, y: 0 } } };
+    const { sheet, page } = watched([east, west, segment, length, caption, table], "arrow", {
+      labelSelection: [east.id, west.id],
+    });
+    drag(labelOn(sheet, east.id), { x: 148, y: 100 }, { x: 148, y: 1100 });
+    for (const id of [east.id, west.id]) {
+      const off = page().objects.find((object) => object.id === id)?.label?.off;
+      if (!off) throw new Error(`Missing label offset for ${id}`);
+      expect(Math.hypot(off.x, off.y)).toBeLessThanOrEqual(LABEL_REACH);
+    }
   });
 
   it("slides a label along its limit once it is already there", () => {

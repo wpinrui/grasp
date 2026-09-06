@@ -22,12 +22,17 @@ export interface Dragging {
 }
 
 /**
- * How many times the reach limits are applied in turn before they agree, since
- * pulling one label back in can carry another out.
+ * How many times the reach limits are turned over before the sliding stops.
+ * Pulling one label back in can carry another out, so one pass settles only
+ * the last limit it applied; a handful walks a group most of the way in, and
+ * `shortened` guarantees the rest.
  */
 const REACH_PASSES = 4;
 
-/** The part of a move that leaves one label inside its reach of its object. */
+/**
+ * The part of a move that leaves one label inside its reach of its object,
+ * sliding it around the limit rather than stopping it dead against it.
+ */
 function withinReach(off: Position, by: Position): Position {
   const to = { x: off.x + by.x, y: off.y + by.y };
   const far = Math.hypot(to.x, to.y);
@@ -37,9 +42,26 @@ function withinReach(off: Position, by: Position): Position {
 }
 
 /**
+ * The move pulled back along itself until it takes no label past its reach.
+ * This is what holds the limit: sliding alone only settles the label it was
+ * last applied to, and a group can be left with one still outside.
+ */
+function shortened(labels: LabelOffset[], by: Position): Position {
+  const squared = by.x * by.x + by.y * by.y;
+  if (squared === 0) return by;
+  let portion = 1;
+  for (const { off } of labels) {
+    const dot = off.x * by.x + off.y * by.y;
+    const room = Math.max(0, LABEL_REACH ** 2 - off.x ** 2 - off.y ** 2);
+    portion = Math.min(portion, (-dot + Math.sqrt(dot * dot + squared * room)) / squared);
+  }
+  return { x: by.x * portion, y: by.y * portion };
+}
+
+/**
  * How far the group may travel, as one delta so the labels keep their shape.
- * Every label is held inside its own reach, and one already at that limit
- * slides along it rather than sticking fast wherever it was let go.
+ * Every label ends inside its own reach, and one already at that limit slides
+ * along it rather than sticking fast wherever it was let go.
  */
 function keptDelta(labels: LabelOffset[], by: Position): Position {
   let kept = by;
@@ -48,7 +70,7 @@ function keptDelta(labels: LabelOffset[], by: Position): Position {
     if (settled.x === kept.x && settled.y === kept.y) break;
     kept = settled;
   }
-  return kept;
+  return shortened(labels, kept);
 }
 
 export function useLabelDrag({
