@@ -2,8 +2,8 @@ import {
   distance,
   distanceToPath,
   isPoint,
+  type LineGeometry,
   type Position,
-  pathIn,
   type Settled,
   type SketchObject,
 } from "../model";
@@ -18,8 +18,8 @@ export function angleGesture(
   settled: Settled,
 ) {
   if (from === to || trail.length < 2) return null;
-  const first = pathIn(settled, from);
-  const last = pathIn(settled, to);
+  const first = settled.lines.get(from);
+  const last = settled.lines.get(to);
   if (!first || !last) return null;
   for (const corner of objects.filter((object) => isPoint(object) && !object.hidden)) {
     const at = settled.points.get(corner.id);
@@ -30,12 +30,17 @@ export function angleGesture(
     const bearing = (spot: Position) => Math.atan2(spot.y - at.y, spot.x - at.x);
     const gap = (a: number, b: number) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
     const arms = armsAt(corner.id, objects, settled);
-    const nearest = (spot: Position) =>
-      [...arms].sort(
-        (a, b) => Math.abs(gap(a.angle, bearing(spot))) - Math.abs(gap(b.angle, bearing(spot))),
-      )[0];
-    const a = nearest(start);
-    const b = nearest(end);
+    const nearest = (spot: Position, line: LineGeometry) =>
+      arms
+        .filter((arm) => {
+          const end = settled.points.get(arm.end);
+          return end && distanceToPath({ ...line, form: "line" }, end) <= 1e-6;
+        })
+        .sort(
+          (a, b) => Math.abs(gap(a.angle, bearing(spot))) - Math.abs(gap(b.angle, bearing(spot))),
+        )[0];
+    const a = nearest(start, first);
+    const b = nearest(end, last);
     if (!a || !b || a.end === b.end) continue;
     const turn = Math.abs(gap(a.angle, b.angle));
     if (turn < 1e-9 || Math.abs(turn - Math.PI) < 1e-9) continue;

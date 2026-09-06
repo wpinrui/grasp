@@ -423,9 +423,8 @@ export function Canvas({
    */
   const [overCorner, setOverCorner] = useState<string | null>(null);
   /**
-   * The side an angle gesture was pressed on. Released on another side that
-   * shares an end with it, the two name the angle between them and nothing has
-   * to be chosen.
+   * The side an angle gesture was pressed on. The release picks the other side,
+   * and the traced path chooses the sweep around their common vertex.
    */
   const armFrom = useRef<string | null>(null);
   const armTrail = useRef<Position[]>([]);
@@ -675,6 +674,9 @@ export function Canvas({
     setSnap(null);
     setBoxing(null);
     setArming(null);
+    armFrom.current = null;
+    armTrail.current = [];
+    setSweeping(null);
     // A panel belongs to the tool that opened it, so it goes with the tool.
     setPanel(null);
     setReadingPanel(null);
@@ -1300,9 +1302,8 @@ export function Canvas({
     }
     const at = positionOf(event) ?? state.origin;
 
-    // Dragged from one side of an angle to the other. The two sides share one
-    // end, that end is the corner, and their far ends are the arms, so nothing
-    // is left to guess however many sides run out of the point.
+    // Resolve the actual directions under the press and release, including
+    // extensions beyond defining points, and follow the sweep of the drag.
     const fromSide = armFrom.current;
     armFrom.current = null;
     setSweeping(null);

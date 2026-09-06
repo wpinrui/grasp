@@ -1,4 +1,4 @@
-import { cleanup, fireEvent } from "@testing-library/react";
+import { act, cleanup, fireEvent } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   createMeasurement,
@@ -7,6 +7,7 @@ import {
   isMeasurement,
   lineThrough,
 } from "../sketch/model";
+import type { Sketch } from "../sketch/useSketch";
 import { press, put, stubTheSheet, watched } from "../testing/canvas";
 
 stubTheSheet();
@@ -57,4 +58,39 @@ it("offers labelled, nondegenerate choices for an unlabelled vertex on a line", 
   expect(shown.getByText("Which angle at A?")).toBeTruthy();
   expect(shown.container.querySelectorAll(".angles__row")).toHaveLength(2);
   expect(shown.container.querySelector(".angles")?.textContent).not.toContain("?");
+});
+
+it("undoes an extended-arm measurement and its direction points together", () => {
+  let sketch: Sketch | undefined;
+  const shown = watched(objects, "measure", {
+    measureKind: "angle",
+    reportSketch: (held) => {
+      sketch = held;
+    },
+  });
+  const event = (x: number, y: number) => ({ clientX: x, clientY: y, pointerId: 1, button: 0 });
+  fireEvent.pointerDown(shown.sheet, event(140, 200));
+  fireEvent.pointerMove(shown.sheet, event(160, 240));
+  fireEvent.pointerUp(shown.sheet, event(200, 260));
+  expect(shown.page().objects.filter(isMeasurement)).toHaveLength(1);
+  expect(shown.page().objects.filter((object) => object.hidden)).toHaveLength(1);
+  const ids = shown.page().objects.map((object) => object.id);
+  act(() => sketch?.undo());
+  expect(shown.page().objects.map((object) => object.id)).toEqual(
+    objects.map((object) => object.id),
+  );
+  act(() => sketch?.redo());
+  expect(shown.page().objects.map((object) => object.id)).toEqual(ids);
+});
+
+it("cancels an arm sweep without leaving construction points or a preview", () => {
+  const shown = watched(objects, "marker", { markForm: "angle" });
+  const event = (x: number, y: number) => ({ clientX: x, clientY: y, pointerId: 1, button: 0 });
+  fireEvent.pointerDown(shown.sheet, event(140, 200));
+  fireEvent.pointerMove(shown.sheet, event(200, 260));
+  fireEvent.pointerCancel(shown.sheet, event(200, 260));
+  expect(shown.page().objects.map((object) => object.id)).toEqual(
+    objects.map((object) => object.id),
+  );
+  expect(shown.sheet.querySelector(".canvas__mark-stroke")).toBeNull();
 });

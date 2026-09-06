@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
+import { parse, serialise } from "../format";
 import {
   createLine,
   createMeasurement,
@@ -9,6 +10,7 @@ import {
   type SketchObject,
   settle,
 } from "../model";
+import { DEFAULT_PREFS } from "../prefs";
 import { angleFigure, withAnglePoints } from "./angleFigure";
 import { angleGesture } from "./angleGesture";
 import { quantityOf } from "./quantity";
@@ -27,6 +29,22 @@ const page = (objects: SketchObject[]) =>
   );
 
 describe("angle directions", () => {
+  it("keeps the clicked arm when another direction lies closer to an imprecise pointer", () => {
+    const near = { ...a, id: "near", x: 100, y: 10 };
+    const competing = lineThrough("segment", ["a", "near"]);
+    const figure = page([a, b, c, near, line, side, competing]);
+    const chosen = angleGesture(
+      "line",
+      "side",
+      [
+        { x: 30, y: 3 },
+        { x: 0, y: 50 },
+      ],
+      figure.objects,
+      figure.settled,
+    );
+    expect(chosen?.arms).toEqual(["b", "c"]);
+  });
   it("removes overlapping arms, zero angles and straight angles", () => {
     const mid = { ...createPoint({ x: 50, y: 0 }, "medium"), id: "mid" };
     const duplicate = lineThrough("segment", ["a", "mid"]);
@@ -77,6 +95,10 @@ describe("angle directions", () => {
       [chosen.arms[0], chosen.corner, chosen.arms[1]],
       { x: 0, y: 0 },
     );
+    const reopened = parse(
+      serialise([{ name: "Angles", objects: [...persisted, measurement] }], DEFAULT_PREFS),
+    ).pages[0].objects;
+    expect(quantityOf(measurement, reopened, settle(reopened).settled)?.value).toBeCloseTo(90);
     expect(persisted.filter((object) => object.hidden)).toHaveLength(1);
     const moved = [
       ...persisted.map((object) =>
