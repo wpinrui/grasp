@@ -88,6 +88,7 @@ export function Workspace({
         <Canvas
           activeTool={tools.activeTool}
           cancelRef={tools.cancelSheet}
+          selectAllRef={tools.selectAllVisible}
           zoomable={settings.prefs.zoom === true}
           tieReadings={settings.prefs.tieReadings === true}
           sketch={sketch}
@@ -111,6 +112,7 @@ export function Workspace({
           }}
           spotlight={settings.panels.length === 0 ? null : tools.spotlight}
           labelPick={tools.labelPick}
+          onLabelSelection={tools.setLabelPick}
           onLabelPick={(id, additive) => {
             if (id === null) {
               tools.setLabelPick([]);

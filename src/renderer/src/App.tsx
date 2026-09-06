@@ -78,7 +78,7 @@ export function App() {
   /** Which dialog is open, and what it is holding while it is. */
   const dialogs = useDialogs();
   const sketch = useSketch();
-  const { undo, redo, canUndo, canRedo, remove, selectAll } = sketch;
+  const { undo, redo, canUndo, canRedo, remove } = sketch;
   /** What the window remembers between runs: the dock, the steps, the paper. */
   const settings = useSettings({ sketch, phone, setSpotlight: tools.setSpotlight });
   // Whether a point that lands says its name straight away, told to the sketch
@@ -334,7 +334,7 @@ export function App() {
     saveSketch: () => void doc.save(),
     closeSketch: doc.close,
     quit: () => void doc.quit(),
-    selectAll,
+    selectAll: () => tools.selectAllVisible.current(),
     cut: clipboard.cutSelection,
     copy: clipboard.copySelection,
     paste: clipboard.pasteObjects,
@@ -383,6 +383,7 @@ export function App() {
       {window.api.platform !== "web" && <TitleBar title={doc.title} />}
       <Menus
         sketch={sketch}
+        onSelectAll={() => tools.selectAllVisible.current()}
         doc={doc}
         dialogs={dialogs}
         numbers={numbers}

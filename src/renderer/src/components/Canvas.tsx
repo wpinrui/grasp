@@ -176,6 +176,7 @@ interface CanvasProps {
    * canvas can do the same. A phone has no Escape key to press.
    */
   cancelRef?: RefObject<() => void>;
+  selectAllRef?: RefObject<() => void>;
   sketch: Sketch;
   pointSize: PointSize;
   /** Where the page is being looked at. It belongs to the page, not here. */
@@ -200,10 +201,11 @@ interface CanvasProps {
   onToggleLabel: (id: string) => void;
   /**
    * The labels the Arrow has picked, which the palette is then set on. Several
-   * can be picked at once, with Shift or Ctrl, and set together.
+   * can be picked at once with plain clicks, independently of their objects.
    */
   labelPick: string[];
   onLabelPick: (id: string | null, additive?: boolean) => void;
+  onLabelSelection: (ids: string[]) => void;
   /** Double-clicking a parameter or a calculation, which reopens what made it. */
   onEditValue: (id: string) => void;
   /** Double-clicking a table, which takes a row, and Shift, which gives one back. */
@@ -307,6 +309,7 @@ export function Canvas({
   onToggleLabel,
   labelPick,
   onLabelPick,
+  onLabelSelection,
   editing,
   onEditing,
   editor,
@@ -315,6 +318,7 @@ export function Canvas({
   captionWanted,
   captionLook,
   cancelRef,
+  selectAllRef,
 }: CanvasProps) {
   const sheet = useRef<HTMLDivElement>(null);
   const horizontal = useRef<HTMLDivElement>(null);
@@ -368,7 +372,7 @@ export function Canvas({
     armFrom.current = null;
     // A marquee selects as it sweeps, so one abandoned leaves nothing selected
     // rather than whatever it had got as far as.
-    if (tool === "arrow" && dropped?.marquee) sketch.select([]);
+    if (tool === "arrow" && dropped?.marquee) clearSelection();
   }
 
   /** Take the sheet as far as a pan has carried it, from wherever it began. */
@@ -810,7 +814,6 @@ export function Canvas({
       return;
     }
     if (event.button !== 0) return;
-    onLabelPick(null);
     const at = positionOf(event);
     if (!at) return;
     // A caption is open: clicking an object drops a link to it into what is
@@ -915,7 +918,7 @@ export function Canvas({
     // Pressing empty canvas clears at once, it does not wait for the release.
     // That is why a marquee, which starts from empty canvas, replaces the
     // selection rather than adding to it. An arrowhead is not empty canvas.
-    if (tool === "arrow" && !hit && !onHandle) sketch.select([]);
+    if (tool === "arrow" && !hit && !onHandle) clearSelection();
     // The protractor is dragged from one side of an angle to the other, the
     // way the Angle marker is.
     if (measuring === "angle")
@@ -1222,7 +1225,7 @@ export function Canvas({
       setMarquee(state.marquee);
       // The highlight tracks the marquee, so pulling it back off an object
       // drops that object again.
-      sketch.select(caughtBy(state.marquee));
+      selectMarquee(state.marquee);
     }
   }
 
@@ -1474,24 +1477,22 @@ export function Canvas({
     }
 
     if (state.marquee) {
-      sketch.select(caughtBy(state.marquee));
+      selectMarquee(state.marquee);
       return;
     }
 
     // A click on an object puts it in or out of the selection. A click on
     // empty canvas cleared it back on the press.
     if (!state.hitId) return;
-    const before = sketch.read();
-    if (before.selection.includes(state.hitId)) {
-      sketch.select(before.selection.filter((id) => id !== state.hitId));
-    } else sketch.select([...before.selection, state.hitId]);
+    toggleObject(state.hitId);
   }
 
   cancel.current = () => {
     // A dialog is up and Escape belongs to it, seeds and all.
     if (picking) return;
     if (!pending && !tracing) {
-      sketch.select([]);
+      cancelLabelDrag();
+      clearSelection();
       return;
     }
     sketch.cancelGesture();
@@ -1558,7 +1559,7 @@ export function Canvas({
     if (state.held) sketch.endGesture();
     // The press already cleared the selection, so an abandoned marquee
     // leaves nothing selected.
-    else if (tool === "arrow" && state.marquee) sketch.select([]);
+    else if (tool === "arrow" && state.marquee) clearSelection();
   }
 
   const ends = endsById(everything);
@@ -1632,6 +1633,44 @@ export function Canvas({
       ? readingOf(value, { objects: everything, names, settled })
       : readingOfValue(value, quantities.get(value.id) ?? null, { names, objects: everything });
 
+  function toggleObject(id: string) {
+    sketch.select(togglePick(sketch.read().selection, id, true));
+  }
+
+  function clearSelection() {
+    sketch.select([]);
+    onLabelSelection([]);
+  }
+
+  function selectMarquee(rect: Rect) {
+    sketch.select(caughtBy(rect));
+    const caught: string[] = [];
+    if (takesWriting) {
+      const named = new Map(labels.map((label) => [label.id, label]));
+      for (const element of sheet.current?.querySelectorAll<HTMLElement>(
+        ".canvas__label[data-id]",
+      ) ?? []) {
+        const label = named.get(element.dataset.id ?? "");
+        if (!label) continue;
+        const width = element.offsetWidth / scale;
+        const height = element.offsetHeight / scale;
+        if (
+          overlaps(
+            {
+              x: label.at.x + label.off.x / scale - width / 2,
+              y: label.at.y + label.off.y / scale - height / 2,
+              width,
+              height,
+            },
+            rect,
+          )
+        )
+          caught.push(label.id);
+      }
+    }
+    onLabelSelection(caught);
+  }
+
   /**
    * What a marquee has caught: the geometry, and any writing it ran over.
    * Writing is not geometry, so where it covers is read back off the box it was
@@ -1674,12 +1713,14 @@ export function Canvas({
     look: captionLook,
   });
 
-  const { dragLabel, dropLabel, startLabelDrag } = useLabelDrag({
+  const { dragLabel, dropLabel, startLabelDrag, cancelLabelDrag } = useLabelDrag({
     sketch,
     tool,
     editing,
     onCloseCaption: closeCaption,
     onLabelPick,
+    picked: labelPick,
+    labels: () => labels,
   });
 
   /** The hidden caption the dock is pointing at, if that is what it is. */
@@ -1787,6 +1828,12 @@ export function Canvas({
     ];
   });
 
+  if (selectAllRef)
+    selectAllRef.current = () => {
+      sketch.select(pickable.map((object) => object.id));
+      onLabelSelection(takesWriting ? labels.map((label) => label.id) : []);
+    };
+
   /** Where a mark's caption sits: the same spot its label would hang from. */
   function markAt(id: string): Position | null {
     const object = everything.find((candidate) => candidate.id === id);
@@ -1887,6 +1934,7 @@ export function Canvas({
             onGrab={startLabelDrag}
             onDrag={dragLabel}
             onDrop={dropLabel}
+            onCancel={cancelLabelDrag}
           />
 
           {readingOpen && readingSpot && (
@@ -1929,9 +1977,7 @@ export function Canvas({
               tool={picking || !takesWriting ? "none" : tool}
               editor={editor}
               onEdit={closeCaption}
-              onSelect={(id, additive) =>
-                sketch.select(togglePick(sketch.read().selection, id, additive))
-              }
+              onSelect={toggleObject}
               onGrab={grabWriting}
               onDrag={dragWriting}
               onDrop={dropWriting}
@@ -1959,9 +2005,7 @@ export function Canvas({
               tool={picking || !takesWriting ? "none" : tool}
               linking={editing !== null}
               onLink={insertLink}
-              onSelect={(id, additive) =>
-                sketch.select(togglePick(sketch.read().selection, id, additive))
-              }
+              onSelect={toggleObject}
               onGrab={grabWriting}
               onDrag={dragWriting}
               onDrop={dropWriting}
@@ -2008,9 +2052,7 @@ export function Canvas({
               scale={scale}
               selected={selection.includes(table.id)}
               tool={picking || !takesWriting ? "none" : tool}
-              onSelect={(id, additive) =>
-                sketch.select(togglePick(sketch.read().selection, id, additive))
-              }
+              onSelect={toggleObject}
               onGrab={grabWriting}
               onDrag={dragWriting}
               onDrop={dropWriting}

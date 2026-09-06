@@ -1,89 +1,109 @@
-/**
- * Dragging a name away from what it names.
- *
- * A label is held within reach of its object, so it can be moved out of the way
- * of the figure without coming adrift from the thing it belongs to. It is also
- * picked on its own: what it names is not picked with it, so the palette is set
- * on the label rather than on the object under it.
- *
- * The press stops at the label. Letting it reach the sheet would capture the
- * pointer there, and the drag that follows would move the figure instead.
- */
-
+/** Labels are selected independently of their objects and dragged as a group. */
 import { type PointerEvent, useRef } from "react";
 import { LABEL_REACH } from "../../sketch/labelling";
 import type { Position } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
 
-/** What the sheet hands the label dragging: the page, and how it is armed. */
+interface LabelOffset {
+  id: string;
+  off: Position;
+}
+
 export interface Dragging {
   sketch: Sketch;
-  /** The tool that is up, since only the Arrow picks a label as it takes it. */
   tool: string;
-  /** The caption open to type into, which a label takes the palette from. */
+  picked: string[];
+  /** The visible labels, including their computed default offsets. */
+  labels: () => LabelOffset[];
   editing: string | null;
-  /** Settle and put that caption away before the label takes its place. */
   onCloseCaption: (next: string | null) => void;
   onLabelPick: (id: string | null, additive?: boolean) => void;
 }
 
-export function useLabelDrag({ sketch, tool, editing, onCloseCaption, onLabelPick }: Dragging) {
-  /** The label in hand: which one, where it sat, and where the press began. */
-  const dragged = useRef<{ id: string; off: Position; from: Position } | null>(null);
-
-  /** Drag a label about within its reach of what it names. */
-  function moveLabel(id: string, off: Position) {
-    const held = Math.hypot(off.x, off.y);
-    const kept =
-      held <= LABEL_REACH
-        ? off
-        : { x: (off.x / held) * LABEL_REACH, y: (off.y / held) * LABEL_REACH };
-    const before = sketch.read();
-    sketch.updateGesture({
-      ...before,
-      objects: before.objects.map((object) =>
-        object.id === id ? { ...object, label: { ...object.label, off: kept } } : object,
-      ),
-    });
+/** Stop the whole group when any label reaches its allowed distance from its object. */
+function keptDelta(labels: LabelOffset[], by: Position): Position {
+  const squared = by.x * by.x + by.y * by.y;
+  if (squared === 0) return by;
+  let portion = 1;
+  for (const { off } of labels) {
+    const dot = off.x * by.x + off.y * by.y;
+    const room = Math.max(0, LABEL_REACH ** 2 - off.x ** 2 - off.y ** 2);
+    portion = Math.min(portion, (-dot + Math.sqrt(dot * dot + squared * room)) / squared);
   }
+  return { x: by.x * portion, y: by.y * portion };
+}
+
+export function useLabelDrag({
+  sketch,
+  tool,
+  picked,
+  labels,
+  editing,
+  onCloseCaption,
+  onLabelPick,
+}: Dragging) {
+  const dragged = useRef<{
+    id: string;
+    labels: LabelOffset[];
+    from: Position;
+    moved: boolean;
+  } | null>(null);
 
   function startLabelDrag(event: PointerEvent<HTMLSpanElement>, id: string, off: Position) {
     if (event.button !== 0) return;
     event.stopPropagation();
-    if (tool === "arrow") {
-      // A caption open to type into is what the bar is set on, so it is settled
-      // and put away before a label takes its place: only one of the two is
-      // ever the thing the palette is working on.
-      if (editing) onCloseCaption(null);
-      onLabelPick(id, event.shiftKey || event.ctrlKey);
-      sketch.select([]);
-    }
+    if (tool === "arrow" && editing) onCloseCaption(null);
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragged.current = { id, off, from: { x: event.clientX, y: event.clientY } };
-    sketch.beginGesture();
+    const carrying =
+      tool === "arrow" && picked.includes(id)
+        ? labels().filter((label) => picked.includes(label.id))
+        : [{ id, off }];
+    dragged.current = {
+      id,
+      labels: carrying,
+      from: { x: event.clientX, y: event.clientY },
+      moved: false,
+    };
   }
 
   function dragLabel(event: PointerEvent<HTMLSpanElement>) {
     const state = dragged.current;
     if (!state) return;
     event.stopPropagation();
-    moveLabel(state.id, {
-      x: state.off.x + (event.clientX - state.from.x),
-      y: state.off.y + (event.clientY - state.from.y),
+    const by = { x: event.clientX - state.from.x, y: event.clientY - state.from.y };
+    if (!state.moved) {
+      if (Math.hypot(by.x, by.y) < 3) return;
+      state.moved = true;
+      if (tool === "arrow" && !picked.includes(state.id)) onLabelPick(state.id, false);
+      sketch.beginGesture();
+    }
+    const kept = keptDelta(state.labels, by);
+    const offsets = new Map(
+      state.labels.map(({ id, off }) => [id, { x: off.x + kept.x, y: off.y + kept.y }]),
+    );
+    const before = sketch.read();
+    sketch.updateGesture({
+      ...before,
+      objects: before.objects.map((object) => {
+        const off = offsets.get(object.id);
+        return off ? { ...object, label: { ...object.label, off } } : object;
+      }),
     });
   }
 
-  /** A label put back exactly where it was is not a move, so it is not a step. */
   function dropLabel(event: PointerEvent<HTMLSpanElement>) {
     const state = dragged.current;
     dragged.current = null;
     if (!state) return;
     event.stopPropagation();
-    const moved =
-      Math.abs(event.clientX - state.from.x) + Math.abs(event.clientY - state.from.y) > 0;
-    if (moved) sketch.endGesture();
-    else sketch.cancelGesture();
+    if (state.moved) sketch.endGesture();
+    else if (tool === "arrow") onLabelPick(state.id, true);
   }
 
-  return { dragLabel, dropLabel, startLabelDrag };
+  function cancelLabelDrag() {
+    if (dragged.current?.moved) sketch.cancelGesture();
+    dragged.current = null;
+  }
+
+  return { dragLabel, dropLabel, startLabelDrag, cancelLabelDrag };
 }
