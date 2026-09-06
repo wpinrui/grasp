@@ -323,6 +323,9 @@ export function App() {
     }
   }, [tools.editing]);
 
+  /** Select All goes through the canvas, which knows what the Arrow can take. */
+  const selectAllVisible = () => tools.selectAllVisible.current();
+
   useKeys({
     // The letter a relabel run starts at is asked for in a dialog like any
     // other, so it owns the keyboard while it is up.
@@ -334,7 +337,7 @@ export function App() {
     saveSketch: () => void doc.save(),
     closeSketch: doc.close,
     quit: () => void doc.quit(),
-    selectAll: () => tools.selectAllVisible.current(),
+    selectAll: selectAllVisible,
     cut: clipboard.cutSelection,
     copy: clipboard.copySelection,
     paste: clipboard.pasteObjects,
@@ -383,7 +386,7 @@ export function App() {
       {window.api.platform !== "web" && <TitleBar title={doc.title} />}
       <Menus
         sketch={sketch}
-        onSelectAll={() => tools.selectAllVisible.current()}
+        onSelectAll={selectAllVisible}
         doc={doc}
         dialogs={dialogs}
         numbers={numbers}

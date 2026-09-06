@@ -115,12 +115,6 @@ export function useSketch() {
     [apply, read],
   );
 
-  /** Every object on the page. Not an undo step, as no selection change is. */
-  const selectAll = useCallback(() => {
-    const { objects } = read();
-    apply({ objects, selection: objects.map((object) => object.id) });
-  }, [apply, read]);
-
   const commit = useCallback(
     (next: SketchState) => {
       record(read());
@@ -229,7 +223,6 @@ export function useSketch() {
     duplicatePage: store.duplicatePage,
     read,
     select,
-    selectAll,
     commit,
     beginGesture,
     labelNewPoints,
