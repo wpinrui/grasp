@@ -42,6 +42,15 @@ const table = { ...createTable([length.id], { x: 400, y: 350 }), id: "table" };
 const figure = [a, b, segment, length, caption, table];
 
 describe("double-click caption editing", () => {
+  it("lets the Text tool open a caption after the Arrow was filtered to points", () => {
+    const onEditing = vi.fn();
+    const { sheet } = watched(figure, "text", { arrowKind: "points", onEditing });
+    const box = sheet.querySelector<HTMLElement>(".caption");
+    if (!box) throw new Error("Missing caption");
+    expect(box.style.pointerEvents).toBe("auto");
+    press(box, { x: 410, y: 210 });
+    expect(onEditing).toHaveBeenCalledWith(caption.id);
+  });
   it.each([{ selection: [] }, { selection: [caption.id] }])(
     "opens the Text tool when only the caption may be selected: %j",
     ({ selection }) => {

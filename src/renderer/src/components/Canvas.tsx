@@ -1988,7 +1988,7 @@ export function Canvas({
               scale={scale}
               selected={selection.includes(caption.id)}
               editing={editing === caption.id}
-              tool={picking || !takesWriting ? "none" : tool}
+              tool={picking || (tool === "arrow" && !takesWriting) ? "none" : tool}
               editor={editor}
               onEdit={closeCaption}
               canDoubleEdit={labelPick.length === 0 && selection.every((id) => id === caption.id)}
