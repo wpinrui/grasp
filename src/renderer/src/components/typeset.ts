@@ -103,6 +103,21 @@ export const NOTATION: Notation[] = [
   },
 ];
 
+/** Common notation available directly on the palette, in reading order. */
+export const COMMON_NOTATION: Pick<Notation, "name" | "sample" | "html">[] = [
+  { name: "Plus", sample: "+", html: "+" },
+  { name: "Minus", sample: "−", html: "−" },
+  { name: "Multiply", sample: "×", html: "×" },
+  { name: "Divide", sample: "÷", html: "÷" },
+  NOTATION[0],
+  { name: "Angle", sample: "∠", html: "∠" },
+  { name: "Degree", sample: "°", html: "°" },
+  { name: "Less than or equal", sample: "≤", html: "≤" },
+  { name: "Greater than or equal", sample: "≥", html: "≥" },
+  { name: "Less than", sample: "<", html: "&lt;" },
+  { name: "Greater than", sample: ">", html: "&gt;" },
+];
+
 /** Rows of symbols, gathered so a Greek letter is not hunted for among signs. */
 export const SYMBOLS: { name: string; glyphs: string[] }[] = [
   {

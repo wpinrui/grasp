@@ -6,7 +6,7 @@ import { type LabelMarks, type TextMark, type TextStyling, textBoxes } from "../
 import { PATTERN_SAMPLE, Picker, Popout, Rule, WEIGHT_SAMPLE } from "./PalettePicker";
 import { caretLook, caretMarks, chosenRun, wrapRun } from "./paletteCaret";
 import { Tooltip } from "./Tooltip";
-import { FONTS, INKS, NOTATION, SIZES, SYMBOLS } from "./typeset";
+import { COMMON_NOTATION, FONTS, INKS, NOTATION, SIZES, SYMBOLS } from "./typeset";
 import "./Palette.css";
 
 const WEIGHT_NAMES: Record<LineWidth, string> = {
@@ -327,6 +327,26 @@ export function Palette({
         </div>
 
         <span className="palette__split" />
+
+        <div className="palette__controls palette__common">
+          {COMMON_NOTATION.map((mark) => (
+            <Tooltip key={mark.name} says={mark.name}>
+              <button
+                type="button"
+                className="palette__key"
+                aria-label={mark.name}
+                disabled={!editing}
+                onMouseDown={hold}
+                onClick={() => {
+                  insertAtCaret(editor.current, mark.html);
+                  commit();
+                }}
+              >
+                {mark.sample}
+              </button>
+            </Tooltip>
+          ))}
+        </div>
 
         <div className="palette__openers">
           <Popout name="Notation" sample={"√x"} disabled={!editing}>
