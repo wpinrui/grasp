@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { frameOf, spotIn } from "../../sketch/measure";
+import { frameOf, quantityOf, spotIn } from "../../sketch/measure";
 import {
   createMeasurement,
   createPoint,
@@ -12,7 +12,14 @@ import {
   type SketchObject,
   settle,
 } from "../../sketch/model";
-import { type Measuring, pointUnder, readingAlready, readingFrom, sameAngle } from "./readings";
+import {
+  angleWritten,
+  type Measuring,
+  pointUnder,
+  readingAlready,
+  readingFrom,
+  sameAngle,
+} from "./readings";
 
 /**
  * What the Measure tool would write, and where it hangs. Nothing here is pinned
@@ -27,6 +34,27 @@ const C = { ...createPoint({ x: 0, y: 100 }, "medium"), id: "C" };
 const SEGMENT = { ...lineThrough("segment", ["A", "B"]), id: "seg" };
 const ARM = { ...lineThrough("segment", ["A", "C"]), id: "arm" };
 const FIGURE: SketchObject[] = [A, B, C, SEGMENT, ARM];
+
+it("measures an existing reflex mark as 270 degrees and reuses that mark", () => {
+  const mark: SketchMark = {
+    id: "reflex",
+    kind: "mark",
+    form: "angle",
+    corner: "A",
+    arms: ["B", "C"],
+    sides: ["seg", "arm"],
+    strokes: 1,
+    radius: 24,
+    reflex: true,
+  };
+  const context = measuring("angle", [...FIGURE, mark]);
+  const written = angleWritten({ corner: "A", arms: ["B", "C"], hit: mark }, context);
+  expect(written?.reading.reflex).toBe(true);
+  expect(written?.mark).toBeNull();
+  expect(context.objects.filter((object) => object.kind === "mark")).toEqual([mark]);
+  if (!written) throw new Error("Missing reflex reading");
+  expect(quantityOf(written.reading, context.objects, context.settled)?.value).toBeCloseTo(270);
+});
 
 function measuring(measure: string | null, objects: SketchObject[] = FIGURE): Measuring {
   return {

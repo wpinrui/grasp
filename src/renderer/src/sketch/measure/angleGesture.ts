@@ -10,13 +10,19 @@ import {
 import { armsAt } from "./shape";
 
 /** Resolve both the sides of infinite objects and the sweep traced between them. */
-export function angleGesture(
-  from: string,
-  to: string,
-  trail: Position[],
-  objects: SketchObject[],
-  settled: Settled,
-) {
+export function angleGesture({
+  from,
+  to,
+  trail,
+  objects,
+  settled,
+}: {
+  from: string;
+  to: string;
+  trail: Position[];
+  objects: SketchObject[];
+  settled: Settled;
+}) {
   if (from === to || trail.length < 2) return null;
   const first = settled.lines.get(from);
   const last = settled.lines.get(to);

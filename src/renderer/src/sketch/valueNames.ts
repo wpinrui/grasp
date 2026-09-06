@@ -1,3 +1,4 @@
+import { BUILT_INS } from "./expression";
 import { readingOf } from "./measure";
 import { isMeasurement, namedAmong, namesFor, type Settled, type SketchObject } from "./model";
 
@@ -28,9 +29,14 @@ export function valueNames(objects: SketchObject[], settled: Settled): Map<strin
         .replace(/^_|_$/g, "") ||
       names.get(object.id) ||
       "value";
-    let name = /^[A-Za-z_]/.test(base) ? base : `value_${base}`;
-    for (let suffix = 2; taken.has(name) || ["e", "pi", "x"].includes(name); suffix += 1)
-      name = `${base}_${suffix}`;
+    const identifier = /^[A-Za-z_]/.test(base) ? base : `value_${base}`;
+    let name = identifier;
+    for (
+      let suffix = 2;
+      taken.has(name) || ["e", "pi", "x", ...BUILT_INS].includes(name);
+      suffix += 1
+    )
+      name = `${identifier}_${suffix}`;
     result.set(object.id, name);
     taken.add(name);
   }

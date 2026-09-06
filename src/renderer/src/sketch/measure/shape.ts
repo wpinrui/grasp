@@ -5,13 +5,13 @@ import {
   distance,
   distanceToPath,
   isLine,
-  isPoint,
   type LineGeometry,
   type Position,
   pathIn,
   type Settled,
   type SketchObject,
 } from "../model";
+import { directionPoints } from "./angleDirections";
 import { TURN } from "./units";
 /** How close to the rim a point has to be to count as on a circle. */
 export function onCircle(round: CircleGeometry, spot: Position): boolean {
@@ -105,8 +105,8 @@ export function armsAt(corner: string, objects: SketchObject[], settled: Settled
     const along = pathIn(settled, object.id);
     if (!along) continue;
     if (distanceToPath(along, at) > ON_ARM) continue;
-    for (const point of objects) {
-      if (!isPoint(point) || point.id === corner) continue;
+    for (const point of directionPoints(corner, object, objects)) {
+      if (point.id === corner) continue;
       const spot = settled.points.get(point.id);
       if (spot && distanceToPath(along, spot) <= ON_ARM) add(object.id, point.id);
     }

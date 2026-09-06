@@ -1005,7 +1005,15 @@ export function Canvas({
   }
 
   /** Write the number for one angle, by the two arms it runs between. */
-  function readAngle(corner: string, arms: [string, string], reflex = false) {
+  function readAngle({
+    corner,
+    arms,
+    reflex = false,
+  }: {
+    corner: string;
+    arms: [string, string];
+    reflex?: boolean;
+  }) {
     const written = tiedToFigure(
       angleWritten({ corner, arms, hit: null, named: true, reflex }, measuringNow()),
       measuringNow(),
@@ -1186,13 +1194,13 @@ export function Canvas({
       const landed = lineUnder(at, { objects, settled, scale });
       setSweeping(
         landed
-          ? angleGesture(
-              armFrom.current,
-              landed.object.id,
-              armTrail.current,
-              anglePage.objects,
-              settled,
-            )
+          ? angleGesture({
+              from: armFrom.current,
+              to: landed.object.id,
+              trail: armTrail.current,
+              objects: anglePage.objects,
+              settled: settled,
+            })
           : null,
       );
     }
@@ -1310,18 +1318,18 @@ export function Canvas({
     if (fromSide && state.moved && (marking === "angle" || measuring === "angle")) {
       const landed = lineUnder(at, { objects, settled, scale });
       const pair = landed
-        ? angleGesture(
-            fromSide,
-            landed.object.id,
-            [...armTrail.current, at],
-            anglePage.objects,
-            settled,
-          )
+        ? angleGesture({
+            from: fromSide,
+            to: landed.object.id,
+            trail: [...armTrail.current, at],
+            objects: anglePage.objects,
+            settled: settled,
+          })
         : null;
       if (pair) {
         setArming(null);
         if (marking === "angle") markAngle(pair);
-        else readAngle(pair.corner, pair.arms, pair.reflex);
+        else readAngle(pair);
         return;
       }
     }
@@ -2260,7 +2268,7 @@ export function Canvas({
               setChoosing(null);
               setShowingArms(null);
               if (way === "mark") markAngle({ corner, arms });
-              else readAngle(corner, arms);
+              else readAngle({ corner: corner, arms: arms });
             }}
             onShow={setShowingArms}
             onCancel={() => {

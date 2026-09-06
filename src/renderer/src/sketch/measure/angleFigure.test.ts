@@ -29,20 +29,65 @@ const page = (objects: SketchObject[]) =>
   );
 
 describe("angle directions", () => {
+  it("keeps a segment angle attached to its defining endpoint despite an earlier coincident free point", () => {
+    const stray = { ...a, id: "stray", x: 50 };
+    const segment = { ...line, form: "segment" as const };
+    const objects = [a, stray, b, c, segment, side];
+    const figure = page(objects);
+    const chosen = anglesAt("a", figure.objects, figure.settled)[0];
+    expect(chosen.arms).toEqual(["b", "c"]);
+    const measurement = createMeasurement("angle", [chosen.arms[0], "a", chosen.arms[1]], {
+      x: 0,
+      y: 0,
+    });
+    const moved = [
+      ...objects.map((object) => (object.id === "b" ? { ...b, y: 100 } : object)),
+      measurement,
+    ];
+    expect(quantityOf(measurement, moved, settle(moved).settled)?.value).toBeCloseTo(45);
+  });
+
+  it("creates a dependent extension even when an unrelated free point lies on that side", () => {
+    const stray = { ...a, id: "stray", x: -100 };
+    const objects = [a, stray, b, c, line, side];
+    const figure = page(objects);
+    const chosen = angleGesture({
+      from: "line",
+      to: "side",
+      trail: [
+        { x: -50, y: 0 },
+        { x: 0, y: 50 },
+      ],
+      objects: figure.objects,
+      settled: figure.settled,
+    });
+    expect(chosen?.arms).not.toContain("stray");
+    if (!chosen) throw new Error("Missing extended angle");
+    const persisted = withAnglePoints(objects, figure.objects, ["a", ...chosen.arms]);
+    const measurement = createMeasurement("angle", [chosen.arms[0], "a", chosen.arms[1]], {
+      x: 0,
+      y: 0,
+    });
+    const moved = [
+      ...persisted.map((object) => (object.id === "b" ? { ...b, y: 100 } : object)),
+      measurement,
+    ];
+    expect(quantityOf(measurement, moved, settle(moved).settled)?.value).toBeCloseTo(135);
+  });
   it("keeps the clicked arm when another direction lies closer to an imprecise pointer", () => {
     const near = { ...a, id: "near", x: 100, y: 10 };
     const competing = lineThrough("segment", ["a", "near"]);
     const figure = page([a, b, c, near, line, side, competing]);
-    const chosen = angleGesture(
-      "line",
-      "side",
-      [
+    const chosen = angleGesture({
+      from: "line",
+      to: "side",
+      trail: [
         { x: 30, y: 3 },
         { x: 0, y: 50 },
       ],
-      figure.objects,
-      figure.settled,
-    );
+      objects: figure.objects,
+      settled: figure.settled,
+    });
     expect(chosen?.arms).toEqual(["b", "c"]);
   });
   it("removes overlapping arms, zero angles and straight angles", () => {
@@ -77,16 +122,16 @@ describe("angle directions", () => {
   it("persists only chosen direction dependencies and keeps the reading live when its line moves", () => {
     const objects = [a, b, c, line, side];
     const figure = page(objects);
-    const chosen = angleGesture(
-      "line",
-      "side",
-      [
+    const chosen = angleGesture({
+      from: "line",
+      to: "side",
+      trail: [
         { x: -50, y: 0 },
         { x: 0, y: 50 },
       ],
-      figure.objects,
-      figure.settled,
-    );
+      objects: figure.objects,
+      settled: figure.settled,
+    });
     expect(chosen).not.toBeNull();
     if (!chosen) return;
     const persisted = withAnglePoints(objects, figure.objects, [chosen.corner, ...chosen.arms]);
@@ -112,29 +157,29 @@ describe("angle directions", () => {
 
   it("uses the traced path to distinguish 90 degrees from 270 degrees", () => {
     const figure = page([a, b, c, line, side]);
-    const short = angleGesture(
-      "line",
-      "side",
-      [
+    const short = angleGesture({
+      from: "line",
+      to: "side",
+      trail: [
         { x: 50, y: 0 },
         { x: 35, y: 35 },
         { x: 0, y: 50 },
       ],
-      figure.objects,
-      figure.settled,
-    );
-    const long = angleGesture(
-      "line",
-      "side",
-      [
+      objects: figure.objects,
+      settled: figure.settled,
+    });
+    const long = angleGesture({
+      from: "line",
+      to: "side",
+      trail: [
         { x: 50, y: 0 },
         { x: 0, y: -50 },
         { x: -50, y: 0 },
         { x: 0, y: 50 },
       ],
-      figure.objects,
-      figure.settled,
-    );
+      objects: figure.objects,
+      settled: figure.settled,
+    });
     expect(short?.reflex).toBe(false);
     expect(long?.reflex).toBe(true);
     expect(short?.arms).toEqual(long?.arms);
@@ -146,16 +191,16 @@ describe("angle directions", () => {
     const horizontal = { ...lineThrough("line", ["left", "b"]), id: "horizontal" };
     const vertical = { ...lineThrough("ray", ["top", "c"]), id: "vertical" };
     const figure = page([a, b, c, left, top, horizontal, vertical]);
-    const chosen = angleGesture(
-      "horizontal",
-      "vertical",
-      [
+    const chosen = angleGesture({
+      from: "horizontal",
+      to: "vertical",
+      trail: [
         { x: -50, y: 0 },
         { x: 0, y: 50 },
       ],
-      figure.objects,
-      figure.settled,
-    );
+      objects: figure.objects,
+      settled: figure.settled,
+    });
     expect(chosen?.corner).toBe("a");
     expect(anglesAt("a", figure.objects, figure.settled)).toHaveLength(4);
   });
