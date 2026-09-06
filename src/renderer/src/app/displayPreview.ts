@@ -1,5 +1,6 @@
 import type { MenuAction } from "../components/menus";
-import { isPoint, nameable, type PointSize, type SketchObject } from "../sketch/model";
+import { isPoint, type PointSize, type SketchObject } from "../sketch/model";
+import { objectsHidden, toggledLabels } from "../sketch/visibility";
 
 /** Display commands change the existing figure, so show their actual appearance. */
 export function displayPreview(
@@ -14,21 +15,9 @@ export function displayPreview(
     );
   }
   if (action === "hide-objects" || action === "show-all-hidden") {
-    return objects.map((object) =>
-      action === "show-all-hidden" || selection.includes(object.id)
-        ? { ...object, hidden: action === "hide-objects" }
-        : object,
-    );
+    const ids = action === "show-all-hidden" ? objects.map((object) => object.id) : selection;
+    return objectsHidden(objects, ids, action === "hide-objects");
   }
-  if (action === "show-labels") {
-    const able = objects.filter(
-      (object) => (!selection.length || selection.includes(object.id)) && nameable(object, objects),
-    );
-    const shown = !able.every((object) => object.label?.shown);
-    const ids = new Set(able.map((object) => object.id));
-    return objects.map((object) =>
-      ids.has(object.id) ? { ...object, label: { ...object.label, shown } } : object,
-    );
-  }
+  if (action === "show-labels") return toggledLabels(objects, selection);
   return null;
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { labelsShown } from "../sketch/visibility";
 import { previewEvents, useHoverPreview } from "./HoverPreview";
 import { Switch } from "./Switch";
 import "./LabelPanel.css";
@@ -273,13 +274,5 @@ export function LabelPanel({
 function useLabelPreview() {
   const { source, show, clear } = useHoverPreview();
   return (ids: string[], shown: boolean) =>
-    previewEvents(
-      () =>
-        show(
-          source.map((object) =>
-            ids.includes(object.id) ? { ...object, label: { ...object.label, shown } } : object,
-          ),
-        ),
-      clear,
-    );
+    previewEvents(() => show(labelsShown(source, ids, shown)), clear);
 }

@@ -1,3 +1,8 @@
+import type { HiddenKinds } from "../sketch/visibility";
+import { objectsHidden } from "../sketch/visibility";
+
+export type { HiddenKinds } from "../sketch/visibility";
+
 import { previewEvents, useHoverPreview } from "./HoverPreview";
 import { Switch } from "./Switch";
 import "./HiddenPanel.css";
@@ -8,12 +13,6 @@ export interface HiddenRow {
   name: string;
   /** What kind of thing it is, for the row to sit under. */
   kind: string;
-}
-
-/** The kinds that can be put away all at once rather than one at a time. */
-export interface HiddenKinds {
-  marks: boolean;
-  text: boolean;
 }
 
 interface HiddenPanelProps {
@@ -52,13 +51,7 @@ const KINDS: [string, string][] = [
 export function HiddenPanel({ rows, onShow, onSpot, kinds, onKinds }: HiddenPanelProps) {
   const { source, show, clear } = useHoverPreview();
   const hover = (ids: string[]) =>
-    previewEvents(
-      () =>
-        show(
-          source.map((object) => (ids.includes(object.id) ? { ...object, hidden: false } : object)),
-        ),
-      clear,
-    );
+    previewEvents(() => show(objectsHidden(source, ids, false)), clear);
   const groups = KINDS.map(([kind, title]) => ({
     title,
     rows: rows.filter((row) => row.kind === kind),

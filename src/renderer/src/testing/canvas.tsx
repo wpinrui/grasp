@@ -8,7 +8,7 @@
  */
 
 import { fireEvent, render } from "@testing-library/react";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
 import { Canvas } from "../components/Canvas";
 import { HoverPreview } from "../components/HoverPreview";
@@ -40,6 +40,7 @@ const SNAPPING = {
 };
 
 export interface HarnessProps {
+  controls?: ReactNode;
   objects: SketchObject[];
   tool: string;
   /** What is picked when the figure is laid out. */
@@ -82,6 +83,7 @@ export interface HarnessProps {
  */
 function Harness({
   objects,
+  controls,
   tool,
   selection = [],
   labelSelection = [],
@@ -120,6 +122,7 @@ function Harness({
   reportSketch?.(sketch);
   return (
     <HoverPreview scope={sketch.state}>
+      {controls}
       <Canvas
         activeTool={tool}
         sketch={sketch}

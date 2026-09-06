@@ -107,3 +107,34 @@ it("previews reading precision without changing the reading or moving its panel"
   act(() => sketch.undo());
   expect(ui.container.querySelector(".reading")?.textContent).toBe(before);
 });
+
+it.each(["object", "kind"])("removes an open reading panel after committed %s hiding", (way) => {
+  const a = createPoint({ x: 100, y: 100 }, "medium");
+  const b = createPoint({ x: 400, y: 100 }, "medium");
+  const line = lineThrough("segment", [a.id, b.id]);
+  const reading = createMeasurement("length", [line.id], { x: 200, y: 150 });
+  let sketch!: Sketch;
+  const ui = watched([a, b, line, reading], "arrow", {
+    reportSketch: (value) => {
+      sketch = value;
+    },
+  });
+  const element = ui.sheet.querySelector(".reading");
+  if (!element) throw new Error("Missing reading");
+  fireEvent.doubleClick(element);
+  expect(ui.sheet.querySelector(".mark-panel")).not.toBeNull();
+  if (way === "kind") ui.rearm({ hiddenKinds: { marks: false, text: true } });
+  else
+    act(() =>
+      sketch.commit({
+        ...sketch.read(),
+        objects: sketch
+          .read()
+          .objects.map((object) =>
+            object.id === reading.id ? { ...object, hidden: true } : object,
+          ),
+      }),
+    );
+  expect(ui.sheet.querySelector(".reading")).toBeNull();
+  expect(ui.sheet.querySelector(".mark-panel")).toBeNull();
+});
