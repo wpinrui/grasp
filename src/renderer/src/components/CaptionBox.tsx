@@ -4,6 +4,7 @@ import {
   type RefObject,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
 } from "react";
 import { markStyle } from "../sketch/captionFormatting";
@@ -237,7 +238,6 @@ export function CaptionBox({
       return;
     }
     if (tool !== "arrow") return;
-    event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = { from: { x: event.clientX, y: event.clientY }, moved: false };
   }
 
@@ -248,6 +248,9 @@ export function CaptionBox({
     const dy = event.clientY - held.from.y;
     if (!held.moved) {
       if (Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD) return;
+      // Capturing on the initial press retargets the release away from an
+      // atomic link, which makes Chromium suppress its click and double-click.
+      event.currentTarget.setPointerCapture(event.pointerId);
       held.moved = true;
       onGrab(caption.id);
     }
@@ -344,6 +347,10 @@ export function CaptionBox({
 
   const held = tool === "arrow" || tool === "text";
   const shown = `caption${selected ? " caption--selected" : ""}${editing ? " caption--editing" : ""}`;
+  const displayed = editing ? "" : withNames(caption.html, names, readings);
+  // Keep live-link nodes in place across selection/hover renders. Replacing
+  // innerHTML between pointerup and mouseup destroys the browser's click target.
+  const markup = useMemo(() => ({ __html: displayed }), [displayed]);
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a caption is written in, not pressed
@@ -362,6 +369,11 @@ export function CaptionBox({
       onPointerDown={startDrag}
       onPointerMove={pullDrag}
       onPointerUp={dropDrag}
+      onPointerLeave={(event) => {
+        // Keep tracking a press that crosses the edge before the first move
+        // reaches the drag threshold.
+        if (drag.current) event.currentTarget.setPointerCapture(event.pointerId);
+      }}
       onDoubleClick={(event) => {
         if (editing || !canDoubleEdit) return;
         event.stopPropagation();
@@ -389,7 +401,7 @@ export function CaptionBox({
         <div
           className="caption__body"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: the caption's own markup, written here
-          dangerouslySetInnerHTML={{ __html: withNames(caption.html, names, readings) }}
+          dangerouslySetInnerHTML={markup}
         />
       )}
       {editing && (

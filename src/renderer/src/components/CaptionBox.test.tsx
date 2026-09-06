@@ -130,3 +130,18 @@ it.each(["b", "i", "u"])("formats a selected live measurement with Ctrl+%s", (ke
   fireEvent.keyDown(editor, { key, ctrlKey: true });
   expect(htmlMarks(editor.innerHTML)[mark]).toBe(false);
 });
+
+it("keeps the link click target intact while selecting the caption", () => {
+  const given = { ...props(linkHtml("m", "old")), editing: false, tool: "arrow" };
+  const shown = render(<CaptionBox {...given} />);
+  const link = shown.container.querySelector("[data-link]");
+  const root = shown.container.querySelector<HTMLElement>(".caption");
+  if (!link || !root) throw new Error("Missing caption link");
+  root.setPointerCapture = vi.fn();
+  fireEvent.pointerDown(link, { button: 0, pointerId: 1, clientX: 20, clientY: 20 });
+  expect(root.setPointerCapture).not.toHaveBeenCalled();
+  shown.rerender(<CaptionBox {...given} selected names={new Map()} readings={new Map(readings)} />);
+  expect(shown.container.querySelector("[data-link]")).toBe(link);
+  fireEvent.pointerMove(link, { pointerId: 1, clientX: 30, clientY: 20 });
+  expect(root.setPointerCapture).toHaveBeenCalledWith(1);
+});
