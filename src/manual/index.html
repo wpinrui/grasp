@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="The essential GRASP workflows for creating, measuring, saving, and sharing geometry sketches." />
+    <title>GRASP User Manual</title>
+    <link rel="icon" href="/favicon.png" />
+    <link rel="stylesheet" href="/manual/manual.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="GRASP home">
+        <img src="/favicon.png" alt="" />
+        <span>GRASP</span>
+      </a>
+      <nav aria-label="Manual navigation">
+        <a href="#quick-start">Quick start</a>
+        <a href="#essentials">Essentials</a>
+        <a href="#save-share">Save and share</a>
+        <a class="launch" href="/launch">Open GRASP</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">User manual</p>
+        <h1>Make your first useful sketch in minutes.</h1>
+        <p class="lede">This is the small part of GRASP you need for most classroom figures: draw, select, measure, label, adjust, and export.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#quick-start">Start with a triangle</a>
+          <a class="button button-secondary" href="/launch">Open the app</a>
+        </div>
+      </section>
+
+      <div class="manual-layout">
+        <aside class="contents" aria-label="On this page">
+          <p>On this page</p>
+          <ol>
+            <li><a href="#quick-start">A two-minute triangle</a></li>
+            <li><a href="#essentials">The essential tools</a></li>
+            <li><a href="#select-move">Select and adjust</a></li>
+            <li><a href="#measure-label">Measure and label</a></li>
+            <li><a href="#save-share">Save, export, and print</a></li>
+            <li><a href="#unstuck">Get unstuck</a></li>
+            <li><a href="#shortcuts">Useful shortcuts</a></li>
+          </ol>
+        </aside>
+
+        <article>
+          <section id="quick-start" class="manual-section">
+            <p class="section-number">01</p>
+            <h2>A two-minute triangle</h2>
+            <p>You can learn the main GRASP rhythm with one figure.</p>
+            <figure class="manual-shot manual-shot--wide">
+              <img src="/manual/images/workspace.png" alt="The GRASP workspace with the tool palette on the left, a measured triangle on the sheet, and object controls on the right" width="1280" height="820" />
+              <figcaption>The workspace keeps drawing tools on the left, the sheet in the middle, and controls for the current sketch on the right.</figcaption>
+            </figure>
+            <ol class="steps">
+              <li><strong>Choose Polygon.</strong> It is the pentagon-shaped tool on the left. The default variant creates both the interior and its edges.</li>
+              <li><strong>Place three corners.</strong> Click three positions on the sheet, then click the first corner again. You can also double-click the final corner to close the shape.</li>
+              <li><strong>Measure it.</strong> Choose Measure, select Area, then click inside the triangle. Switch the Measure variant to Length and click an edge.</li>
+              <li><strong>Test the construction.</strong> Press <kbd>A</kbd> for Arrow and drag a corner. The figure and its measurements update together.</li>
+              <li><strong>Save your work.</strong> Press <kbd>Ctrl</kbd> + <kbd>S</kbd>. In a browser that cannot write back to a file, Save downloads a new copy.</li>
+            </ol>
+            <figure class="manual-shot manual-shot--wide">
+              <img src="/manual/images/measured-triangle.png" alt="A triangle in GRASP with named vertices, side dimensions, angle measurements, area, and a live calculation caption" width="936" height="671" />
+              <figcaption>A finished construction can combine geometry, dimensions, labels, and live measurements.</figcaption>
+            </figure>
+            <div class="callout"><strong>The core idea:</strong> objects stay connected. Move a defining point and everything built from it follows.</div>
+          </section>
+
+          <section id="essentials" class="manual-section">
+            <p class="section-number">02</p>
+            <h2>The essential tools</h2>
+            <p>Hover over a tool to see its name and shortcut. Tools with a corner marker have variants. Hover to choose one, or press and hold on a touch screen.</p>
+            <figure class="manual-shot manual-shot--compact">
+              <img src="/manual/images/polygon-tool.png" alt="The Polygon tool expanded to show Polygon and Edges, Polygon, and Regular Polygon variants" width="506" height="68" />
+              <figcaption>Hover a marked tool to choose a variant. The key shown at the end selects that tool.</figcaption>
+            </figure>
+            <div class="tool-grid">
+              <div class="tool-card"><span class="tool-key">A</span><h3>Arrow</h3><p>Select, move, resize, and inspect. Use its variants when a crowded sketch makes one kind of object hard to pick.</p></div>
+              <div class="tool-card"><span class="tool-key">P</span><h3>Point</h3><p>Click empty space for a free point. Click a path for a point that stays on it. Click a crossing for an intersection point.</p></div>
+              <div class="tool-card"><span class="tool-key">S</span><h3>Straightedge</h3><p>Drag between two positions, or click the start and end. Its variants create a segment, ray, or full line.</p></div>
+              <div class="tool-card"><span class="tool-key">C</span><h3>Compass</h3><p>Start at the center and finish at a point on the circle. Existing points can define either position.</p></div>
+              <div class="tool-card"><span class="tool-key">G</span><h3>Polygon</h3><p>Click the corners in order and return to the first. Choose the regular-polygon variant for squares and other regular shapes.</p></div>
+              <div class="tool-card"><span class="tool-key">M</span><h3>Measure</h3><p>Choose Length, Area, or Angle, then click or trace the geometry. Readings remain live as the figure changes.</p></div>
+              <div class="tool-card"><span class="tool-key">T</span><h3>Text</h3><p>Drag a box on empty space and type a caption. Click geometry with Text to show or hide its label.</p></div>
+              <div class="tool-card"><span class="tool-key">K</span><h3>Marker</h3><p>Add equal-side, parallel, or angle markings when a diagram needs to communicate its givens clearly.</p></div>
+            </div>
+          </section>
+
+          <section id="select-move" class="manual-section">
+            <p class="section-number">03</p>
+            <h2>Select and adjust</h2>
+            <div class="two-column">
+              <div><h3>Select precisely</h3><ul><li>Click an object to add or remove it from the selection.</li><li>Drag across empty sheet to select several objects.</li><li>Click empty sheet or press <kbd>Esc</kbd> to clear the selection.</li><li>Use an Arrow variant such as Points, Paths, or Text when objects overlap.</li></ul></div>
+              <div><h3>Move what matters</h3><ul><li>Drag a free point to change the construction.</li><li>Drag a selected object or group to move what can move together.</li><li>Drag labels and readings to put them where they are easy to read.</li><li>Right-drag the sheet to pan. Use the zoom control in the lower corner to change scale.</li></ul></div>
+            </div>
+            <p class="note">If an object will not move independently, it is probably defined by another object. Move its parent point, or use <strong>Edit &gt; Select Parents</strong> to find what controls it.</p>
+          </section>
+
+          <section id="measure-label" class="manual-section">
+            <p class="section-number">04</p>
+            <h2>Measure and label</h2>
+            <h3>Measurements</h3>
+            <p>Use the Measure tool for the common cases. Choose Length and click a segment, choose Area and click an interior, or choose Angle and drag from one arm to the other around their shared vertex. The direction you trace distinguishes a smaller angle from a reflex angle.</p>
+            <p>The <strong>Measure</strong> menu covers additional readings such as perimeter, circumference, radius, ratio, and point value. Select the required geometry first when a menu command is unavailable.</p>
+            <h3>Labels and captions</h3>
+            <p>With Text selected, click a point or other nameable object to toggle its label. Drag on empty sheet to create a caption. Double-click an existing caption with Arrow to edit it.</p>
+            <p>While editing a caption, click a measurement to insert its live value. It will keep updating with the sketch. Select captions, labels, or readings to format them with the palette.</p>
+          </section>
+
+          <section id="save-share" class="manual-section">
+            <p class="section-number">05</p>
+            <h2>Save, export, and print</h2>
+            <div class="choice-grid">
+              <div><h3>Keep editing later</h3><p>Use <strong>File &gt; Save</strong> or <strong>Save As</strong>. A <code>.grasp</code> file preserves the construction, pages, labels, and measurements.</p></div>
+              <div><h3>Use the figure elsewhere</h3><p>Use <strong>File &gt; Export Image to File</strong>. Select objects first to export only the selection, or clear the selection to export the page.</p></div>
+              <div><h3>Make a worksheet</h3><p>Use <strong>File &gt; Page Setup</strong>, then <strong>Print Preview</strong>. Adjust the page before printing or saving to PDF with your system print dialog.</p></div>
+            </div>
+            <figure class="manual-shot manual-shot--compact">
+              <img src="/manual/images/file-menu.png" alt="The GRASP File menu showing commands for saving, exporting, page setup, print preview, and printing" width="259" height="517" />
+              <figcaption>The File menu groups editable sketch files, image export, and print output.</figcaption>
+            </figure>
+            <p class="note"><strong>Browser note:</strong> file and clipboard options depend on browser support. If direct saving is unavailable, GRASP downloads a copy instead.</p>
+          </section>
+
+          <section id="unstuck" class="manual-section">
+            <p class="section-number">06</p>
+            <h2>Get unstuck</h2>
+            <dl class="troubleshooting">
+              <div><dt>I cannot select the thing I want.</dt><dd>Press <kbd>A</kbd>, then choose the Arrow variant for Points, Paths, Markings, or Text. Press <kbd>Esc</kbd> first if a different tool is halfway through a gesture.</dd></div>
+              <div><dt>A menu item is greyed out.</dt><dd>It needs a suitable selection. Select the point, path, interior, or reading the command should act on, then open the menu again.</dd></div>
+              <div><dt>My line or circle will not finish.</dt><dd>Click its second defining position. <kbd>Esc</kbd> cancels the unfinished construction and returns to Arrow.</dd></div>
+              <div><dt>I moved something by accident.</dt><dd>Use <strong>Edit &gt; Undo</strong> or press <kbd>Ctrl</kbd> + <kbd>Z</kbd>. Redo is <kbd>Ctrl</kbd> + <kbd>R</kbd>.</dd></div>
+              <div><dt>Labels or markings disappeared.</dt><dd>Check <strong>Display &gt; Show Labels</strong> and the visibility controls in the side panels. <strong>Display &gt; Show All Hidden</strong> restores individually hidden objects.</dd></div>
+              <div><dt>The sheet is hard to navigate.</dt><dd>Right-drag to pan. Hold Space and drag for temporary panning. Use the zoom control to reset or change the view.</dd></div>
+            </dl>
+          </section>
+
+          <section id="shortcuts" class="manual-section">
+            <p class="section-number">07</p>
+            <h2>Useful shortcuts</h2>
+            <div class="shortcut-grid">
+              <div><kbd>A</kbd><span>Arrow</span></div><div><kbd>P</kbd><span>Point</span></div><div><kbd>S</kbd><span>Straightedge</span></div><div><kbd>C</kbd><span>Compass</span></div><div><kbd>G</kbd><span>Polygon</span></div><div><kbd>M</kbd><span>Measure</span></div><div><kbd>T</kbd><span>Text</span></div><div><kbd>K</kbd><span>Marker</span></div><div><kbd>Esc</kbd><span>Cancel and return to Arrow</span></div><div><kbd>Ctrl S</kbd><span>Save</span></div><div><kbd>Ctrl Z</kbd><span>Undo</span></div><div><kbd>Delete</kbd><span>Delete selection</span></div>
+            </div>
+            <p class="closing">That is enough to build most teaching diagrams. The menus expose more constructions, transformations, calculations, tables, and scripting when you need them.</p>
+            <a class="button button-primary" href="/launch">Open GRASP and sketch</a>
+          </section>
+        </article>
+      </div>
+    </main>
+
+    <footer><span>GRASP Renders All Sketches Precisely.</span><a href="/">Back to the landing page</a></footer>
+  </body>
+</html>

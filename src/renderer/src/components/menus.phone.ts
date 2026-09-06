@@ -48,6 +48,9 @@ const CUT_ACTIONS = new Set<string>([
   "split-merge",
   "edit-definition",
   "preferences",
+  // About is desktop build information. The manual remains useful here, so
+  // Help stays with just that entry.
+  "about",
   // Hiding something needs it selected first, and getting it back needs a
   // panel that is not on a phone.
   "hide-objects",
@@ -61,12 +64,12 @@ const CUT_ACTIONS = new Set<string>([
 ]);
 
 /**
- * Whole menus a phone leaves out. Measure and Number are desk work, and Help is
- * an about box. The Window menu is not named here: its four entries are cut
+ * Whole menus a phone leaves out. Measure and Number are desk work. The Window
+ * menu is not named here: its four entries are cut
  * individually above, which empties it, and `phoneMenus` drops a title with
  * nothing left under it.
  */
-const CUT_TITLES = new Set<string>(["Measure", "Number", "Help"]);
+const CUT_TITLES = new Set<string>(["Measure", "Number"]);
 
 /** Submenus are cut by name, having no action of their own to cut them by. */
 const CUT_LABELS = new Set<string>([

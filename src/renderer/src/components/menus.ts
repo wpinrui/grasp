@@ -22,6 +22,7 @@ export type MenuAction =
   | "print-preview"
   | "print"
   | "clear-recent"
+  | "manual"
   | "about"
   | `open-recent:${string}`
   | "export-file"
@@ -300,7 +301,11 @@ export const MENUS: Menu[] = [
   },
   {
     label: "Help",
-    items: [{ label: "About GRASP...", action: "about" }],
+    items: [
+      { label: "User Manual", action: "manual" },
+      "separator",
+      { label: "About GRASP...", action: "about" },
+    ],
   },
 ];
 
