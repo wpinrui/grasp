@@ -92,7 +92,7 @@ describe("geometry selection contrast", () => {
       );
       const colour = colours[Number(id.slice(-1))];
       expect(stripe?.style.stroke).toBe(
-        `color-mix(in srgb, var(${colour}) 85%, var(--color-selection-shade))`,
+        `color-mix(in srgb, var(${colour}) 95%, var(--color-selection-shade))`,
       );
     }
   });
@@ -104,13 +104,13 @@ describe("geometry selection contrast", () => {
     expect(pattern?.getAttribute("patternTransform")).toBe(`rotate(45) scale(${1 / scale})`);
   });
 
-  it("gives overlapping fills distinct stripe directions that survive deselection", () => {
+  it("keeps every fill's stripes parallel at 45 degrees after deselection", () => {
     const objects = polygons(Array(5).fill("--color-ink-blue"));
     const all = draw(objects, ["fill-0", "fill-1", "fill-2", "fill-3", "fill-4"]);
     const directions = [...all.querySelectorAll("pattern")].map((pattern) =>
       pattern.getAttribute("patternTransform"),
     );
-    expect(new Set(directions).size).toBe(5);
+    expect(new Set(directions)).toEqual(new Set(["rotate(45) scale(1)"]));
     cleanup();
     const one = draw(objects, ["fill-2"]);
     expect(one.querySelector("pattern")?.getAttribute("patternTransform")).toBe(directions[2]);
@@ -123,7 +123,7 @@ describe("geometry selection contrast", () => {
     }));
     const container = draw(objects, ["fill-0"]);
     expect(container.querySelector<SVGElement>(".canvas__selection-stripe")?.style.stroke).toBe(
-      "color-mix(in srgb, var(--color-interior) 85%, var(--color-selection-shade))",
+      "color-mix(in srgb, var(--color-interior) 95%, var(--color-selection-shade))",
     );
   });
 

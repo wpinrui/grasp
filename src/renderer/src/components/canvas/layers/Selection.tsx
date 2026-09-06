@@ -18,8 +18,6 @@ export function Selection() {
         const shape = interiorShape(object, settled);
         if (!shape) return null;
         const id = `${patternId}-${index}`;
-        // Keep each fill's direction when another fill is selected or deselected.
-        const angle = 45 + (index % 5) * 24;
         return (
           <g key={object.id} data-selection-id={object.id}>
             <defs>
@@ -28,13 +26,13 @@ export function Selection() {
                 width={12}
                 height={12}
                 patternUnits="userSpaceOnUse"
-                patternTransform={`rotate(${angle}) scale(${1 / scale})`}
+                patternTransform={`rotate(45) scale(${1 / scale})`}
               >
                 <path
                   className="canvas__selection-stripe"
                   d="M 6 0 V 12"
                   style={{
-                    stroke: `color-mix(in srgb, var(${object.colour ?? "--color-interior"}) 85%, var(--color-selection-shade))`,
+                    stroke: `color-mix(in srgb, var(${object.colour ?? "--color-interior"}) 95%, var(--color-selection-shade))`,
                   }}
                 />
               </pattern>

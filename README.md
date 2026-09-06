@@ -14,7 +14,7 @@ Drag one corner and every angle, length and area recalculates. Students can see 
 
 ## Intuitive interface
 
-Enjoy creating sketches with a user-first set of panels. Iterate rapidly with keyboard shortcuts to activate the exact tool you need. Selected lines combine a blue highlight with thin blue dashed outlines, and selected fills have 5px stripes in a 15% darker shade of their own colour.
+Enjoy creating sketches with a user-first set of panels. Iterate rapidly with keyboard shortcuts to activate the exact tool you need. Selected lines combine a blue highlight with thin blue dashed outlines, and selected fills have parallel 45-degree stripes, 5px wide, in a 5% darker shade of their own colour.
 
 ## Features
 
