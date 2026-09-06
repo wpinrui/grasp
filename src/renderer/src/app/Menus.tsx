@@ -6,6 +6,7 @@
  * window owns arrives as one of those handles rather than as thirty callbacks.
  */
 
+import { useHoverPreview } from "../components/HoverPreview";
 import { MenuBar } from "../components/MenuBar";
 import type { MenuAction } from "../components/menus";
 import type { Building } from "../sketch/builds";
@@ -25,6 +26,7 @@ import type { useDocument } from "../sketch/useDocument";
 import type { Sketch } from "../sketch/useSketch";
 import type { Clipboard } from "./clipboard";
 import type { Custom } from "./customs";
+import { displayPreview } from "./displayPreview";
 import type { Naming } from "./labels";
 import { printPage } from "./printing";
 import type { Dialogs } from "./useDialogs";
@@ -119,6 +121,7 @@ export function Menus({
   setPointSize,
   clipboard,
 }: MenusProps) {
+  const appearance = useHoverPreview();
   /** Greyed when an entry has nothing to act on. */
   function isEnabled(action: MenuAction): boolean {
     // Nothing drawn is nothing to print, the same way nothing is to export.
@@ -172,12 +175,19 @@ export function Menus({
       openMenu={openMenu}
       onOpenMenu={(menu) => {
         setOpenMenu(menu);
+        setHovered(null);
+        appearance.clear();
         if (menu) {
           setRecent(window.api.file.recent());
           setClipHeld(window.api.objects.peek());
-        } else setHovered(null);
+        }
       }}
-      onHoverAction={setHovered}
+      onHoverAction={(action) => {
+        setHovered(action);
+        const shown = displayPreview(objects, selection, action);
+        if (shown) appearance.show(shown);
+        else appearance.clear();
+      }}
       recent={recent}
       isTicked={(action) =>
         action === `point-size:${shared}` ||

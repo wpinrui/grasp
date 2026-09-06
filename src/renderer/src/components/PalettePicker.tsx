@@ -1,5 +1,6 @@
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import type { LinePattern, LineWidth } from "../sketch/model";
+import { previewEvents, useHoverPreview } from "./HoverPreview";
 import "./Palette.css";
 
 /** How each weight is drawn in its own button, in pixels. */
@@ -39,6 +40,7 @@ interface PickerProps {
   /** Set the box in the face it names, so it is a specimen of itself. */
   face?: string;
   options: { value: string; label: string; face?: string }[];
+  onPreview?: (value: string) => void;
   onPick: (value: string) => void;
 }
 
@@ -47,13 +49,29 @@ interface PickerProps {
  * opens one has to be let through, and letting it through takes the caret out
  * of the caption the palette is set on, which is the thing being set.
  */
-export function Picker({ label, value, disabled, wide, face, options, onPick }: PickerProps) {
+export function Picker({
+  label,
+  value,
+  disabled,
+  wide,
+  face,
+  options,
+  onPick,
+  onPreview,
+}: PickerProps) {
+  const { clear } = useHoverPreview();
   const [open, setOpen] = useState(false);
   const anchor = useRef<HTMLDivElement>(null);
-  useAway(anchor, open, () => setOpen(false));
+  useAway(anchor, open, () => {
+    setOpen(false);
+    clear();
+  });
   useEffect(() => {
-    if (disabled) setOpen(false);
-  }, [disabled]);
+    if (disabled) {
+      setOpen(false);
+      clear();
+    }
+  }, [disabled, clear]);
 
   return (
     <div className={`palette__picker${wide ? " palette__picker--wide" : ""}`} ref={anchor}>
@@ -74,6 +92,7 @@ export function Picker({ label, value, disabled, wide, face, options, onPick }: 
           {options.map((option) => (
             <button
               type="button"
+              {...previewEvents(() => onPreview?.(option.value), clear)}
               key={option.value}
               className={`palette__option${option.value === value ? " palette__option--on" : ""}`}
               style={option.face ? { fontFamily: `"${option.face}", serif` } : undefined}

@@ -7,6 +7,7 @@ interface MeasurementFormatControlsProps {
   format: LinkFormat;
   units: readonly string[];
   unitLabel: string;
+  onPreview?: (change: Partial<LinkFormat>) => void;
   onChange: (change: Partial<LinkFormat>) => void;
 }
 
@@ -16,6 +17,7 @@ export function MeasurementFormatControls({
   units,
   unitLabel,
   onChange,
+  onPreview,
 }: MeasurementFormatControlsProps) {
   return (
     <>
@@ -24,6 +26,7 @@ export function MeasurementFormatControls({
           <PanelButton
             label="Show units"
             on={format.showUnit}
+            onPreview={() => onPreview?.({ showUnit: !format.showUnit })}
             onClick={() => onChange({ showUnit: !format.showUnit })}
           >
             u
@@ -47,6 +50,7 @@ export function MeasurementFormatControls({
         label="One fewer decimal place"
         tip={`One fewer decimal place (${format.places} now)`}
         disabled={format.places <= PLACES[0]}
+        onPreview={() => onPreview?.({ places: format.places - 1 })}
         onClick={() => onChange({ places: format.places - 1 })}
       >
         <FewerPlacesIcon />
@@ -55,6 +59,7 @@ export function MeasurementFormatControls({
         label="One more decimal place"
         tip={`One more decimal place (${format.places} now)`}
         disabled={format.places >= PLACES[PLACES.length - 1]}
+        onPreview={() => onPreview?.({ places: format.places + 1 })}
         onClick={() => onChange({ places: format.places + 1 })}
       >
         <MorePlacesIcon />

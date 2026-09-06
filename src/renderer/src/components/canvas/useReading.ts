@@ -14,6 +14,7 @@ import { useState } from "react";
 import { frameOf, spotOf } from "../../sketch/measure";
 import { isMark, isMeasurement, type SketchMeasurement, settle } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
+import type { ShowPreview } from "../HoverPreview";
 import { sameAngle } from "./readings";
 import { sameReading, type Written } from "./sheet";
 
@@ -87,7 +88,7 @@ export function useReading(sketch: Sketch) {
    * it: the arcs are what say which of the angles at that corner the number is
    * about, so they cannot say one thing while the number says the other.
    */
-  function setReflex(id: string, reflex: boolean) {
+  function setReflex(id: string, reflex: boolean, show?: ShowPreview) {
     const before = sketch.read();
     const reading = before.objects.find((object) => object.id === id);
     if (!reading || !isMeasurement(reading)) return;
@@ -100,7 +101,7 @@ export function useReading(sketch: Sketch) {
         (object) =>
           isMeasurement(object) && object.measure === "angle" && sameAngle(object.of, reading.of),
       ).length === 1;
-    sketch.commit({
+    (show ? (next: typeof before) => show(next.objects) : sketch.commit)({
       ...before,
       objects: before.objects.map((object) => {
         if (object.id === id) return { ...reading, reflex };

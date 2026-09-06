@@ -17,6 +17,7 @@ import { useTooling } from "./app/useTooling";
 import { useTransforms } from "./app/useTransforms";
 import { valueActions } from "./app/values";
 import { Workspace } from "./app/Workspace";
+import { HoverPreview } from "./components/HoverPreview";
 import type { MenuAction } from "./components/menus";
 import { PageBar } from "./components/PageBar";
 import { TitleBar } from "./components/TitleBar";
@@ -379,112 +380,114 @@ export function App() {
   });
 
   return (
-    <div className="app">
-      {/* A tab has a title bar of its own, and no window to minimise, maximise
+    <HoverPreview scope={sketch.state} editing={tools.editing !== null}>
+      <div className="app">
+        {/* A tab has a title bar of its own, and no window to minimise, maximise
           or close, so GRASP draws none on the web. The document name and its
           star are in the tab title either way. */}
-      {window.api.platform !== "web" && <TitleBar title={doc.title} />}
-      <Menus
-        sketch={sketch}
-        onSelectAll={selectAllVisible}
-        doc={doc}
-        dialogs={dialogs}
-        numbers={numbers}
-        naming={naming}
-        custom={custom}
-        settings={settings}
-        moves={moves}
-        building={building}
-        objects={objects}
-        selection={selection}
-        openMenu={openMenu}
-        setOpenMenu={setOpenMenu}
-        setHovered={setHovered}
-        recent={recent}
-        setRecent={setRecent}
-        clipHeld={clipHeld}
-        setClipHeld={setClipHeld}
-        shared={shared}
-        setPointSize={tools.setPointSize}
-        clipboard={clipboard}
-      />
-      <Workspace
-        sketch={sketch}
-        doc={doc}
-        tools={tools}
-        settings={settings}
-        moves={moves}
-        dialogs={dialogs}
-        naming={naming}
-        relabel={relabel}
-        regular={regular}
-        numbers={numbers}
-        palette={palette}
-        objects={objects}
-        named={named}
-        away={away}
-        phone={phone}
-      />
-      {phone && (
-        <TouchBar
-          canUndo={canUndo}
-          onUndo={undo}
-          canRedo={canRedo}
-          onRedo={redo}
-          snapping={settings.snapping.length || settings.snapping.angle}
-          onSnapping={(on) => settings.keepSnapping({ length: on, angle: on })}
-          onCancel={() => {
-            tools.cancelSheet.current();
-            tools.setActiveTool("arrow");
-            tools.pickVariant("arrow", "all");
-          }}
+        {window.api.platform !== "web" && <TitleBar title={doc.title} />}
+        <Menus
+          sketch={sketch}
+          onSelectAll={selectAllVisible}
+          doc={doc}
+          dialogs={dialogs}
+          numbers={numbers}
+          naming={naming}
+          custom={custom}
+          settings={settings}
+          moves={moves}
+          building={building}
+          objects={objects}
+          selection={selection}
+          openMenu={openMenu}
+          setOpenMenu={setOpenMenu}
+          setHovered={setHovered}
+          recent={recent}
+          setRecent={setRecent}
+          clipHeld={clipHeld}
+          setClipHeld={setClipHeld}
+          shared={shared}
+          setPointSize={tools.setPointSize}
+          clipboard={clipboard}
         />
-      )}
-      <PageBar
-        pages={sketch.pages}
-        activeId={sketch.activeId}
-        onSelectPage={sketch.selectPage}
-        onAddPage={sketch.addPage}
-        onRenamePage={sketch.renamePage}
-        onDeletePage={deletePage}
-        onDuplicatePage={sketch.duplicatePage}
-        onMovePage={sketch.movePage}
-        tabs={settings.prefs.pageTabs !== false}
-        objectCount={sketch.state.objects.length}
-      />
-      <Dialogs
-        dialogs={dialogs}
-        numbers={numbers}
-        relabel={relabel}
-        regular={regular}
-        custom={custom}
-        settings={settings}
-        moves={moves}
-        sketch={sketch}
-        names={names}
-        readable={readable}
-        buildPrompt={promptForRequest}
-        onRunScript={() => void runTheScript()}
-        onExport={(to) =>
-          void exportPicture(to, {
-            options: settings.picture,
-            selection,
-            suggested: doc.name,
-            onDone: () => dialogs.setExportTo(null),
-          })
-        }
-      />
-      {openMenu && (
-        // biome-ignore lint/a11y/noStaticElementInteractions: dismiss layer, the menu items stay reachable
-        // biome-ignore lint/a11y/useKeyWithClickEvents: Escape is handled by the menu button itself
-        <div
-          className="app__dismiss"
-          onClick={() => {
-            setOpenMenu(null);
-            setHovered(null);
-          }}
+        <Workspace
+          sketch={sketch}
+          doc={doc}
+          tools={tools}
+          settings={settings}
+          moves={moves}
+          dialogs={dialogs}
+          naming={naming}
+          relabel={relabel}
+          regular={regular}
+          numbers={numbers}
+          palette={palette}
+          objects={objects}
+          named={named}
+          away={away}
+          phone={phone}
         />
-      )}
-    </div>
+        {phone && (
+          <TouchBar
+            canUndo={canUndo}
+            onUndo={undo}
+            canRedo={canRedo}
+            onRedo={redo}
+            snapping={settings.snapping.length || settings.snapping.angle}
+            onSnapping={(on) => settings.keepSnapping({ length: on, angle: on })}
+            onCancel={() => {
+              tools.cancelSheet.current();
+              tools.setActiveTool("arrow");
+              tools.pickVariant("arrow", "all");
+            }}
+          />
+        )}
+        <PageBar
+          pages={sketch.pages}
+          activeId={sketch.activeId}
+          onSelectPage={sketch.selectPage}
+          onAddPage={sketch.addPage}
+          onRenamePage={sketch.renamePage}
+          onDeletePage={deletePage}
+          onDuplicatePage={sketch.duplicatePage}
+          onMovePage={sketch.movePage}
+          tabs={settings.prefs.pageTabs !== false}
+          objectCount={sketch.state.objects.length}
+        />
+        <Dialogs
+          dialogs={dialogs}
+          numbers={numbers}
+          relabel={relabel}
+          regular={regular}
+          custom={custom}
+          settings={settings}
+          moves={moves}
+          sketch={sketch}
+          names={names}
+          readable={readable}
+          buildPrompt={promptForRequest}
+          onRunScript={() => void runTheScript()}
+          onExport={(to) =>
+            void exportPicture(to, {
+              options: settings.picture,
+              selection,
+              suggested: doc.name,
+              onDone: () => dialogs.setExportTo(null),
+            })
+          }
+        />
+        {openMenu && (
+          // biome-ignore lint/a11y/noStaticElementInteractions: dismiss layer, the menu items stay reachable
+          // biome-ignore lint/a11y/useKeyWithClickEvents: Escape is handled by the menu button itself
+          <div
+            className="app__dismiss"
+            onClick={() => {
+              setOpenMenu(null);
+              setHovered(null);
+            }}
+          />
+        )}
+      </div>
+    </HoverPreview>
   );
 }

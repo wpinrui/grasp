@@ -56,7 +56,11 @@ export function Marks() {
 export function MarkGhost({ mark }: { mark: SketchMark | null }) {
   const { objects, settled, scale } = useSheet();
   if (!mark) return null;
-  const shape = markShape(mark, { settled, objects, scale });
+  const shape = markShape(mark, {
+    settled,
+    objects: objects.some((object) => object.id === mark.id) ? objects : [...objects, mark],
+    scale,
+  });
   if (!shape) return null;
   return (
     <>

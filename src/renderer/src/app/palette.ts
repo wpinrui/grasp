@@ -8,6 +8,7 @@
  * that sets anything commits once, so a palette click is one undo step.
  */
 
+import type { ShowPreview } from "../components/HoverPreview";
 import type { ArmedText, Styling } from "../components/Palette";
 import { DEFAULT_ALIGN, DEFAULT_CAPTION } from "../components/typeset";
 import {
@@ -245,11 +246,11 @@ export function paletteState(context: PaletteContext) {
       }
     : null;
 
-  function styleMark(mark: TextMark, on: boolean) {
+  function styleMark(mark: TextMark, on: boolean, show?: ShowPreview) {
     const wanted = new Set(markable.map((object) => object.id));
     if (!wanted.size) return;
     const before = sketch.read();
-    sketch.commit({
+    (show ? (next: typeof before) => show(next.objects) : sketch.commit)({
       ...before,
       objects: before.objects.map((object) => {
         if (!wanted.has(object.id)) return object;
@@ -275,11 +276,11 @@ export function paletteState(context: PaletteContext) {
   });
 
   /** How every picked label is set, as one undo step. */
-  function styleLabel(change: Partial<LabelState>) {
+  function styleLabel(change: Partial<LabelState>, show?: ShowPreview) {
     const setting = new Set(chosenLabels.map((object) => object.id));
     if (setting.size === 0) return;
     const before = sketch.read();
-    sketch.commit({
+    (show ? (next: typeof before) => show(next.objects) : sketch.commit)({
       ...before,
       objects: before.objects.map((object) =>
         setting.has(object.id) ? { ...object, label: { ...object.label, ...change } } : object,
@@ -332,16 +333,19 @@ export function paletteState(context: PaletteContext) {
    * How every selected object is drawn, as one undo step. A caption being
    * written into counts as selected, since the palette is set on it too.
    */
-  function styleSelection(change: { colour?: string; weight?: LineWidth; pattern?: LinePattern }) {
+  function styleSelection(
+    change: { colour?: string; weight?: LineWidth; pattern?: LinePattern },
+    show?: ShowPreview,
+  ) {
     // A picked label takes the ink and nothing else, and takes it on its own:
     // it is not what the tool is about to draw.
     if (labelsPicked) {
-      if (change.colour !== undefined) styleLabel({ colour: change.colour });
+      if (change.colour !== undefined) styleLabel({ colour: change.colour }, show);
       return;
     }
     // Setting the bar also arms the tool, so restyling what was just drawn says
     // how the next one comes out as well.
-    if (draws.length > 0) setArmed((was) => ({ ...was, ...change }));
+    if (!show && draws.length > 0) setArmed((was) => ({ ...was, ...change }));
     const wanted = new Set(selection);
     if (editing) wanted.add(editing);
     if (wanted.size === 0) return;
@@ -363,7 +367,10 @@ export function paletteState(context: PaletteContext) {
     });
     // Nothing selected could take it, so there is nothing to undo either.
     if (!touched) return;
-    sketch.commit({ ...before, objects: after });
+    (show ? (next: typeof before) => show(next.objects) : sketch.commit)({
+      ...before,
+      objects: after,
+    });
   }
 
   /**
@@ -373,19 +380,22 @@ export function paletteState(context: PaletteContext) {
    * caption, which is the only writing with runs to range and notation to type
    * into.
    */
-  function styleWriting(change: Partial<SketchCaption>) {
+  function styleWriting(change: Partial<SketchCaption>, show?: ShowPreview) {
     if (labelsPicked) {
       const { font, size, colour } = change;
-      styleLabel({
-        ...(font !== undefined ? { font } : {}),
-        ...(size !== undefined ? { size } : {}),
-        ...(colour !== undefined ? { colour } : {}),
-      });
+      styleLabel(
+        {
+          ...(font !== undefined ? { font } : {}),
+          ...(size !== undefined ? { size } : {}),
+          ...(colour !== undefined ? { colour } : {}),
+        },
+        show,
+      );
       return;
     }
     // The same as the top row: setting the face or the size also arms the tool
     // that writes, so the next caption comes out set that way.
-    if (takesText(draws)) {
+    if (!show && takesText(draws)) {
       const arming: Armed = {};
       if (change.font !== undefined) arming.font = change.font;
       if (change.size !== undefined) arming.size = change.size;
@@ -406,7 +416,7 @@ export function paletteState(context: PaletteContext) {
       ...(change.font !== undefined ? { fontFamily: change.font } : {}),
       ...(change.size !== undefined ? { fontSize: `${change.size}pt` } : {}),
     };
-    sketch.commit({
+    (show ? (next: typeof before) => show(next.objects) : sketch.commit)({
       ...before,
       objects: before.objects.map((object) => {
         if (chosenCaption && object.id === chosenCaption.id && isCaption(object)) {

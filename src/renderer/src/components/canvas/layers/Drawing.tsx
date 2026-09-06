@@ -9,7 +9,14 @@
  * moment the gesture is dropped.
  */
 
-import { distance, type Position, type Rect, type View } from "../../../sketch/model";
+import {
+  clipToRect,
+  distance,
+  type LineForm,
+  type Position,
+  type Rect,
+  type View,
+} from "../../../sketch/model";
 import { useSheet } from "../SheetContext";
 import type { Pending, Tracing } from "../sheet";
 import { screenSpot } from "../sheet";
@@ -21,6 +28,7 @@ interface DrawingProps {
   pending: Pending | null;
   /** The midpoint a marking tool would snap to, while the pointer is over it. */
   middle: Position | null;
+  lineForm?: LineForm;
 }
 
 /**
@@ -65,8 +73,11 @@ function Traced({ tracing }: { tracing: Tracing }) {
   );
 }
 
-export function Drawing({ tracing, pending, middle }: DrawingProps) {
-  const { scale } = useSheet();
+export function Drawing({ tracing, pending, middle, lineForm = "segment" }: DrawingProps) {
+  const { scale, shown } = useSheet();
+  const span = pending
+    ? clipToRect({ a: pending.start, b: pending.at, form: lineForm }, shown)
+    : null;
   return (
     <>
       {tracing && <Traced tracing={tracing} />}
@@ -82,10 +93,10 @@ export function Drawing({ tracing, pending, middle }: DrawingProps) {
         ) : (
           <line
             className="canvas__rubber"
-            x1={pending.start.x}
-            y1={pending.start.y}
-            x2={pending.at.x}
-            y2={pending.at.y}
+            x1={span?.[0].x ?? pending.start.x}
+            y1={span?.[0].y ?? pending.start.y}
+            x2={span?.[1].x ?? pending.at.x}
+            y2={span?.[1].y ?? pending.at.y}
             vectorEffect="non-scaling-stroke"
           />
         ))}

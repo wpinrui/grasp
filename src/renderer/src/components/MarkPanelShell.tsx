@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from "react";
 import type { Position } from "../sketch/model";
+import { previewEvents, useHoverPreview } from "./HoverPreview";
 import { Tooltip } from "./Tooltip";
 import "./MarkPanel.css";
 
@@ -47,6 +48,7 @@ interface PanelButtonProps {
   disabled?: boolean;
   /** Set on the one that takes the thing away, which is drawn apart from the rest. */
   away?: boolean;
+  onPreview?: () => void;
   onClick: () => void;
   children: ReactNode;
 }
@@ -59,8 +61,10 @@ export function PanelButton({
   disabled,
   away,
   onClick,
+  onPreview,
   children,
 }: PanelButtonProps) {
+  const { clear } = useHoverPreview();
   const key = (
     <button
       type="button"
@@ -69,6 +73,7 @@ export function PanelButton({
       }`}
       aria-label={label}
       disabled={disabled}
+      {...previewEvents(disabled ? undefined : onPreview, clear)}
       onClick={onClick}
     >
       {children}

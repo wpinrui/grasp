@@ -10,6 +10,7 @@ import type { CSSProperties } from "react";
 import { Canvas } from "../components/Canvas";
 import { Dock } from "../components/Dock";
 import { HiddenPanel, type HiddenRow } from "../components/HiddenPanel";
+import { useHoverPreview } from "../components/HoverPreview";
 import { LabelPanel, type LabelRow } from "../components/LabelPanel";
 import { Palette } from "../components/Palette";
 import { SnapPanel } from "../components/SnapPanel";
@@ -66,6 +67,7 @@ export function Workspace({
   away,
   phone,
 }: WorkspaceProps) {
+  const { show } = useHoverPreview();
   return (
     <div className="app__workspace">
       <Toolbox
@@ -152,6 +154,13 @@ export function Workspace({
             onCaption={palette.styleWriting}
             styling={palette.styling}
             onStyle={palette.styleSelection}
+            onPreviewStyle={(change) => palette.styleSelection(change, show)}
+            onPreviewCaption={(change) => palette.styleWriting(change, show)}
+            onPreviewMark={(mark, on) =>
+              palette.labelsPicked
+                ? palette.styleLabel({ [mark]: on }, show)
+                : palette.styleMark(mark, on, show)
+            }
           />
         )}
       </div>

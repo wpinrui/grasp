@@ -23,13 +23,12 @@ import {
   readingOfValue,
   sayQuantity,
 } from "../sketch/measure";
-import { angleFigure, withAnglePoints } from "../sketch/measure/angleFigure";
+import { withAnglePoints } from "../sketch/measure/angleFigure";
 import { angleGesture } from "../sketch/measure/angleGesture";
 import {
   type CaptionAlign,
   centreOf,
   clipToRect,
-  contentBounds,
   createAngleMark,
   createCircle,
   createInterior,
@@ -54,7 +53,6 @@ import {
   type LineForm,
   lineThrough,
   type MarkForm,
-  markAlong,
   markShape,
   markStrokes,
   markSweep,
@@ -82,7 +80,6 @@ import {
   type SketchPoint,
   settle,
   slackAt,
-  spotOnPath,
   union,
   type View,
 } from "../sketch/model";
@@ -157,7 +154,9 @@ import {
   travelOf,
 } from "./canvas/steps";
 import { ToolCursor } from "./canvas/ToolCursor";
+import { useCanvasAppearance } from "./canvas/useCanvasAppearance";
 import { useCaptions } from "./canvas/useCaptions";
+import { DrawingHover, useDrawingHover } from "./canvas/useDrawingHover";
 import { useLabelDrag } from "./canvas/useLabelDrag";
 import { useMarking } from "./canvas/useMarking";
 import { useReading } from "./canvas/useReading";
@@ -309,7 +308,7 @@ export function Canvas({
   onRelabelGive,
   onRegularAsk,
   markForm,
-  hiddenKinds,
+  hiddenKinds: committedHiddenKinds,
   spotlight,
   onToggleLabel,
   labelPick,
@@ -390,6 +389,7 @@ export function Canvas({
   }
 
   /** What a plotting tool would land on, lit up while the pointer is over it. */
+  const hover = useDrawingHover();
   const [snap, setSnap] = useState<Snap | null>(null);
   /** The label being typed into, and what has been typed so far. */
   const [naming, setNaming] = useState<LabelEdit | null>(null);
@@ -429,8 +429,6 @@ export function Canvas({
   const armFrom = useRef<string | null>(null);
   const armTrail = useRef<Position[]>([]);
   const [sweeping, setSweeping] = useState<ReturnType<typeof angleGesture>>(null);
-  /** The midpoint a marking tool would snap to, lit while the pointer is near. */
-  const [middle, setMiddle] = useState<Position | null>(null);
   /** Whether the Text tool is over something it could put a label on. */
   const [overNamed, setOverNamed] = useState(false);
   /** The vertex a relabel run would name next, which is the one under the pointer. */
@@ -453,30 +451,13 @@ export function Canvas({
   const panMoved = useRef(false);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [shiftHeld, setShiftHeld] = useState(false);
-  const { objects: everything, selection } = sketch.state;
-  // A hidden object still holds the figure together, so the geometry is worked
-  // out from all of them. Only these are drawn, picked, snapped to or caught.
-  //
-  // Two ways of being out of the way, and either is enough: hidden as an object
-  // in its own right, or one of the kinds being kept away wholesale. Neither
-  // knows about the other, so putting every marking away and bringing them back
-  // leaves whatever was hidden one at a time exactly as it was.
-  const objects = useMemo(
-    () =>
-      everything.filter(
-        (object) =>
-          object.hidden !== true &&
-          !(hiddenKinds.marks && isMark(object)) &&
-          !(hiddenKinds.text && isWriting(object)),
-      ),
-    [everything, hiddenKinds.marks, hiddenKinds.text],
-  );
-  // Where every line runs, worked out once for drawing, picking and marquees.
-  const anglePage = useMemo(
-    () => angleFigure(objects, everything, settle(everything).settled),
-    [objects, everything],
-  );
-  const settled = anglePage.settled;
+  const appearance = useCanvasAppearance({
+    state: sketch.state,
+    hiddenKinds: committedHiddenKinds,
+    scale,
+  });
+  const { everything, objects, anglePage, settled, drawn } = appearance;
+  const { selection } = sketch.state;
   // Space pans whatever tool is up, and hands it back on release. Panning has
   // no tool of its own: space and the right button are how the sheet is moved.
   const tool = spaceHeld ? "hand" : activeTool;
@@ -537,6 +518,7 @@ export function Canvas({
     flipMark,
     flipReflex,
     layTick,
+    tickFor,
     markAngle,
     ownMark,
     panelSpotOf,
@@ -544,7 +526,14 @@ export function Canvas({
     setForm,
     setSquare,
     setStrokes,
-  } = useMarking({ sketch, objects: anglePage.objects, settled, scale, view, marking });
+  } = useMarking({
+    sketch,
+    objects: appearance.markingObjects,
+    settled,
+    scale,
+    view,
+    marking,
+  });
 
   const {
     panel: readingPanel,
@@ -568,7 +557,7 @@ export function Canvas({
   };
   /** Where the sketch opens. It is home, and is never scrolled away from. */
   const origin = { x: 0, y: 0, width: viewport.width, height: viewport.height };
-  const drawn = contentBounds(objects, scale);
+
   /**
    * What the scrollbars run over: the sheet you start on, the drawing, and
    * whatever is on screen. Pan out into the blank and it grows to keep up;
@@ -672,6 +661,7 @@ export function Canvas({
     setPending(null);
     setTracing(null);
     setSnap(null);
+    hover.clear();
     setBoxing(null);
     setArming(null);
     armFrom.current = null;
@@ -680,7 +670,6 @@ export function Canvas({
     // A panel belongs to the tool that opened it, so it goes with the tool.
     setPanel(null);
     setReadingPanel(null);
-    setMiddle(null);
   }, [activeTool, regularArmed, sketch.cancelGesture]);
 
   /** Put down the first of the two points a drawing tool needs. */
@@ -794,6 +783,7 @@ export function Canvas({
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    hover.clear();
     if (event.pointerType === "touch") {
       fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (fingers.current.size >= PAN_FINGERS) {
@@ -1084,25 +1074,14 @@ export function Canvas({
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") hover.clear();
+    if (appearance.active && !(event.target as Element).closest(".mark-panel")) appearance.clear();
     toolCursor.follow(event);
     if (event.pointerType === "touch" && fingers.current.has(event.pointerId)) {
       fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     }
-    // A marking tool lights the midpoint of a segment it would snap to.
-    if (marking && !picking && !grab.current) {
-      const over = positionOf(event);
-      const under =
-        over && marking !== "angle" ? pathUnder(over, { objects, settled, scale }) : null;
-      const snapped =
-        under && over && markAlong(under.along, over, scale) === 0.5
-          ? spotOnPath(under.along, 0.5)
-          : null;
-      if (
-        (snapped === null) !== (middle === null) ||
-        (snapped && middle && snapped.x !== middle.x)
-      ) {
-        setMiddle(snapped);
-      }
+    if (marking && !picking && !grab.current && event.pointerType !== "touch") {
+      hover.markAt(positionOf(event), { objects, settled, scale, marking, tickFor });
     }
     // The Arrow says what it would pick up before it is pressed, which is what
     // tells one armed for points from one armed for markings without a click.
@@ -1164,6 +1143,7 @@ export function Canvas({
       if (!at) return;
       const aim = aimAt(at, aimingNow());
       if (snapKey(aim.found) !== snapKey(snap)) setSnap(aim.found);
+      if (event.pointerType !== "touch") hover.aim(aim.found, aim.spot);
       if (pending) setPending({ ...pending, at: aim.spot });
       if (tracing) setTracing({ ...tracing, at: aim.spot });
       return;
@@ -1577,6 +1557,9 @@ export function Canvas({
   function handlePointerLeave(event: PointerEvent<HTMLDivElement>) {
     toolCursor.away(event);
     setSnap(null);
+    hover.clear();
+    setOverCorner(null);
+    setUnder(null);
     setOverNamed(false);
     // The ghost letter stands in for the vertex's own label, so leaving the
     // sheet straight off a vertex would leave that label suppressed under it.
@@ -1635,7 +1618,7 @@ export function Canvas({
   const expressionNames = useMemo(() => valueNames(everything, settled), [everything, settled]);
   // Ghost lines hang off ghost points, which are nowhere in the sketch yet.
   const previewPoints = pointsOf(preview);
-  const previewSettled = preview.length ? settle([...objects, ...preview]).settled : settled;
+  const previewSettled = preview.length ? settle([...everything, ...preview]).settled : settled;
   const slack = slackAt(scale);
   // Lines are drawn only as far as the sheet on screen, plus a little, so a ray
   // running to the horizon is a couple of numbers rather than a huge one.
@@ -1929,12 +1912,14 @@ export function Canvas({
   const guide = guideOf({ objects, settled, scale, snapping, travel, pending, tracing });
 
   // A panel with nothing left to be about closes itself.
-  const onPanel = panel ? objects.find((object) => object.id === panel) : undefined;
+  const onPanel = panel ? appearance.committed.find((object) => object.id === panel) : undefined;
   const panelMark = onPanel && isMark(onPanel) ? onPanel : null;
   const panelSpot = panelMark ? panelSpotOf(panelMark.id) : null;
   const panelShape = panelMark ? markShape(panelMark, { settled, objects, scale }) : null;
   // The panel on a reading sits just above it, the way a mark's panel does.
-  const onReading = readingPanel ? objects.find((object) => object.id === readingPanel) : undefined;
+  const onReading = readingPanel
+    ? appearance.committed.find((object) => object.id === readingPanel)
+    : undefined;
   const readingOpen = onReading && isMeasurement(onReading) ? onReading : null;
   const readingSpot = readingOpen
     ? {
@@ -1973,7 +1958,20 @@ export function Canvas({
               <Loci />
               <Handles />
               <Paths />
-              <Drawing tracing={tracing} pending={pending} middle={middle} />
+              <Drawing
+                tracing={tracing}
+                pending={pending}
+                middle={hover.middle}
+                lineForm={lineForm}
+              />
+              {!picking && (
+                <DrawingHover
+                  hover={hover}
+                  marking={marking !== null}
+                  pointSize={pointSize}
+                  plotting={plotting && (tool !== "polygon" || !regularArmed)}
+                />
+              )}
               <Marks />
               <MarkGhost mark={offering.ghost?.mark ?? null} />
               <Arms arming={arming} arcs={armingArcs()} />
@@ -2035,6 +2033,10 @@ export function Canvas({
               places={readingOpen.places ?? placesFor(readingOpen.measure)}
               onPlaces={setPlaces}
               onFormat={setFormat}
+              onPreview={(part) => appearance.reading(readingOpen.id, part)}
+              onPreviewReflex={() =>
+                setReadingReflex(readingOpen.id, readingOpen.reflex !== true, appearance.show)
+              }
             />
           )}
 
@@ -2050,6 +2052,8 @@ export function Canvas({
               canSwap={canSwap(panelMark)}
               onForm={setForm}
               onDelete={dropMark}
+              onPreview={(part) => appearance.mark(panelMark.id, part)}
+              onPreviewReflex={() => flipReflex(panelMark.id, measuringNow(), appearance.show)}
             />
           )}
 

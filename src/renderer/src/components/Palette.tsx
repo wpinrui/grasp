@@ -10,6 +10,7 @@ import { clearCaptionColours, insertAtCaret } from "../sketch/captions";
 import type { CaptionAlign, LinePattern, LineWidth, SketchCaption } from "../sketch/model";
 import { LINE_PATTERNS, LINE_WIDTHS } from "../sketch/model";
 import { type LabelMarks, type TextMark, type TextStyling, textBoxes } from "../sketch/text";
+import { previewEvents, useHoverPreview } from "./HoverPreview";
 import { PATTERN_SAMPLE, Picker, Popout, Rule, WEIGHT_SAMPLE } from "./PalettePicker";
 import { caretLook, caretMarks, chosenRun, wrapRun } from "./paletteCaret";
 import { Tooltip } from "./Tooltip";
@@ -97,6 +98,9 @@ interface PaletteProps {
   onArmText: (change: Partial<ArmedText>) => void;
   onCaption: (change: Partial<SketchCaption>) => void;
   styling: Styling;
+  onPreviewStyle?: PaletteProps["onStyle"];
+  onPreviewCaption?: PaletteProps["onCaption"];
+  onPreviewMark?: (mark: TextMark, on: boolean) => void;
   onStyle: (change: { colour?: string; weight?: LineWidth; pattern?: LinePattern }) => void;
 }
 
@@ -128,7 +132,13 @@ export function Palette({
   onCaption,
   styling,
   onStyle,
+  onPreviewStyle,
+  onPreviewCaption,
+  onPreviewMark,
 }: PaletteProps) {
+  const { clear } = useHoverPreview();
+  // Caret formatting changes live DOM ranges, so only settled writing is previewed.
+  const hover = (show: () => void) => previewEvents(editing ? undefined : show, clear);
   // The caret moving is not a render on its own, so the bar asks to be redrawn
   // whenever the selection changes and reads the new position back.
   const [, redraw] = useReducer((count: number) => count + 1, 0);
@@ -237,6 +247,9 @@ export function Palette({
                 style={{ background: `var(${ink.token})` }}
                 aria-label={ink.name}
                 disabled={colourOff}
+                {...hover(() => {
+                  if (!colourOff) onPreviewStyle?.({ colour: ink.token });
+                })}
                 onMouseDown={hold}
                 onClick={() => pickColour(ink.token)}
               />
@@ -258,6 +271,9 @@ export function Palette({
                 }`}
                 aria-label={WEIGHT_NAMES[weight]}
                 disabled={!styling.canWeight}
+                {...hover(() => {
+                  if (styling.canWeight) onPreviewStyle?.({ weight });
+                })}
                 onMouseDown={hold}
                 onClick={() => onStyle({ weight })}
               >
@@ -281,6 +297,9 @@ export function Palette({
                 }`}
                 aria-label={PATTERN_NAMES[pattern]}
                 disabled={!styling.canPattern}
+                {...hover(() => {
+                  if (styling.canPattern) onPreviewStyle?.({ pattern });
+                })}
                 onMouseDown={hold}
                 onClick={() => onStyle({ pattern })}
               >
@@ -305,6 +324,7 @@ export function Palette({
             // A disagreement is not a face, so the box is left in the bar's own
             // type rather than being set in a font that does not exist.
             face={boxes.face ?? undefined}
+            onPreview={editing ? undefined : (next) => onPreviewCaption?.({ font: next })}
             onPick={(next) => setFace({ fontFamily: `"${next}"` }, { font: next })}
             options={FONTS.map((one) => ({ value: one, label: one, face: one }))}
           />
@@ -312,6 +332,7 @@ export function Palette({
             label="Size"
             value={boxes.size}
             disabled={!text}
+            onPreview={editing ? undefined : (next) => onPreviewCaption?.({ size: Number(next) })}
             onPick={(next) => setFace({ fontSize: `${next}pt` }, { size: Number(next) })}
             options={SIZES.map((one) => ({ value: `${one}`, label: `${one}` }))}
           />
@@ -330,6 +351,9 @@ export function Palette({
                 aria-label={key.says}
                 aria-pressed={marks[key.mark]}
                 disabled={marksOff}
+                {...hover(() => {
+                  if (!marksOff) onPreviewMark?.(key.mark, !marks[key.mark]);
+                })}
                 onMouseDown={hold}
                 onClick={() => style(key.mark)}
               >
@@ -351,6 +375,9 @@ export function Palette({
                 }`}
                 aria-label={`Align ${way}`}
                 disabled={rangeOff}
+                {...hover(() => {
+                  if (!rangeOff) onPreviewCaption?.({ align: way });
+                })}
                 onMouseDown={hold}
                 onClick={() => (caption ? onCaption({ align: way }) : onArmText({ align: way }))}
               >

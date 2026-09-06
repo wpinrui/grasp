@@ -1,3 +1,4 @@
+import { labelsShown, objectsHidden, toggledLabels } from "../sketch/visibility";
 /**
  * Names, labels and what is out of view: everything the labels panel and the
  * hidden panel act on, and the renaming a label typed into asks for.
@@ -80,12 +81,9 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
   /** Show or hide the labels of the objects named, however they were named. */
   function showLabels(ids: string[], shown: boolean) {
     const before = sketch.read();
-    const wanted = new Set(ids);
     sketch.commit({
       ...before,
-      objects: before.objects.map((object) =>
-        wanted.has(object.id) ? { ...object, label: { ...object.label, shown } } : object,
-      ),
+      objects: labelsShown(before.objects, ids, shown),
     });
   }
 
@@ -100,9 +98,7 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
     const wanted = new Set(ids);
     sketch.commit({
       ...before,
-      objects: before.objects.map((object) =>
-        wanted.has(object.id) ? { ...object, hidden } : object,
-      ),
+      objects: objectsHidden(before.objects, ids, hidden),
       selection: hidden ? before.selection.filter((id) => !wanted.has(id)) : before.selection,
     });
   }
@@ -198,20 +194,8 @@ export function labelActions({ sketch, objects, selection, geometry }: LabelCont
    */
   function toggleLabels() {
     const before = sketch.read();
-    const wanted =
-      before.selection.length > 0
-        ? before.objects.filter((object) => before.selection.includes(object.id))
-        : before.objects;
-    const able = wanted.filter((object) => nameable(object, before.objects));
-    if (able.length === 0) return;
-    const showing = able.every((object) => object.label?.shown);
-    const ids = new Set(able.map((object) => object.id));
-    sketch.commit({
-      ...before,
-      objects: before.objects.map((object) =>
-        ids.has(object.id) ? { ...object, label: { ...object.label, shown: !showing } } : object,
-      ),
-    });
+    const objects = toggledLabels(before.objects, before.selection);
+    if (objects !== before.objects) sketch.commit({ ...before, objects });
   }
 
   /** Bring back everything that is out of view, which is one menu entry and one key. */
