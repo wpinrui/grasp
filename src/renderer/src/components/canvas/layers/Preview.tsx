@@ -40,6 +40,7 @@ export function Preview({ objects, points, settled, spanOf }: PreviewProps) {
   return (
     <>
       {objects.map((object) => {
+        if (object.hidden) return null;
         if (isArc(object)) {
           const arc = settled.arcs.get(object.id);
           return arc ? (
@@ -92,16 +93,18 @@ export function Preview({ objects, points, settled, spanOf }: PreviewProps) {
           />
         ) : null;
       })}
-      {points.map((point) => (
-        <circle
-          key={point.id}
-          className="canvas__point canvas__point--preview"
-          cx={point.x}
-          cy={point.y}
-          r={radiusOf(point) / scale}
-          vectorEffect="non-scaling-stroke"
-        />
-      ))}
+      {points
+        .filter((point) => !point.hidden)
+        .map((point) => (
+          <circle
+            key={point.id}
+            className="canvas__point canvas__point--preview"
+            cx={point.x}
+            cy={point.y}
+            r={radiusOf(point) / scale}
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
     </>
   );
 }

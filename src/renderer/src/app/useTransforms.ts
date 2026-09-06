@@ -48,6 +48,7 @@ import {
 } from "../sketch/transforms";
 import type { Sketch } from "../sketch/useSketch";
 import { valueNames } from "../sketch/valueNames";
+import { customPreview } from "./customs";
 
 export interface TransformContext {
   sketch: Sketch;
@@ -112,7 +113,11 @@ export function useTransforms(context: TransformContext) {
   // What the open dialog would make, worked out fresh on every keystroke and
   // every pick. Nothing to show means it cannot be answered yet, which is also
   // what greys its button.
-  const transform = dialog === "iterate" ? null : dialog;
+  const hoveredTransform =
+    hovered === "translate" || hovered === "rotate" || hovered === "dilate" || hovered === "reflect"
+      ? hovered
+      : null;
+  const transform = dialog === "iterate" ? null : (dialog ?? hoveredTransform);
   const maker =
     transform && transformable(selection, objects)
       ? makerFor(transform, { values, objects, centre, mirror, marks: follows })
@@ -124,7 +129,9 @@ export function useTransforms(context: TransformContext) {
       ? orbit
       : // No dialog: the sheet shows what the Construct entry under the pointer
         // would build, so hovering Ray says which way it would run.
-        wouldBuild(building, hovered);
+        hovered?.startsWith("apply-transform:")
+        ? customPreview(hovered.slice("apply-transform:".length), objects, selection)
+        : wouldBuild(building, hovered);
   /** The row an Iterate click fills: the first empty one, then round again. */
   const nextSeed = Math.max(targets.indexOf(null), 0);
 
@@ -138,19 +145,18 @@ export function useTransforms(context: TransformContext) {
     // says which job it has, so the order they were picked in is visible
     // before the entry is clicked rather than after.
     ...(preview.length > 0 ? rolesFor(building, hovered) : []),
-    // The centre and the mirror are only ever shown while the dialog that uses
-    // them is open.
-    ...(centre && (dialog === "rotate" || dialog === "dilate")
+    // The centre and mirror identify the inputs of the visible transform preview.
+    ...(centre && (transform === "rotate" || transform === "dilate")
       ? [{ id: centre, label: "CENTER" }]
       : []),
-    ...(mirror && dialog === "reflect" ? [{ id: mirror, label: "MIRROR" }] : []),
+    ...(mirror && transform === "reflect" ? [{ id: mirror, label: "MIRROR" }] : []),
     ...(dialog === "iterate"
       ? [
           ...seeds.map((id, index) => ({ id, label: `SEED ${index + 1}` })),
           ...targets.flatMap((id, index) => (id ? [{ id, label: `IMAGE ${index + 1}` }] : [])),
         ]
       : []),
-    ...(dialog === "translate" && values.translate.mode === "marked"
+    ...(transform === "translate" && values.translate.mode === "marked"
       ? [
           ...(values.translate.from ? [{ id: values.translate.from, label: "FROM" }] : []),
           ...(values.translate.to ? [{ id: values.translate.to, label: "TO" }] : []),

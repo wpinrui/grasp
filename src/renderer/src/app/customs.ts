@@ -9,6 +9,18 @@ import { createCustomTransform, isTransform, type SketchObject } from "../sketch
 import { imagedBy } from "../sketch/transforms";
 import type { Sketch } from "../sketch/useSketch";
 
+/** The exact construction used by both the menu ghost and its click. */
+export function customPreview(
+  id: string,
+  objects: SketchObject[],
+  selection: string[],
+): SketchObject[] {
+  const found = objects.find((object) => object.id === id);
+  return found && isTransform(found)
+    ? imagedBy(selection, objects, customImager(found, objects))
+    : [];
+}
+
 export interface CustomContext {
   sketch: Sketch;
   objects: SketchObject[];
@@ -34,9 +46,7 @@ export function customActions({ sketch, objects, selection, setCustomDialog }: C
    * rotation rebuilds it.
    */
   function applyCustom(id: string) {
-    const found = objects.find((object) => object.id === id);
-    if (!found || !isTransform(found)) return;
-    const made = imagedBy(selection, objects, customImager(found, objects));
+    const made = customPreview(id, objects, selection);
     if (made.length > 0) sketch.addObjects(made);
   }
 
