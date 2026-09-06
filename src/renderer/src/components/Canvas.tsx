@@ -1634,7 +1634,7 @@ export function Canvas({
       : readingOfValue(value, quantities.get(value.id) ?? null, { names, objects: everything });
 
   function toggleObject(id: string) {
-    sketch.select(togglePick(sketch.read().selection, id, true));
+    sketch.select(togglePick(sketch.read().selection, id));
   }
 
   function clearSelection() {
