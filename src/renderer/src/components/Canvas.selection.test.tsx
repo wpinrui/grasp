@@ -167,6 +167,54 @@ describe("dragging selected labels", () => {
     expect(Math.hypot(first.x, first.y)).toBeCloseTo(LABEL_REACH);
   });
 
+  it("stops labels that started apart as one group, on whichever reaches its limit first", () => {
+    const near = { ...a, label: { name: "A", shown: true, off: { x: 0, y: 4 } } };
+    const { sheet, page } = watched([near, b, segment, length, caption, table], "arrow", {
+      labelSelection: [near.id, b.id],
+    });
+    drag(labelOn(sheet, near.id), { x: 100, y: 104 }, { x: 1000, y: 104 });
+    const moved = (id: string) => page().objects.find((object) => object.id === id)?.label?.off;
+    const first = moved(near.id);
+    const second = moved(b.id);
+    if (!first || !second) throw new Error("Missing dragged label offsets");
+    // One delta for the whole group, so the two keep the gap they started with.
+    expect({ x: first.x - 0, y: first.y - 4 }).toEqual({ x: second.x - 0, y: second.y - 40 });
+    // And neither is dragged past its reach: the one that started further out
+    // binds the group, and the near one comes to rest inside the limit.
+    expect(Math.hypot(second.x, second.y)).toBeCloseTo(LABEL_REACH);
+    expect(Math.hypot(first.x, first.y)).toBeLessThan(LABEL_REACH);
+  });
+
+  it("slides a label along its limit once it is already there", () => {
+    const { sheet, page } = watched(figure, "arrow", { labelSelection: [a.id] });
+    const label = labelOn(sheet, a.id);
+    drag(label, { x: 100, y: 140 }, { x: 1000, y: 140 });
+    const rested = page().objects.find((object) => object.id === a.id)?.label?.off;
+    if (!rested) throw new Error("Missing dragged label offset");
+    expect(Math.hypot(rested.x, rested.y)).toBeCloseTo(LABEL_REACH);
+    // A drag straight down from the limit is all tangent and no reach, so a
+    // label that only stopped when it ran out of room would not move at all.
+    drag(label, { x: 100, y: 140 }, { x: 100, y: 1140 });
+    const slid = page().objects.find((object) => object.id === a.id)?.label?.off;
+    if (!slid) throw new Error("Missing slid label offset");
+    expect(Math.hypot(slid.x, slid.y)).toBeCloseTo(LABEL_REACH);
+    expect(slid.y).toBeGreaterThan(rested.y);
+  });
+
+  it("carries only the label a drag took hold of when it was not selected", () => {
+    const { sheet, page } = watched(figure, "arrow", { labelSelection: [b.id] });
+    drag(labelOn(sheet, a.id), { x: 100, y: 140 }, { x: 110, y: 140 });
+    expect(page().objects.find((object) => object.id === a.id)?.label?.off).toEqual({
+      x: 10,
+      y: 40,
+    });
+    expect(page().objects.find((object) => object.id === b.id)?.label?.off).toEqual({
+      x: 0,
+      y: 40,
+    });
+    expect(pickedLabels(sheet)).toEqual([a.id]);
+  });
+
   it("does not deselect a selected label until a click is released", () => {
     const { sheet } = watched(figure, "arrow", { labelSelection: [a.id] });
     const label = labelOn(sheet, a.id);

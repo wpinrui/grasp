@@ -3,6 +3,7 @@ import { type PointerEvent, useRef } from "react";
 import { LABEL_REACH } from "../../sketch/labelling";
 import type { Position } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
+import { DRAG_THRESHOLD } from "./sheet";
 
 interface LabelOffset {
   id: string;
@@ -20,17 +21,34 @@ export interface Dragging {
   onLabelPick: (id: string | null, additive?: boolean) => void;
 }
 
-/** Stop the whole group when any label reaches its allowed distance from its object. */
+/**
+ * How many times the reach limits are applied in turn before they agree, since
+ * pulling one label back in can carry another out.
+ */
+const REACH_PASSES = 4;
+
+/** The part of a move that leaves one label inside its reach of its object. */
+function withinReach(off: Position, by: Position): Position {
+  const to = { x: off.x + by.x, y: off.y + by.y };
+  const far = Math.hypot(to.x, to.y);
+  if (far <= LABEL_REACH) return by;
+  const pull = LABEL_REACH / far;
+  return { x: to.x * pull - off.x, y: to.y * pull - off.y };
+}
+
+/**
+ * How far the group may travel, as one delta so the labels keep their shape.
+ * Every label is held inside its own reach, and one already at that limit
+ * slides along it rather than sticking fast wherever it was let go.
+ */
 function keptDelta(labels: LabelOffset[], by: Position): Position {
-  const squared = by.x * by.x + by.y * by.y;
-  if (squared === 0) return by;
-  let portion = 1;
-  for (const { off } of labels) {
-    const dot = off.x * by.x + off.y * by.y;
-    const room = Math.max(0, LABEL_REACH ** 2 - off.x ** 2 - off.y ** 2);
-    portion = Math.min(portion, (-dot + Math.sqrt(dot * dot + squared * room)) / squared);
+  let kept = by;
+  for (let pass = 0; pass < REACH_PASSES; pass += 1) {
+    const settled = labels.reduce((so, { off }) => withinReach(off, so), kept);
+    if (settled.x === kept.x && settled.y === kept.y) break;
+    kept = settled;
   }
-  return { x: by.x * portion, y: by.y * portion };
+  return kept;
 }
 
 export function useLabelDrag({
@@ -72,7 +90,7 @@ export function useLabelDrag({
     event.stopPropagation();
     const by = { x: event.clientX - state.from.x, y: event.clientY - state.from.y };
     if (!state.moved) {
-      if (Math.hypot(by.x, by.y) < 3) return;
+      if (Math.hypot(by.x, by.y) < DRAG_THRESHOLD) return;
       state.moved = true;
       if (tool === "arrow" && !picked.includes(state.id)) onLabelPick(state.id, false);
       sketch.beginGesture();

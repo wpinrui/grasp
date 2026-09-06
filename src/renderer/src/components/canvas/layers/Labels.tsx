@@ -53,7 +53,7 @@ interface LabelsProps {
   onGrab: (event: PointerEvent<HTMLElement>, id: string, off: Position) => void;
   onDrag: (event: PointerEvent<HTMLElement>) => void;
   onDrop: (event: PointerEvent<HTMLElement>) => void;
-  onCancel?: () => void;
+  onCancel: () => void;
 }
 
 /** What a name is typed into, in place of the label, until it is settled. */
