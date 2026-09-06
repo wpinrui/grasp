@@ -60,13 +60,19 @@ interface CaptionBoxProps {
 
 /** Put the caret in the slot after the one it is in, or the one before it. */
 function stepSlot(root: HTMLElement, back: boolean): boolean {
-  const slots = [...root.querySelectorAll(".cap-slot")];
-  if (slots.length === 0) return false;
   const selection = window.getSelection();
   const here = selection?.anchorNode ?? null;
+  const element = here?.nodeType === Node.ELEMENT_NODE ? (here as Element) : here?.parentElement;
+  const notation = element?.closest(NOTATION);
+  const slots = [...(notation ?? root).querySelectorAll(".cap-slot")];
+  if (slots.length === 0) return false;
   const at = slots.findIndex((slot) => here !== null && slot.contains(here));
   const next = at === -1 ? (back ? slots.length - 1 : 0) : at + (back ? -1 : 1);
-  const wanted = slots[(next + slots.length) % slots.length];
+  if (notation && (next < 0 || next >= slots.length)) {
+    placeOutside(notation, !back);
+    return true;
+  }
+  const wanted = slots[next];
   const range = document.createRange();
   range.selectNodeContents(wanted);
   selection?.removeAllRanges();
@@ -89,6 +95,42 @@ function caretAt(x: number, y: number): Range | null {
  */
 const NOTATION = ".cap-frac, .cap-root, .cap-bar, .cap-group, sup, sub";
 
+/** Give the caret a real text position outside the notation's layout box. */
+function placeOutside(piece: Element, forward: boolean) {
+  let text = forward ? piece.nextSibling : piece.previousSibling;
+  if (text?.nodeType !== Node.TEXT_NODE) {
+    text = document.createTextNode("\u200b");
+    if (forward) piece.after(text);
+    else piece.before(text);
+  }
+  const range = document.createRange();
+  range.setStart(
+    text,
+    forward ? (text.textContent?.startsWith("\u200b") ? 1 : 0) : (text.textContent?.length ?? 0),
+  );
+  range.collapse(true);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function exitAtEdge(editor: HTMLElement, forward: boolean): boolean {
+  const at = caretSpot();
+  if (!at || !editor.contains(at.node)) return false;
+  const element =
+    at.node.nodeType === Node.ELEMENT_NODE ? (at.node as Element) : at.node.parentElement;
+  const piece = element?.closest(NOTATION);
+  if (!piece || !editor.contains(piece)) return false;
+  const part = element?.closest(".cap-slot, .cap-frac__top, .cap-frac__bottom") ?? piece;
+  const rest = document.createRange();
+  rest.selectNodeContents(part);
+  if (forward) rest.setStart(at.node, at.offset);
+  else rest.setEnd(at.node, at.offset);
+  if (rest.toString().replace(/\u200b/g, "") !== "") return false;
+  placeOutside(piece, forward);
+  return true;
+}
+
 /** Where the caret is now, as something two moments apart can be compared by. */
 function caretSpot(): { node: Node; offset: number } | null {
   const selection = window.getSelection();
@@ -105,13 +147,7 @@ function stepOutOfNotation(editor: HTMLElement, forward: boolean): boolean {
     at.node.nodeType === Node.ELEMENT_NODE ? (at.node as Element) : at.node.parentElement;
   const piece = from?.closest(NOTATION);
   if (!piece || !editor.contains(piece)) return false;
-  const next = document.createRange();
-  if (forward) next.setStartAfter(piece);
-  else next.setStartBefore(piece);
-  next.collapse(true);
-  const selection = window.getSelection();
-  selection?.removeAllRanges();
-  selection?.addRange(next);
+  placeOutside(piece, forward);
   return true;
 }
 
@@ -331,6 +367,15 @@ export function CaptionBox({
     // A caret that cannot get past a fraction or a square root is stuck inside
     // it, and nothing can be typed after one.
     if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      if (
+        !event.shiftKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        exitAtEdge(element, event.key === "ArrowRight")
+      ) {
+        event.preventDefault();
+        return;
+      }
       freeTheCaret(element, event.key === "ArrowRight");
       return;
     }

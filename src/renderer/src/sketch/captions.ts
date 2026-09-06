@@ -91,8 +91,8 @@ export function insertAtCaret(editor: HTMLDivElement | null, html: string) {
   const piece = range.createContextualFragment(html);
   const first = piece.firstElementChild;
   const last = piece.lastChild;
-  // An actual text position after an atomic link keeps typing outside its value.
-  const tail = first?.hasAttribute("data-link") ? document.createTextNode("\u200b") : null;
+  // Links and notation both need a real text position on their far side.
+  const tail = first ? document.createTextNode("\u200b") : null;
   if (tail) piece.appendChild(tail);
   range.insertNode(piece);
   const slot = first?.classList.contains("cap-slot")

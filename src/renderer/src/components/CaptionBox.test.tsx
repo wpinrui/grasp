@@ -115,6 +115,37 @@ it("tabs between filled fraction slots after their placeholders are gone", () =>
   expect(
     window.getSelection()?.anchorNode?.parentElement?.closest(".cap-frac__bottom"),
   ).toBeTruthy();
+  fireEvent.keyDown(editor, { key: "Tab" });
+  expect(
+    editor.querySelector(".cap-frac")?.contains(window.getSelection()?.anchorNode ?? null),
+  ).toBe(false);
+  const after = window.getSelection()?.getRangeAt(0);
+  if (!after) throw new Error("Missing caret after fraction");
+  after.insertNode(document.createTextNode(" after"));
+  expect(editor.querySelector(".cap-frac")?.textContent).not.toContain("after");
+  expect(editor.textContent).toContain(" after");
+});
+
+it.each([
+  { key: "ArrowRight", selector: ".cap-frac__bottom", end: true },
+  { key: "ArrowLeft", selector: ".cap-frac__top", end: false },
+  { key: "Tab", selector: ".cap-frac__top", end: false },
+])("leaves a fraction at its boundary with $key", ({ key, selector, end }) => {
+  const fraction = NOTATION.find((one) => one.id === "fraction");
+  if (!fraction) throw new Error("Missing fraction");
+  const shown = render(<CaptionBox {...props(fraction.html.replaceAll("?", "12"))} />);
+  const editor = shown.getByRole("textbox");
+  const part = editor.querySelector(`${selector} .cap-slot`);
+  if (!part) throw new Error("Missing fraction part");
+  const range = document.createRange();
+  range.selectNodeContents(part);
+  range.collapse(!end);
+  window.getSelection()?.removeAllRanges();
+  window.getSelection()?.addRange(range);
+  fireEvent.keyDown(editor, { key, shiftKey: key === "Tab" });
+  expect(
+    editor.querySelector(".cap-frac")?.contains(window.getSelection()?.anchorNode ?? null),
+  ).toBe(false);
 });
 
 it.each(["b", "i", "u"])("formats a selected live measurement with Ctrl+%s", (key) => {
