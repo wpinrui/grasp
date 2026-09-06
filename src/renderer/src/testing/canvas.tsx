@@ -13,7 +13,7 @@ import { afterEach, beforeEach, vi } from "vitest";
 import { Canvas } from "../components/Canvas";
 import type { SketchObject, SketchState } from "../sketch/model";
 import { labelClickPick } from "../sketch/picking";
-import { useSketch } from "../sketch/useSketch";
+import { type Sketch, useSketch } from "../sketch/useSketch";
 import { SHEET, stubSheetBox } from "./sheet";
 
 /** How a caption comes out, which makes no difference to any test. */
@@ -48,6 +48,7 @@ export interface HarnessProps {
   hiddenKinds?: { marks: boolean; text: boolean };
   /** Called on every render with the page as it stands, for a test to read. */
   report?: (state: SketchState) => void;
+  reportSketch?: (sketch: Sketch) => void;
   /** An object lit up from somewhere else, so the band drawn on it is covered. */
   spotlight?: string | null;
   /** What a dialog is holding, so the rings and bands it draws are covered. */
@@ -79,6 +80,7 @@ function Harness({
   selectAllRef,
   hiddenKinds = { marks: false, text: false },
   report,
+  reportSketch,
   spotlight = null,
   marks = [],
   preview = [],
@@ -100,6 +102,7 @@ function Harness({
     sketch.commit({ objects, selection });
   }, []);
   report?.(sketch.state);
+  reportSketch?.(sketch);
   return (
     <Canvas
       activeTool={tool}

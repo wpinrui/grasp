@@ -158,16 +158,16 @@ function sameMeasured(one: SketchMeasurement, other: SketchMeasurement): boolean
 }
 
 /**
- * The reading already on the sheet that says what this one would say. The same
- * thing is read once: a click on something that already carries the number the
- * tool would write goes to that one rather than laying another of it on top,
- * and the preview says so before the click.
+ * The tool reading already on the sheet that says what this one would say.
+ * Menu measurements do not count toward the tool's limit. The `bare` flag is
+ * set by the tool and retained when a sketch is saved and reopened.
  */
 export function readingAlready(written: Written, measuring: Measuring): SketchMeasurement | null {
   const wanted = written.reading;
   const found = measuring.objects.find(
     (object) =>
       isMeasurement(object) &&
+      object.bare === true &&
       sameMeasured(object, wanted) &&
       (object.reflex === true) === (wanted.reflex === true),
   );
@@ -262,6 +262,7 @@ export function angleWritten(
     objects.some(
       (object) =>
         isMeasurement(object) &&
+        object.bare === true &&
         object.measure === "angle" &&
         sameAngle(object.of, at3) &&
         (object.reflex === true) === reflex,

@@ -429,7 +429,7 @@ export function Canvas({
   /** An object a Hot Text link is being pointed at, lit up where it sits. */
   const [lit, setLit] = useState<string | null>(null);
   /** What a reading under the pointer is taken from, lit up where it sits. */
-  const [litReading, setLitReading] = useState<string[]>([]);
+  const [litReading, setLitReading] = useState<string | null>(null);
   /** What the Arrow is over and would pick up, lit while the pointer is on it. */
   const [under, setUnder] = useState<string | null>(null);
   /**
@@ -1619,6 +1619,14 @@ export function Canvas({
     (object): object is SketchMeasurement | SketchParameter | SketchCalculation | SketchFunction =>
       isValue(object) || isFunction(object),
   );
+  const hoveredReading = readings.find((object) => object.id === litReading);
+  useEffect(() => {
+    if (litReading && !hoveredReading) setLitReading(null);
+  }, [litReading, hoveredReading]);
+  const readingHighlights =
+    hoveredReading && isMeasurement(hoveredReading)
+      ? [...hoveredReading.of, ...litWith(hoveredReading.id, everything)]
+      : [];
 
   /** What every number on the sheet comes to now, the whole page in one pass. */
   const quantities = quantitiesOf(settled);
@@ -1906,7 +1914,7 @@ export function Canvas({
               {under && under !== spotlight && !selection.includes(under) && (
                 <Lit ids={litWith(under, everything)} />
               )}
-              <Lit ids={litReading} />
+              <Lit ids={readingHighlights} />
               <Snapped snap={snap} />
               <Holding marks={marks} />
               <Preview
@@ -2013,14 +2021,7 @@ export function Canvas({
               onDrop={dropWriting}
               onToggleLabel={onToggleLabel}
               onMeasure={measureWriting}
-              onHover={(id) => {
-                const found = id ? everything.find((object) => object.id === id) : null;
-                setLitReading(
-                  found && isMeasurement(found)
-                    ? [...found.of, ...litWith(found.id, everything)]
-                    : [],
-                );
-              }}
+              onHover={setLitReading}
               onOpen={(id) => {
                 const found = everything.find((object) => object.id === id);
                 setReadingPanel(found && isMeasurement(found) && hasPanel(found) ? id : null);
