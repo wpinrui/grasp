@@ -110,6 +110,7 @@ export const COMMON_NOTATION: Pick<Notation, "name" | "sample" | "html">[] = [
   { name: "Multiply", sample: "×", html: "×" },
   { name: "Divide", sample: "÷", html: "÷" },
   NOTATION[0],
+  { name: "Triangle", sample: "△", html: "△" },
   { name: "Angle", sample: "∠", html: "∠" },
   { name: "Degree", sample: "°", html: "°" },
   { name: "Less than or equal", sample: "≤", html: "≤" },
