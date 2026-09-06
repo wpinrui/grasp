@@ -1,4 +1,11 @@
 import { type MouseEvent, type RefObject, useEffect, useReducer } from "react";
+import {
+  type CaptionTextStyle,
+  clearTextStyle,
+  htmlMarks,
+  markCaption,
+  markStyle,
+} from "../sketch/captionFormatting";
 import { clearCaptionColours, insertAtCaret } from "../sketch/captions";
 import type { CaptionAlign, LinePattern, LineWidth, SketchCaption } from "../sketch/model";
 import { LINE_PATTERNS, LINE_WIDTHS } from "../sketch/model";
@@ -137,14 +144,17 @@ export function Palette({
     if (element) onCaption({ html: element.innerHTML });
   }
 
-  function setFace(style: Partial<CSSStyleDeclaration>, whole: Partial<SketchCaption>) {
+  function setFace(style: CaptionTextStyle, whole: Partial<SketchCaption>) {
     const run = chosenRun(editor.current);
     if (run) {
       wrapRun(run, style);
       commit();
       return;
     }
-    onCaption(whole);
+    if (editor.current) {
+      clearTextStyle(editor.current, style);
+      onCaption({ ...whole, html: editor.current.innerHTML });
+    } else onCaption(whole);
   }
 
   /** Colour always reaches the whole caption, even when a run is selected. */
@@ -158,10 +168,21 @@ export function Palette({
       onLabelMark(command, !labelMarks[command]);
       return;
     }
+    if (!editing && caption) {
+      onCaption({ html: markCaption(caption.html, command, !htmlMarks(caption.html)[command]) });
+      return;
+    }
     // Nothing open to type into, so the key arms the tool: the next caption
     // starts out written this way.
     if (!editing && armedText) {
       onArmText({ [command]: !armedText[command] });
+      return;
+    }
+    const run = chosenRun(editor.current);
+    if (run) {
+      wrapRun(run, markStyle(command, !caretMarks(editor.current)[command]));
+      commit();
+      redraw();
       return;
     }
     editor.current?.focus();
@@ -175,12 +196,16 @@ export function Palette({
   const here = editing ? caretLook(editor.current) : {};
   const marks =
     labelMarks ??
-    (editing ? caretMarks() : (armedText ?? { bold: false, italic: false, underline: false }));
+    (editing
+      ? caretMarks(editor.current)
+      : caption
+        ? htmlMarks(caption.html)
+        : (armedText ?? { bold: false, italic: false, underline: false }));
   /**
    * The three keys go in at the caret, so they want a caption open or a label
    * picked, and failing both a tool armed to write the next caption.
    */
-  const marksOff = !editing && !labelMarks && !armedText;
+  const marksOff = !editing && !caption && !labelMarks && !armedText;
   /** The ranging: the caption it is set on, or the one about to be written. */
   const ranged = caption ? caption.align : armedText?.align;
   const rangeOff = !caption && !armedText;

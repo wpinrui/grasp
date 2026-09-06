@@ -1,3 +1,4 @@
+import { type CaptionTextStyle, clearTextStyle, rangeMarks } from "../sketch/captionFormatting";
 import type { TextLook } from "../sketch/model";
 import type { TextMark } from "../sketch/text";
 
@@ -12,20 +13,35 @@ export function chosenRun(editor: HTMLDivElement | null): Range | null {
   if (!selection || selection.rangeCount === 0) return null;
   const range = selection.getRangeAt(0);
   if (range.collapsed || !editor.contains(range.commonAncestorContainer)) return null;
-  return range;
+  // A drag can select part of a non-editable value. Format its whole link so
+  // extracting the selection never splits its identity or puts styles inside
+  // text that the next measurement update will replace.
+  const linkAt = (node: Node) =>
+    (node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement)?.closest(
+      "[data-link]",
+    );
+  const start = linkAt(range.startContainer);
+  const end = linkAt(range.endContainer);
+  const whole = range.cloneRange();
+  if (start && editor.contains(start)) whole.setStartBefore(start);
+  if (end && editor.contains(end)) whole.setEndAfter(end);
+  return whole;
 }
 
 /** Set the chosen run in its own type, and leave it chosen. */
-export function wrapRun(range: Range, style: Partial<CSSStyleDeclaration>) {
+export function wrapRun(range: Range, style: CaptionTextStyle) {
   const span = document.createElement("span");
   Object.assign(span.style, style);
-  span.appendChild(range.extractContents());
+  const content = range.extractContents();
+  clearTextStyle(content, style);
+  span.appendChild(content);
   range.insertNode(span);
   const selection = window.getSelection();
   const kept = document.createRange();
-  kept.selectNodeContents(span);
+  kept.selectNode(span);
   selection?.removeAllRanges();
   selection?.addRange(kept);
+  document.dispatchEvent(new Event("selectionchange"));
 }
 
 /**
@@ -36,7 +52,11 @@ export function wrapRun(range: Range, style: Partial<CSSStyleDeclaration>) {
  */
 export function caretLook(editor: HTMLDivElement | null): Partial<TextLook> {
   const selection = window.getSelection();
-  const node = selection?.focusNode;
+  const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+  const node =
+    range && !range.collapsed && range.startContainer.nodeType === Node.ELEMENT_NODE
+      ? (range.startContainer.childNodes[range.startOffset] ?? range.startContainer)
+      : selection?.focusNode;
   if (!editor || !node || !editor.contains(node)) return {};
   let found = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
   const look: Partial<TextLook> = {};
@@ -58,7 +78,9 @@ export function caretLook(editor: HTMLDivElement | null): Partial<TextLook> {
 }
 
 /** Whether the caret is in bold, italic or underlined text right now. */
-export function caretMarks(): Record<TextMark, boolean> {
+export function caretMarks(editor?: HTMLDivElement | null): Record<TextMark, boolean> {
+  const range = chosenRun(editor ?? null);
+  if (range) return rangeMarks(range);
   const read = (command: string) => {
     try {
       return document.queryCommandState(command);

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { htmlMarks } from "../sketch/captionFormatting";
 import { captionReadings } from "../sketch/captionLinks";
 import { linkHtml, plainText } from "../sketch/captions";
 import {
@@ -114,4 +115,18 @@ it("tabs between filled fraction slots after their placeholders are gone", () =>
   expect(
     window.getSelection()?.anchorNode?.parentElement?.closest(".cap-frac__bottom"),
   ).toBeTruthy();
+});
+
+it.each(["b", "i", "u"])("formats a selected live measurement with Ctrl+%s", (key) => {
+  const given = props(linkHtml("m", "old"));
+  const shown = render(<CaptionBox {...given} />);
+  const link = shown.container.querySelector("[data-link]");
+  if (!link) throw new Error("Missing link");
+  fireEvent.pointerDown(link, { button: 0 });
+  const editor = shown.getByRole("textbox");
+  fireEvent.keyDown(editor, { key, ctrlKey: true });
+  const mark = key === "b" ? "bold" : key === "i" ? "italic" : "underline";
+  expect(htmlMarks(editor.innerHTML)[mark]).toBe(true);
+  fireEvent.keyDown(editor, { key, ctrlKey: true });
+  expect(htmlMarks(editor.innerHTML)[mark]).toBe(false);
 });

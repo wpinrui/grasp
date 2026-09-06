@@ -6,11 +6,13 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
+import { markStyle } from "../sketch/captionFormatting";
 import type { CaptionReading } from "../sketch/captionLinks";
 import { clearCaptionColours, refreshLinks, withNames } from "../sketch/captions";
 import type { CaptionAlign, Position, SketchCaption, View } from "../sketch/model";
 import { drawnAs } from "../sketch/text";
 import { CaptionLinkPanel, selectCaptionLink } from "./CaptionLinkPanel";
+import { caretMarks, chosenRun, wrapRun } from "./paletteCaret";
 import "./CaptionBox.css";
 
 /** The least a caption can be dragged down to, in screen pixels. */
@@ -292,6 +294,16 @@ export function CaptionBox({
   function keyed(event: ReactKeyboardEvent<HTMLDivElement>) {
     const element = body.current;
     if (!element) return;
+    const mark = ({ b: "bold", i: "italic", u: "underline" } as const)[
+      event.key.toLowerCase() as "b" | "i" | "u"
+    ];
+    const run = chosenRun(element);
+    if ((event.ctrlKey || event.metaKey) && mark && run) {
+      event.preventDefault();
+      wrapRun(run, markStyle(mark, !caretMarks(element)[mark]));
+      onCommit(caption.id, element.innerHTML);
+      return;
+    }
     if (event.key === "Escape") {
       event.preventDefault();
       onCommit(caption.id, element.innerHTML);

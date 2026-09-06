@@ -20,6 +20,7 @@ import {
   takesWeight,
   toolDraws,
 } from "../sketch/armed";
+import { captionTextStyle } from "../sketch/captionFormatting";
 import {
   isArc,
   isCaption,
@@ -368,13 +369,24 @@ export function paletteState(context: PaletteContext) {
     const spread = Object.keys(look).length > 0 ? new Set(writing.map((one) => one.id)) : null;
     if (!chosenCaption && !spread?.size) return;
     const before = sketch.read();
+    const captionStyle = {
+      ...(change.font !== undefined ? { fontFamily: change.font } : {}),
+      ...(change.size !== undefined ? { fontSize: `${change.size}pt` } : {}),
+    };
     sketch.commit({
       ...before,
       objects: before.objects.map((object) => {
         if (chosenCaption && object.id === chosenCaption.id && isCaption(object)) {
-          return { ...object, ...change };
+          return {
+            ...object,
+            ...change,
+            html: captionTextStyle(change.html ?? object.html, captionStyle),
+          };
         }
-        if (spread?.has(object.id) && isWriting(object)) return { ...object, ...look };
+        if (spread?.has(object.id) && isWriting(object))
+          return isCaption(object)
+            ? { ...object, ...look, html: captionTextStyle(object.html, captionStyle) }
+            : { ...object, ...look };
         return object;
       }),
     });

@@ -28,6 +28,8 @@ Selected lines combine a blue highlight with thin blue dashed outlines, and sele
 - **Mark up.** Label sides of a polygon as equal, parallel, or add angle arcs for more polished classroom demos or for worksheet printing.
 - **Export.** Export a selection or a page to an image file or to your clipboard. Optimise it for your printed worksheet or your colourful slideshow.
 
+Caption font, size, bold, italic, and underline formatting applies to dynamic measurement links as well as ordinary text. Select a caption to format it as a whole, or select text while editing to format that selection.
+
 ## AI-powered scripting
 
 GRASP comes with a full scripting language that an AI model can figure out. Generate complex proofs and sketches with minimal effort.
