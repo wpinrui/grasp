@@ -123,6 +123,7 @@
   --color-object-edge: rgba(24, 28, 33, 0.18);
   --color-selection: #0b7ec4;
   --color-selection-paper: #ffffff;
+  --color-selection-shade: #000000;
   --color-selection-halo: rgba(11, 126, 196, 0.16);
   /* Points a transform dialog is holding, and what it would make */
   --color-interior: #0b7ec4;

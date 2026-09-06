@@ -87,6 +87,13 @@ describe("geometry selection contrast", () => {
         expect(outline.getAttribute("style")).toContain(`#${pattern?.id}`);
       }
       expect(fill?.getAttribute("style")).toContain("fill-opacity: 0.25");
+      const stripe = container.querySelector<SVGElement>(
+        `[data-selection-id="${id}"] .canvas__selection-stripe`,
+      );
+      const colour = colours[Number(id.slice(-1))];
+      expect(stripe?.style.stroke).toBe(
+        `color-mix(in srgb, var(${colour}) 85%, var(--color-selection-shade))`,
+      );
     }
   });
 
@@ -109,6 +116,17 @@ describe("geometry selection contrast", () => {
     expect(one.querySelector("pattern")?.getAttribute("patternTransform")).toBe(directions[2]);
   });
 
+  it("uses the sheet's default fill colour when a fill has no colour override", () => {
+    const objects = polygons(["--color-ink-blue"]).map((object) => ({
+      ...object,
+      colour: undefined,
+    }));
+    const container = draw(objects, ["fill-0"]);
+    expect(container.querySelector<SVGElement>(".canvas__selection-stripe")?.style.stroke).toBe(
+      "color-mix(in srgb, var(--color-interior) 85%, var(--color-selection-shade))",
+    );
+  });
+
   it.each(["hairline", "thin", "medium", "thick"] as const)(
     "keeps contrasting rails outside a %s blue line",
     (weight) => {
@@ -125,6 +143,10 @@ describe("geometry selection contrast", () => {
       const original = overlay?.querySelector<SVGElement>(".canvas__line");
       const white = overlay?.querySelector<SVGElement>(".canvas__selection-paper");
       const blue = overlay?.querySelector<SVGElement>(".canvas__selection-dashes");
+      const highlight = overlay?.querySelector<SVGElement>(".canvas__selection-highlight");
+      expect(highlight?.style.strokeWidth).toBe("7");
+      expect(highlight?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+      expect(highlight?.nextElementSibling).toBe(original);
       expect(original?.style.stroke).toBe("var(--color-ink-blue)");
       expect(original?.style.strokeDasharray).toBe("6 4");
       expect(Number(blue?.style.strokeWidth)).toBe(Number(original?.style.strokeWidth) + 6);

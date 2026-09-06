@@ -30,8 +30,13 @@ export function Selection() {
                 patternUnits="userSpaceOnUse"
                 patternTransform={`rotate(${angle}) scale(${1 / scale})`}
               >
-                <path className="canvas__selection-stripe-paper" d="M 6 0 V 12" />
-                <path className="canvas__selection-stripe" d="M 6 0 V 12" />
+                <path
+                  className="canvas__selection-stripe"
+                  d="M 6 0 V 12"
+                  style={{
+                    stroke: `color-mix(in srgb, var(${object.colour ?? "--color-interior"}) 85%, var(--color-selection-shade))`,
+                  }}
+                />
               </pattern>
             </defs>
             <InteriorGlyph
@@ -65,6 +70,11 @@ export function Selection() {
               object={object}
               className="canvas__selection-paper"
               style={{ strokeWidth: width + 4 }}
+            />
+            <PathGlyph
+              object={object}
+              className="canvas__selection-highlight"
+              style={{ strokeWidth: 7 }}
             />
             <PathGlyph object={object} />
           </g>
