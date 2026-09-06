@@ -87,13 +87,6 @@ describe("geometry selection contrast", () => {
         expect(outline.getAttribute("style")).toContain(`#${pattern?.id}`);
       }
       expect(fill?.getAttribute("style")).toContain("fill-opacity: 0.25");
-      const stripe = container.querySelector<SVGElement>(
-        `[data-selection-id="${id}"] .canvas__selection-stripe`,
-      );
-      const colour = colours[Number(id.slice(-1))];
-      expect(stripe?.style.stroke).toBe(
-        `color-mix(in srgb, var(${colour}) 95%, var(--color-selection-shade))`,
-      );
     }
   });
 
@@ -116,15 +109,18 @@ describe("geometry selection contrast", () => {
     expect(one.querySelector("pattern")?.getAttribute("patternTransform")).toBe(directions[2]);
   });
 
-  it("uses the sheet's default fill colour when a fill has no colour override", () => {
-    const objects = polygons(["--color-ink-blue"]).map((object) => ({
-      ...object,
-      colour: undefined,
-    }));
-    const container = draw(objects, ["fill-0"]);
-    expect(container.querySelector<SVGElement>(".canvas__selection-stripe")?.style.stroke).toBe(
-      "color-mix(in srgb, var(--color-interior) 95%, var(--color-selection-shade))",
-    );
+  it("composites all stripes in one fifteen-percent layer so overlapping selections do not accumulate darkness", () => {
+    const container = draw(polygons(Array(5).fill("--color-ink-blue")), [
+      "fill-0",
+      "fill-1",
+      "fill-2",
+      "fill-3",
+      "fill-4",
+    ]);
+    const layers = container.querySelectorAll(".canvas__selection-fills");
+    expect(layers).toHaveLength(1);
+    expect(layers[0].getAttribute("opacity")).toBe("0.15");
+    expect(layers[0].querySelectorAll(".canvas__selection-fill")).toHaveLength(5);
   });
 
   it.each(["hairline", "thin", "medium", "thick"] as const)(

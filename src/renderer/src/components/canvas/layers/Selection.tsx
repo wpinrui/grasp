@@ -13,38 +13,36 @@ export function Selection() {
   const fills = objects.filter(isInterior);
   return (
     <g className="canvas__selection" pointerEvents="none">
-      {fills.map((object, index) => {
-        if (!selection.includes(object.id)) return null;
-        const shape = interiorShape(object, settled);
-        if (!shape) return null;
-        const id = `${patternId}-${index}`;
-        return (
-          <g key={object.id} data-selection-id={object.id}>
-            <defs>
-              <pattern
-                id={id}
-                width={12}
-                height={12}
-                patternUnits="userSpaceOnUse"
-                patternTransform={`rotate(45) scale(${1 / scale})`}
-              >
-                <path
-                  className="canvas__selection-stripe"
-                  d="M 6 0 V 12"
-                  style={{
-                    stroke: `color-mix(in srgb, var(${object.colour ?? "--color-interior"}) 95%, var(--color-selection-shade))`,
-                  }}
+      {fills.some((object) => selection.includes(object.id)) && (
+        <g className="canvas__selection-fills" opacity={0.15}>
+          {fills.map((object, index) => {
+            if (!selection.includes(object.id)) return null;
+            const shape = interiorShape(object, settled);
+            if (!shape) return null;
+            const id = `${patternId}-${index}`;
+            return (
+              <g key={object.id} data-selection-id={object.id}>
+                <defs>
+                  <pattern
+                    id={id}
+                    width={12}
+                    height={12}
+                    patternUnits="userSpaceOnUse"
+                    patternTransform={`rotate(45) scale(${1 / scale})`}
+                  >
+                    <path className="canvas__selection-stripe" d="M 6 0 V 12" />
+                  </pattern>
+                </defs>
+                <InteriorGlyph
+                  shape={shape}
+                  className="canvas__selection-fill"
+                  style={{ fill: `url(#${id})` }}
                 />
-              </pattern>
-            </defs>
-            <InteriorGlyph
-              shape={shape}
-              className="canvas__selection-fill"
-              style={{ fill: `url(#${id})` }}
-            />
-          </g>
-        );
-      })}
+              </g>
+            );
+          })}
+        </g>
+      )}
       {objects.map((object) => {
         if (
           !selection.includes(object.id) ||

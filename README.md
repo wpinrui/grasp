@@ -16,7 +16,7 @@ Drag one corner and every angle, length and area recalculates. Students can see 
 
 Enjoy creating sketches with a user-first set of panels. Iterate rapidly with keyboard shortcuts to activate the exact tool you need. Plain clicks toggle individual objects or labels without clearing the other selections. Drag a selection box to include both, press Escape to clear both, or use Select All for visible items allowed by the Arrow filter. Selected labels move together independently of their parent objects.
 
-Selected lines combine a blue highlight with thin blue dashed outlines, and selected fills have parallel 45-degree stripes, 5px wide, in a 5% darker shade of their own colour.
+Selected lines combine a blue highlight with thin blue dashed outlines, and selected fills have parallel 45-degree stripes, 5px wide, that darken the displayed fill by 15%, without accumulating extra darkness where selections overlap.
 
 ## Features
 
