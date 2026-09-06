@@ -16,6 +16,7 @@ import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "no
 import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
+import { LANDING_VIDEOS } from "./scripts/landing-videos";
 import { ASSET_DIR, unpackLanding } from "./scripts/unpack-landing";
 
 const { version } = JSON.parse(readFileSync("package.json", "utf8")) as { version: string };
@@ -48,6 +49,10 @@ function landingPage(): Plugin {
       mkdirSync(resolve(WEB, ASSET_DIR), { recursive: true });
       for (const asset of page.assets) {
         writeFileSync(resolve(WEB, ASSET_DIR, asset.name), asset.bytes);
+      }
+      // Demo videos stay separate from the packed page and load when their players need them.
+      for (const { source, name } of LANDING_VIDEOS) {
+        copyFileSync(resolve(source), resolve(WEB, ASSET_DIR, name));
       }
       // One favicon at the site root, which is where both pages point at it:
       // each names it at the absolute path `/favicon.png`, the landing page in
