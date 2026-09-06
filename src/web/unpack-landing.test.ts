@@ -9,6 +9,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { LANDING_VIDEOS } from "../../scripts/landing-videos";
 import { ASSET_DIR, islandText, unpackLanding } from "../../scripts/unpack-landing";
 
 const BUNDLE = "grasp-landing.html";
@@ -97,11 +98,20 @@ describe("the landing page as it is published", () => {
    * unpacking built wrongly cannot hide among the ones it built correctly.
    */
   it("writes every asset it asks for", () => {
-    const named = page().assets.reduce(
+    const named = [...page().assets, ...LANDING_VIDEOS].reduce(
       (running, asset) => running + occurrences(page().html, pathOf(asset.name)),
       0,
     );
     expect(occurrences(page().html, `/${ASSET_DIR}/`)).toBe(named);
+  });
+
+  it("ships the demo video sources referenced by the players", () => {
+    for (const video of LANDING_VIDEOS) {
+      const bytes = readFileSync(video.source);
+      expect(bytes.length).toBeGreaterThan(0);
+      expect(bytes.subarray(4, 8).toString()).toBe("ftyp");
+      expect(page().html).toContain(pathOf(video.name));
+    }
   });
 
   /**

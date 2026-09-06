@@ -8,6 +8,7 @@ directories:
 files:
   - out/**
   - resources/**
+  - "!resources/landing/**"
   - "!**/*.map"
 asarUnpack:
   - resources/**
