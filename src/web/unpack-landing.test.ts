@@ -85,6 +85,15 @@ describe("the landing page as it is published", () => {
     expect(page().html).not.toContain("__bundler/");
   });
 
+  it("links the landing footer to the user manual", () => {
+    expect(page().html).toContain(
+      '<a href="/manual/" style="color: rgba(251,247,238,0.8);">Manual</a>',
+    );
+    expect(page().html.indexOf('href="/manual/"')).toBeLessThan(
+      page().html.indexOf('href="https://github.com/wpinrui/grasp"'),
+    );
+  });
+
   it("asks for every asset it writes", () => {
     const unasked = page()
       .assets.filter((asset) => !page().html.includes(pathOf(asset.name)))
@@ -236,6 +245,14 @@ describe("the shapes the landing page cannot be published in", () => {
   it("stops rather than publish a page with nowhere to hang its resources", () => {
     const headless = bundleWith("template", JSON.stringify("<html><body>hi</body></html>"));
     expect(() => unpackLanding(headless)).toThrow(/head/);
+  });
+
+  it("stops rather than omit the manual when the footer shape changes", () => {
+    const withoutFooter = bundleWith(
+      "template",
+      JSON.stringify('<html><head></head><body><a href="#elsewhere">Elsewhere</a></body></html>'),
+    );
+    expect(() => unpackLanding(withoutFooter)).toThrow(/footer link/);
   });
 
   it("stops rather than read an island it cannot do without", () => {

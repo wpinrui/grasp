@@ -59,7 +59,19 @@ describe("what a phone leaves out", () => {
       "Display",
       "Construct",
       "Transform",
+      "Help",
     ]);
+  });
+
+  it("keeps the manual without the desktop about box", () => {
+    const desktop = MENUS.find((menu) => menu.label === "Help");
+    const help = phoneMenus().find((menu) => menu.label === "Help");
+    if (!desktop || !help) throw new Error("no Help menu");
+    expect(items(desktop.items).map((entry) => entry.label)).toEqual([
+      "User Manual",
+      "About GRASP...",
+    ]);
+    expect(items(help.items).map((entry) => entry.label)).toEqual(["User Manual"]);
   });
 });
 

@@ -6,6 +6,7 @@
  * window owns arrives as one of those handles rather than as thirty callbacks.
  */
 
+import { MANUAL_URL } from "../../../shared/links";
 import { useHoverPreview } from "../components/HoverPreview";
 import { MenuBar } from "../components/MenuBar";
 import type { MenuAction } from "../components/menus";
@@ -210,6 +211,7 @@ export function Menus({
       onAction={(action) => {
         if (action === "new-sketch") doc.newSketch();
         else if (action === "open") void doc.open();
+        else if (action === "manual") void window.api.about.openLink(MANUAL_URL);
         else if (action === "about") dialogs.setAbout(true);
         else if (action === "preferences") settings.setDrafted(settings.prefs);
         else if (action === "page-setup") settings.setSetupOpen(true);

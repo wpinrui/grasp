@@ -12,7 +12,7 @@
  * against whichever of those a visitor arrived at.
  */
 
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
@@ -42,6 +42,7 @@ function landingPage(): Plugin {
       rmSync(resolve(WEB, "index.html"), { force: true });
       rmSync(resolve(WEB, "favicon.png"), { force: true });
       rmSync(resolve(WEB, ASSET_DIR), { recursive: true, force: true });
+      rmSync(resolve(WEB, "manual"), { recursive: true, force: true });
     },
     closeBundle() {
       const page = unpackLanding(readFileSync(resolve("grasp-landing.html"), "utf8"));
@@ -54,10 +55,10 @@ function landingPage(): Plugin {
       for (const { source, name } of LANDING_VIDEOS) {
         copyFileSync(resolve(source), resolve(WEB, ASSET_DIR, name));
       }
-      // One favicon at the site root, which is where both pages point at it:
-      // each names it at the absolute path `/favicon.png`, the landing page in
-      // its own markup and the app from under /launch.
+      // One favicon at the site root, which every public page names at the
+      // absolute path `/favicon.png`.
       copyFileSync(resolve("resources/favicon.png"), resolve(WEB, "favicon.png"));
+      cpSync(resolve("src/manual"), resolve(WEB, "manual"), { recursive: true });
     },
   };
 }

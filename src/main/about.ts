@@ -8,9 +8,10 @@
  */
 
 import { app, ipcMain, shell } from "electron";
+import { MANUAL_URL } from "../shared/links";
 
 /** Where GRASP lives. Nothing else opens, whatever the renderer asks for. */
-const ALLOWED = ["https://github.com/wpinrui/grasp", "https://github.com/wpinrui"];
+const ALLOWED = ["https://github.com/wpinrui/grasp", "https://github.com/wpinrui", MANUAL_URL];
 
 export function registerAboutHandlers(): void {
   ipcMain.on("app:version", (event) => {

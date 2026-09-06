@@ -54,6 +54,9 @@ interface External {
 /** Where the assets sit under the published site. */
 export const ASSET_DIR = "assets";
 
+/** The permanent guide sits beside the landing page, rather than inside the app. */
+const MANUAL_LINK = '<a href="/manual/" style="color: rgba(251,247,238,0.8);">Manual</a>';
+
 /** What each kind of asset is called on disk. */
 const SUFFIX: Record<string, string> = {
   "image/png": ".png",
@@ -140,6 +143,16 @@ function withResources(html: string, script: string): string {
   return html.slice(0, at) + script + html.slice(at);
 }
 
+/** Add the guide to the public footer without changing the packed page format. */
+function withManualLink(html: string): string {
+  const github =
+    '<a href="https://github.com/wpinrui/grasp" style="color: rgba(251,247,238,0.8);">GitHub</a>';
+  if (!html.includes(github)) {
+    throw new Error("The landing page carries no footer link to place the manual beside.");
+  }
+  return html.replace(github, `${MANUAL_LINK}\n      ${github}`);
+}
+
 /**
  * The packed page, as a document and the files beside it.
  *
@@ -171,5 +184,6 @@ export function unpackLanding(bundle: string): Unpacked {
 
   let html = island<string>(bundle, "template");
   for (const [uuid, path] of Object.entries(at)) html = html.split(uuid).join(path);
-  return { html: withResources(html, resourceScript(externals, at)), assets };
+  html = withResources(html, resourceScript(externals, at));
+  return { html: withManualLink(html), assets };
 }

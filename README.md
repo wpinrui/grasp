@@ -6,6 +6,8 @@ A free and open-source geometry sketchpad for your classroom. Draw accurate figu
 
 [Try GRASP in your browser](https://grasp-math.netlify.app), or download a desktop release for Windows, macOS, or Linux.
 
+New to GRASP? The [user manual](https://grasp-math.netlify.app/manual/) covers the small set of tools and workflows used for most sketches.
+
 ![The GRASP window: a labelled triangle with its angles, side and area measured](docs/images/window.png)
 
 ## Dynamic measurements
