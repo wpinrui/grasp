@@ -12,7 +12,7 @@ import { type RefObject, useEffect, useRef, useState } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
 import { Canvas } from "../components/Canvas";
 import type { SketchObject, SketchState } from "../sketch/model";
-import { onlyPick, togglePick } from "../sketch/picking";
+import { labelClickPick } from "../sketch/picking";
 import { useSketch } from "../sketch/useSketch";
 import { SHEET, stubSheetBox } from "./sheet";
 
@@ -65,12 +65,6 @@ export interface HarnessProps {
   polygonKind?: string;
   /** What the Arrow is armed with, which is what its cursor is badged by. */
   arrowKind?: string;
-}
-
-/** What a label click leaves held, the way Workspace reads it. */
-function held(was: string[], id: string | null, additive?: boolean): string[] {
-  if (id === null) return [];
-  return additive === true ? togglePick(was, id) : onlyPick(id);
 }
 
 /**
@@ -131,7 +125,7 @@ function Harness({
       labelPick={labelPick}
       selectAllRef={selectAllRef}
       onLabelSelection={setLabelPick}
-      onLabelPick={(id, additive) => setLabelPick((was) => held(was, id, additive))}
+      onLabelPick={(id, additive) => setLabelPick((was) => labelClickPick(was, id, additive))}
       onEditValue={() => {}}
       onCaptureRow={() => {}}
       onDropRow={() => {}}

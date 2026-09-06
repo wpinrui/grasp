@@ -15,7 +15,7 @@ import { Palette } from "../components/Palette";
 import { SnapPanel } from "../components/SnapPanel";
 import { Toolbox } from "../components/Toolbox";
 import type { LineForm, SketchObject } from "../sketch/model";
-import { onlyPick, togglePick } from "../sketch/picking";
+import { labelClickPick } from "../sketch/picking";
 import { canvasTokens } from "../sketch/prefs";
 import type { useDocument } from "../sketch/useDocument";
 import type { Sketch } from "../sketch/useSketch";
@@ -113,13 +113,9 @@ export function Workspace({
           spotlight={settings.panels.length === 0 ? null : tools.spotlight}
           labelPick={tools.labelPick}
           onLabelSelection={tools.setLabelPick}
-          onLabelPick={(id, additive) => {
-            if (id === null) {
-              tools.setLabelPick([]);
-              return;
-            }
-            tools.setLabelPick((was) => (additive === true ? togglePick(was, id) : onlyPick(id)));
-          }}
+          onLabelPick={(id, additive) =>
+            tools.setLabelPick((was) => labelClickPick(was, id, additive))
+          }
           onViewport={tools.setViewport}
           snapping={settings.snapping}
           measureKind={tools.variants.measure}
