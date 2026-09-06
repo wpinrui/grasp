@@ -49,8 +49,7 @@ const SLACK = 2;
 /** Never in a picture: what the app draws to say what it is doing. */
 const UI_ONLY = [
   ".canvas__halo",
-  ".canvas__circle-halo",
-  ".canvas__line-halo",
+  ".canvas__selection",
   ".canvas__mark-halo",
   ".canvas__snap",
   ".canvas__snap-band",

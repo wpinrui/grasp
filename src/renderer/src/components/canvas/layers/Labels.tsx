@@ -53,6 +53,7 @@ interface LabelsProps {
   onGrab: (event: PointerEvent<HTMLElement>, id: string, off: Position) => void;
   onDrag: (event: PointerEvent<HTMLElement>) => void;
   onDrop: (event: PointerEvent<HTMLElement>) => void;
+  onCancel: () => void;
 }
 
 /** What a name is typed into, in place of the label, until it is settled. */
@@ -102,6 +103,7 @@ export function Labels({
   onGrab,
   onDrag,
   onDrop,
+  onCancel,
 }: LabelsProps) {
   /** Where a label sits on screen: what it hangs from, moved by its own offset. */
   function whereOf(label: DrawnLabel) {
@@ -141,6 +143,7 @@ export function Labels({
             onPointerDown={(event) => onGrab(event, label.id, label.off)}
             onPointerMove={onDrag}
             onPointerUp={onDrop}
+            onPointerCancel={onCancel}
             onDoubleClick={() => onNaming({ id: label.id, text: label.name })}
           >
             {label.name}

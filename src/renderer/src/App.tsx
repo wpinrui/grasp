@@ -78,7 +78,7 @@ export function App() {
   /** Which dialog is open, and what it is holding while it is. */
   const dialogs = useDialogs();
   const sketch = useSketch();
-  const { undo, redo, canUndo, canRedo, remove, selectAll } = sketch;
+  const { undo, redo, canUndo, canRedo, remove } = sketch;
   /** What the window remembers between runs: the dock, the steps, the paper. */
   const settings = useSettings({ sketch, phone, setSpotlight: tools.setSpotlight });
   // Whether a point that lands says its name straight away, told to the sketch
@@ -323,6 +323,9 @@ export function App() {
     }
   }, [tools.editing]);
 
+  /** Select All goes through the canvas, which knows what the Arrow can take. */
+  const selectAllVisible = () => tools.selectAllVisible.current();
+
   useKeys({
     // The letter a relabel run starts at is asked for in a dialog like any
     // other, so it owns the keyboard while it is up.
@@ -334,7 +337,7 @@ export function App() {
     saveSketch: () => void doc.save(),
     closeSketch: doc.close,
     quit: () => void doc.quit(),
-    selectAll,
+    selectAll: selectAllVisible,
     cut: clipboard.cutSelection,
     copy: clipboard.copySelection,
     paste: clipboard.pasteObjects,
@@ -383,6 +386,7 @@ export function App() {
       {window.api.platform !== "web" && <TitleBar title={doc.title} />}
       <Menus
         sketch={sketch}
+        onSelectAll={selectAllVisible}
         doc={doc}
         dialogs={dialogs}
         numbers={numbers}

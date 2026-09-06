@@ -53,10 +53,8 @@ export function useTooling() {
 
   /**
    * The labels picked on the sheet, held as the objects they name, since a
-   * label belongs to what it names rather than standing on its own. Picking one
-   * lets go of the selection, but the two are held apart rather than kept in
-   * step: selecting something afterwards leaves these held and simply wins, and
-   * they let go on a tool switch the way the rest of what a tool was doing does.
+   * label belongs to what it names rather than standing on its own. Labels and
+   * objects can be selected together without selecting each other's targets.
    */
   const [labelPick, setLabelPick] = useState<string[]>([]);
 
@@ -85,6 +83,7 @@ export function useTooling() {
   const [pointSize, setPointSize] = useState<PointSize>(DEFAULT_POINT_SIZE);
   /** What Escape does to the sheet, for the phone's Cancel key to do the same. */
   const cancelSheet = useRef(() => {});
+  const selectAllVisible = useRef(() => {});
 
   /**
    * The kinds being kept out of the way wholesale, which is a different thing
@@ -127,6 +126,7 @@ export function useTooling() {
     pointSize,
     setPointSize,
     cancelSheet,
+    selectAllVisible,
     hiddenKinds,
     setHiddenKinds,
     toolsOff,

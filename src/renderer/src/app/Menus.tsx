@@ -67,6 +67,7 @@ const BUILDS = new Set<MenuAction>([
 
 interface MenusProps {
   sketch: Sketch;
+  onSelectAll: () => void;
   doc: ReturnType<typeof useDocument>;
   dialogs: Dialogs;
   numbers: Numbers;
@@ -96,6 +97,7 @@ interface MenusProps {
 
 export function Menus({
   sketch,
+  onSelectAll,
   doc,
   dialogs,
   numbers,
@@ -225,7 +227,7 @@ export function Menus({
         else if (action === "cut") clipboard.cutSelection();
         else if (action === "copy") clipboard.copySelection();
         else if (action === "paste") clipboard.pasteObjects();
-        else if (action === "select-all") sketch.selectAll();
+        else if (action === "select-all") onSelectAll();
         else if (action === "select-parents") clipboard.selectKin("parents");
         else if (action === "select-children") clipboard.selectKin("children");
         else if (action === "show-labels") naming.toggleLabels();

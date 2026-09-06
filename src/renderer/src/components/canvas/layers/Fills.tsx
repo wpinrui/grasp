@@ -10,7 +10,7 @@ import { interiorShape } from "../shapes";
 import { InteriorGlyph } from "./Interior";
 
 export function Fills() {
-  const { objects, settled, selection } = useSheet();
+  const { objects, settled } = useSheet();
   return (
     <>
       {objects.map((object) => {
@@ -22,9 +22,7 @@ export function Fills() {
             key={object.id}
             shape={shape}
             dataId={object.id}
-            className={`canvas__interior${
-              selection.includes(object.id) ? " canvas__interior--selected" : ""
-            }`}
+            className="canvas__interior"
             style={fillLook(object, true)}
           />
         );

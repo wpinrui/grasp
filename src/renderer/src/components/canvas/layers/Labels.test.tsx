@@ -30,6 +30,7 @@ function drawn(ghost: DrawnLabel | null) {
       onGrab={() => {}}
       onDrag={() => {}}
       onDrop={() => {}}
+      onCancel={() => {}}
     />,
   );
 }

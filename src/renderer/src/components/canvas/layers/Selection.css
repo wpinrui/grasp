@@ -1,0 +1,27 @@
+.canvas__selection-paper,
+.canvas__selection-dashes,
+.canvas__selection-highlight {
+  fill: none;
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+}
+
+.canvas__selection-highlight {
+  stroke: var(--color-selection-band);
+  stroke-linecap: round;
+}
+
+.canvas__selection-paper {
+  /* The sheet colour itself, read here rather than derived into a token of its
+     own: a token that resolves var() at :root cannot see the sheet override. */
+  stroke: var(--color-canvas);
+}
+
+.canvas__selection-dashes {
+  stroke: var(--color-selection);
+  stroke-dasharray: 4 4;
+}
+
+.canvas__selection-stripe {
+  stroke: var(--color-selection-shade);
+}

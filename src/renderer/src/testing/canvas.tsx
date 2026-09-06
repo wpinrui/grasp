@@ -8,10 +8,11 @@
  */
 
 import { fireEvent, render } from "@testing-library/react";
-import { useEffect, useRef } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
 import { Canvas } from "../components/Canvas";
 import type { SketchObject, SketchState } from "../sketch/model";
+import { labelClickPick } from "../sketch/picking";
 import { useSketch } from "../sketch/useSketch";
 import { SHEET, stubSheetBox } from "./sheet";
 
@@ -42,6 +43,9 @@ export interface HarnessProps {
   tool: string;
   /** What is picked when the figure is laid out. */
   selection?: string[];
+  labelSelection?: string[];
+  selectAllRef?: RefObject<() => void>;
+  hiddenKinds?: { marks: boolean; text: boolean };
   /** Called on every render with the page as it stands, for a test to read. */
   report?: (state: SketchState) => void;
   /** An object lit up from somewhere else, so the band drawn on it is covered. */
@@ -71,6 +75,9 @@ function Harness({
   objects,
   tool,
   selection = [],
+  labelSelection = [],
+  selectAllRef,
+  hiddenKinds = { marks: false, text: false },
   report,
   spotlight = null,
   marks = [],
@@ -84,6 +91,7 @@ function Harness({
   polygonKind = "interior-edges",
 }: HarnessProps) {
   const sketch = useSketch();
+  const [labelPick, setLabelPick] = useState(labelSelection);
   const laid = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the figure is laid out once, and the sketch handle is stable
   useEffect(() => {
@@ -114,8 +122,10 @@ function Harness({
       onRegularAsk={onRegularAsk}
       spotlight={spotlight}
       onToggleLabel={() => {}}
-      labelPick={[]}
-      onLabelPick={() => {}}
+      labelPick={labelPick}
+      selectAllRef={selectAllRef}
+      onLabelSelection={setLabelPick}
+      onLabelPick={(id, additive) => setLabelPick((was) => labelClickPick(was, id, additive))}
       onEditValue={() => {}}
       onCaptureRow={() => {}}
       onDropRow={() => {}}
@@ -131,7 +141,7 @@ function Harness({
       measureKind="length"
       arrowKind={arrowKind}
       markForm="equal"
-      hiddenKinds={{ marks: false, text: false }}
+      hiddenKinds={hiddenKinds}
     />
   );
 }
