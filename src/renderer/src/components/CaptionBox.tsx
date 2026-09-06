@@ -33,6 +33,8 @@ interface CaptionBoxProps {
   /** Where the palette reaches the caption being typed into. */
   editor: RefObject<HTMLDivElement | null>;
   onEdit: (id: string | null) => void;
+  canDoubleEdit: boolean;
+  onDoubleEdit: (id: string) => void;
   onSelect: (id: string, additive: boolean) => void;
   /**
    * A drag is starting. The sheet decides what it moves, since a caption in the
@@ -149,6 +151,8 @@ export function CaptionBox({
   tool,
   editor,
   onEdit,
+  canDoubleEdit,
+  onDoubleEdit,
   onSelect,
   onGrab,
   onDrag,
@@ -347,10 +351,10 @@ export function CaptionBox({
       onPointerMove={pullDrag}
       onPointerUp={dropDrag}
       onDoubleClick={(event) => {
-        if (editing) return;
+        if (editing || !canDoubleEdit) return;
         event.stopPropagation();
         opened.current = { x: event.clientX, y: event.clientY };
-        onEdit(caption.id);
+        onDoubleEdit(caption.id);
       }}
       onPointerOver={overLink}
       onPointerOut={() => onLit(null)}

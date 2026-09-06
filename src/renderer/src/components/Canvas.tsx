@@ -217,6 +217,7 @@ interface CanvasProps {
   /** The caption being typed into. It belongs to the window, not to the page. */
   editing: string | null;
   onEditing: (id: string | null) => void;
+  onTextTool: () => void;
   /** Where the text palette reaches the caption being typed into. */
   editor: RefObject<HTMLDivElement | null>;
   /**
@@ -313,6 +314,7 @@ export function Canvas({
   onLabelSelection,
   editing,
   onEditing,
+  onTextTool,
   editor,
   zoomable,
   tieReadings,
@@ -1989,6 +1991,11 @@ export function Canvas({
               tool={picking || !takesWriting ? "none" : tool}
               editor={editor}
               onEdit={closeCaption}
+              canDoubleEdit={labelPick.length === 0 && selection.every((id) => id === caption.id)}
+              onDoubleEdit={(id) => {
+                onTextTool();
+                closeCaption(id);
+              }}
               onSelect={toggleObject}
               onGrab={grabWriting}
               onDrag={dragWriting}

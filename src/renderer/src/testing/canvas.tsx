@@ -49,6 +49,8 @@ export interface HarnessProps {
   /** Called on every render with the page as it stands, for a test to read. */
   report?: (state: SketchState) => void;
   reportSketch?: (sketch: Sketch) => void;
+  onTextTool?: () => void;
+  onEditing?: (id: string | null) => void;
   /** An object lit up from somewhere else, so the band drawn on it is covered. */
   spotlight?: string | null;
   /** What a dialog is holding, so the rings and bands it draws are covered. */
@@ -81,6 +83,8 @@ function Harness({
   hiddenKinds = { marks: false, text: false },
   report,
   reportSketch,
+  onTextTool = () => {},
+  onEditing = () => {},
   spotlight = null,
   marks = [],
   preview = [],
@@ -134,7 +138,8 @@ function Harness({
       onDropRow={() => {}}
       onMarkMirror={() => {}}
       editing={null}
-      onEditing={() => {}}
+      onEditing={onEditing}
+      onTextTool={onTextTool}
       editor={{ current: null }}
       zoomable
       captionWanted={0}

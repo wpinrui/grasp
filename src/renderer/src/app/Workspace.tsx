@@ -129,6 +129,10 @@ export function Workspace({
           hiddenKinds={tools.hiddenKinds}
           editing={tools.editing}
           onEditing={tools.setEditing}
+          onTextTool={() => {
+            tools.pickVariant("text", "caption");
+            tools.setActiveTool("text");
+          }}
           editor={tools.editor}
           captionWanted={tools.captionWanted}
           captionLook={palette.captionLook}

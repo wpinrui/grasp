@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { LABEL_REACH } from "../sketch/labelling";
 import {
   createCaption,
@@ -40,6 +40,41 @@ const caption = {
 };
 const table = { ...createTable([length.id], { x: 400, y: 350 }), id: "table" };
 const figure = [a, b, segment, length, caption, table];
+
+describe("double-click caption editing", () => {
+  it.each([{ selection: [] }, { selection: [caption.id] }])(
+    "opens the Text tool when only the caption may be selected: %j",
+    ({ selection }) => {
+      const onTextTool = vi.fn();
+      const onEditing = vi.fn();
+      const { sheet, page } = watched(figure, "arrow", { selection, onTextTool, onEditing });
+      const box = sheet.querySelector<HTMLElement>(".caption");
+      if (!box) throw new Error("Missing caption");
+      press(box, { x: 410, y: 210 });
+      press(box, { x: 410, y: 210 });
+      fireEvent.doubleClick(box);
+      expect(onTextTool).toHaveBeenCalledOnce();
+      expect(onEditing).toHaveBeenCalledWith(caption.id);
+      expect(page().selection).toEqual([]);
+    },
+  );
+
+  it.each([
+    { selection: [length.id], labelSelection: [] },
+    { selection: [], labelSelection: [a.id] },
+  ])("does not open when another object or label is selected: %j", (picked) => {
+    const onTextTool = vi.fn();
+    const onEditing = vi.fn();
+    const { sheet } = watched(figure, "arrow", { ...picked, onTextTool, onEditing });
+    const box = sheet.querySelector<HTMLElement>(".caption");
+    if (!box) throw new Error("Missing caption");
+    press(box, { x: 410, y: 210 });
+    press(box, { x: 410, y: 210 });
+    fireEvent.doubleClick(box);
+    expect(onTextTool).not.toHaveBeenCalled();
+    expect(onEditing).not.toHaveBeenCalled();
+  });
+});
 
 function labelOn(sheet: HTMLElement, id: string) {
   const label = sheet.querySelector<HTMLElement>(`.canvas__label[data-id="${id}"]`);

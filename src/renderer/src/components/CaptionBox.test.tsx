@@ -55,6 +55,8 @@ function props(html: string): ComponentProps<typeof CaptionBox> {
     tool: "text",
     editor: { current: null },
     onEdit: vi.fn(),
+    canDoubleEdit: true,
+    onDoubleEdit: vi.fn(),
     onSelect: vi.fn(),
     onGrab: vi.fn(),
     onDrag: vi.fn(),
