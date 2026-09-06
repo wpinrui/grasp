@@ -123,7 +123,6 @@
   --color-path: var(--color-object);
   --color-object-edge: rgba(24, 28, 33, 0.18);
   --color-selection: #0b7ec4;
-  --color-selection-paper: var(--color-canvas);
   --color-selection-shade: #000000;
   --color-selection-halo: rgba(11, 126, 196, 0.16);
   /* Points a transform dialog is holding, and what it would make */

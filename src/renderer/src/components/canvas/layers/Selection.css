@@ -12,7 +12,9 @@
 }
 
 .canvas__selection-paper {
-  stroke: var(--color-selection-paper);
+  /* The sheet colour itself, read here rather than derived into a token of its
+     own: a token that resolves var() at :root cannot see the sheet override. */
+  stroke: var(--color-canvas);
 }
 
 .canvas__selection-dashes {
