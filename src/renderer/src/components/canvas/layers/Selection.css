@@ -1,21 +1,25 @@
 .canvas__selection-paper,
-.canvas__selection-ink {
+.canvas__selection-dashes {
   fill: none;
   stroke-linecap: butt;
   stroke-linejoin: round;
 }
 
-.canvas__selection-paper {
+.canvas__selection-paper,
+.canvas__selection-stripe-paper {
   stroke: var(--color-selection-paper);
 }
 
-.canvas__selection-ink {
-  stroke: var(--color-selection-ink);
-  stroke-dasharray: 6 4;
+.canvas__selection-dashes {
+  stroke: var(--color-selection);
+  stroke-dasharray: 4 4;
 }
 
-.canvas__selection-corner {
-  fill: var(--color-selection-paper);
-  stroke: var(--color-selection-ink);
-  stroke-width: 1.5;
+.canvas__selection-stripe-paper {
+  stroke-width: 2.5;
+}
+
+.canvas__selection-stripe {
+  stroke: var(--color-selection);
+  stroke-width: 1;
 }

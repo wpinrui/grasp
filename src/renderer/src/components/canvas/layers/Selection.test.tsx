@@ -66,7 +66,7 @@ describe("geometry selection contrast", () => {
       "--color-ink-purple",
       "--color-ink-orange",
     ],
-  ])("outlines only selected fills above all five overlapping fills: %j", (...colours) => {
+  ])("stripes only selected fills above all five overlapping fills: %j", (...colours) => {
     const container = draw(polygons(colours), ["fill-0", "fill-2", "fill-4"]);
     const svg = container.querySelector("svg");
     const overlay = container.querySelector(".canvas__selection");
@@ -76,23 +76,37 @@ describe("geometry selection contrast", () => {
         node.getAttribute("data-selection-id"),
       ),
     ).toEqual(["fill-0", "fill-2", "fill-4"]);
-    expect(overlay?.querySelectorAll(".canvas__selection-corner")).toHaveLength(12);
+    expect(overlay?.querySelectorAll("pattern")).toHaveLength(3);
     for (const id of ["fill-0", "fill-2", "fill-4"]) {
       const fill = container.querySelector(`[data-id="${id}"]`);
       const outlines = container.querySelectorAll(`[data-selection-id="${id}"] polygon`);
-      expect(outlines).toHaveLength(2);
+      expect(outlines).toHaveLength(1);
       for (const outline of outlines) {
         expect(outline.getAttribute("points")).toBe(fill?.getAttribute("points"));
-        expect(outline.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+        const pattern = container.querySelector(`[data-selection-id="${id}"] pattern`);
+        expect(outline.getAttribute("style")).toContain(`#${pattern?.id}`);
       }
       expect(fill?.getAttribute("style")).toContain("fill-opacity: 0.25");
     }
   });
 
-  it.each([0.25, 1, 4])("keeps corner markers six screen pixels wide at zoom %s", (scale) => {
+  it.each([0.25, 1, 4])("keeps stripe spacing constant on screen at zoom %s", (scale) => {
     const container = draw(polygons(["--color-ink-blue"]), ["fill-0"], scale);
-    const corner = container.querySelector(".canvas__selection-corner");
-    expect(Number(corner?.getAttribute("width")) * scale).toBe(6);
+    const pattern = container.querySelector("pattern");
+    expect(pattern?.getAttribute("width")).toBe("12");
+    expect(pattern?.getAttribute("patternTransform")).toBe(`rotate(45) scale(${1 / scale})`);
+  });
+
+  it("gives overlapping fills distinct stripe directions that survive deselection", () => {
+    const objects = polygons(Array(5).fill("--color-ink-blue"));
+    const all = draw(objects, ["fill-0", "fill-1", "fill-2", "fill-3", "fill-4"]);
+    const directions = [...all.querySelectorAll("pattern")].map((pattern) =>
+      pattern.getAttribute("patternTransform"),
+    );
+    expect(new Set(directions).size).toBe(5);
+    cleanup();
+    const one = draw(objects, ["fill-2"]);
+    expect(one.querySelector("pattern")?.getAttribute("patternTransform")).toBe(directions[2]);
   });
 
   it.each(["hairline", "thin", "medium", "thick"] as const)(
@@ -110,12 +124,12 @@ describe("geometry selection contrast", () => {
       const overlay = container.querySelector(".canvas__selection");
       const original = overlay?.querySelector<SVGElement>(".canvas__line");
       const white = overlay?.querySelector<SVGElement>(".canvas__selection-paper");
-      const dark = overlay?.querySelector<SVGElement>(".canvas__selection-ink");
+      const blue = overlay?.querySelector<SVGElement>(".canvas__selection-dashes");
       expect(original?.style.stroke).toBe("var(--color-ink-blue)");
       expect(original?.style.strokeDasharray).toBe("6 4");
-      expect(Number(dark?.style.strokeWidth)).toBe(Number(original?.style.strokeWidth) + 8);
-      expect(Number(white?.style.strokeWidth)).toBe(Number(original?.style.strokeWidth) + 11);
-      expect(dark?.style.stroke).toBe("");
+      expect(Number(blue?.style.strokeWidth)).toBe(Number(original?.style.strokeWidth) + 6);
+      expect(Number(white?.style.strokeWidth)).toBe(Number(original?.style.strokeWidth) + 8);
+      expect(blue?.style.stroke).toBe("");
     },
   );
 

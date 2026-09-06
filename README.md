@@ -14,7 +14,7 @@ Drag one corner and every angle, length and area recalculates. Students can see 
 
 ## Intuitive interface
 
-Enjoy creating sketches with a user-first set of panels. Iterate rapidly with keyboard shortcuts to activate the exact tool you need. Selected lines and fills have contrasting dashed outlines, with square corner markers on selected polygons, so selection stays visible over blue strokes and overlapping fills.
+Enjoy creating sketches with a user-first set of panels. Iterate rapidly with keyboard shortcuts to activate the exact tool you need. Selected lines have thin blue dashed outlines, and selected fills have striped shading that stays visible when polygons overlap.
 
 ## Features
 
