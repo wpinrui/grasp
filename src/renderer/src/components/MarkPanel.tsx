@@ -28,6 +28,8 @@ interface MarkPanelProps {
   /** Whether the path is free of the other kind of mark, so it can swap to it. */
   canSwap: boolean;
   onForm: (id: string, form: "equal" | "parallel") => void;
+  onPreview?: (part: Partial<SketchMark>) => void;
+  onPreviewReflex?: () => void;
   onDelete: (id: string) => void;
 }
 
@@ -51,6 +53,8 @@ export function MarkPanel({
   onDelete,
   canSwap,
   square,
+  onPreview,
+  onPreviewReflex,
 }: MarkPanelProps) {
   const angle = mark.form === "angle";
   // Bars read the same either way round, so there is nothing to turn.
@@ -62,7 +66,11 @@ export function MarkPanel({
     <PanelShell at={at} colour={MARKER_COLOUR}>
       {turns && (
         <>
-          <PanelButton label="Turn the mark round" onClick={() => onFlip(mark.id)}>
+          <PanelButton
+            label="Turn the mark round"
+            onPreview={() => onPreview?.({ flipped: "flipped" in mark ? !mark.flipped : true })}
+            onClick={() => onFlip(mark.id)}
+          >
             <FlipIcon />
           </PanelButton>
           <PanelSplit />
@@ -72,6 +80,7 @@ export function MarkPanel({
         <>
           <PanelButton
             label="Mark the reflex angle instead"
+            onPreview={onPreviewReflex}
             on={"reflex" in mark && mark.reflex}
             onClick={() => onReflex(mark.id)}
           >
@@ -79,6 +88,7 @@ export function MarkPanel({
           </PanelButton>
           <PanelButton
             label="Draw it as a right angle"
+            onPreview={() => onPreview?.({ square: !square })}
             on={square}
             onClick={() => onSquare(mark.id, !square)}
           >
@@ -90,6 +100,7 @@ export function MarkPanel({
       {COUNTS.map((strokes) => (
         <PanelButton
           key={strokes}
+          onPreview={() => onPreview?.({ strokes })}
           label={`${strokes}`}
           // A count says what it is by the strokes drawn on it.
           tip={null}
@@ -104,6 +115,7 @@ export function MarkPanel({
           <PanelSplit />
           <PanelButton
             label={swapTo}
+            onPreview={() => onPreview?.({ form: form === "equal" ? "parallel" : "equal" })}
             onClick={() => onForm(mark.id, form === "equal" ? "parallel" : "equal")}
           >
             {form === "equal" ? <ParallelMarkIcon /> : <EqualMarkIcon />}

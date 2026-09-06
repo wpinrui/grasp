@@ -71,11 +71,13 @@ import {
   pointOnPath,
   pointsOf,
   type Rect,
+  radiusOf,
   rectBetween,
   type SketchCalculation,
   type SketchCaption,
   type SketchFunction,
   type SketchLine,
+  type SketchMark,
   type SketchMeasurement,
   type SketchObject,
   type SketchParameter,
@@ -164,6 +166,7 @@ import { useReading } from "./canvas/useReading";
 import { useToolCursor } from "./canvas/useToolCursor";
 import { useView } from "./canvas/useView";
 import type { HiddenKinds } from "./HiddenPanel";
+import { useHoverPreview } from "./HoverPreview";
 import { MarkPanel } from "./MarkPanel";
 import { MeasurementBox } from "./MeasurementBox";
 import { ReadingPanel } from "./ReadingPanel";
@@ -309,7 +312,7 @@ export function Canvas({
   onRelabelGive,
   onRegularAsk,
   markForm,
-  hiddenKinds,
+  hiddenKinds: committedHiddenKinds,
   spotlight,
   onToggleLabel,
   labelPick,
@@ -390,6 +393,9 @@ export function Canvas({
   }
 
   /** What a plotting tool would land on, lit up while the pointer is over it. */
+  const [hoverPoint, setHoverPoint] = useState<Position | null>(null);
+  const [hoverMark, setHoverMark] = useState<SketchMark | null>(null);
+  const [hoverMarkId, setHoverMarkId] = useState<string | null>(null);
   const [snap, setSnap] = useState<Snap | null>(null);
   /** The label being typed into, and what has been typed so far. */
   const [naming, setNaming] = useState<LabelEdit | null>(null);
@@ -453,7 +459,10 @@ export function Canvas({
   const panMoved = useRef(false);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [shiftHeld, setShiftHeld] = useState(false);
-  const { objects: everything, selection } = sketch.state;
+  const appearance = useHoverPreview();
+  const hiddenKinds = appearance.hiddenKinds ?? committedHiddenKinds;
+  const { selection } = sketch.state;
+  const everything = appearance.objects ?? sketch.state.objects;
   // A hidden object still holds the figure together, so the geometry is worked
   // out from all of them. Only these are drawn, picked, snapped to or caught.
   //
@@ -537,6 +546,7 @@ export function Canvas({
     flipMark,
     flipReflex,
     layTick,
+    tickFor,
     markAngle,
     ownMark,
     panelSpotOf,
@@ -544,7 +554,20 @@ export function Canvas({
     setForm,
     setSquare,
     setStrokes,
-  } = useMarking({ sketch, objects: anglePage.objects, settled, scale, view, marking });
+  } = useMarking({
+    sketch,
+    objects: appearance.objects
+      ? angleFigure(
+          sketch.state.objects.filter((object) => !object.hidden),
+          sketch.state.objects,
+          settled,
+        ).objects
+      : anglePage.objects,
+    settled,
+    scale,
+    view,
+    marking,
+  });
 
   const {
     panel: readingPanel,
@@ -568,7 +591,17 @@ export function Canvas({
   };
   /** Where the sketch opens. It is home, and is never scrolled away from. */
   const origin = { x: 0, y: 0, width: viewport.width, height: viewport.height };
-  const drawn = contentBounds(objects, scale);
+  const drawn = contentBounds(
+    appearance.objects
+      ? sketch.state.objects.filter(
+          (object) =>
+            !object.hidden &&
+            !(committedHiddenKinds.marks && isMark(object)) &&
+            !(committedHiddenKinds.text && isWriting(object)),
+        )
+      : objects,
+    scale,
+  );
   /**
    * What the scrollbars run over: the sheet you start on, the drawing, and
    * whatever is on screen. Pan out into the blank and it grows to keep up;
@@ -672,6 +705,9 @@ export function Canvas({
     setPending(null);
     setTracing(null);
     setSnap(null);
+    setHoverPoint(null);
+    setHoverMark(null);
+    setHoverMarkId(null);
     setBoxing(null);
     setArming(null);
     armFrom.current = null;
@@ -794,6 +830,9 @@ export function Canvas({
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    setHoverPoint(null);
+    setHoverMark(null);
+    setHoverMarkId(null);
     if (event.pointerType === "touch") {
       fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (fingers.current.size >= PAN_FINGERS) {
@@ -1084,22 +1123,42 @@ export function Canvas({
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") {
+      setHoverPoint(null);
+      setHoverMark(null);
+    }
+    if (appearance.objects && !(event.target as Element).closest(".mark-panel")) appearance.clear();
     toolCursor.follow(event);
     if (event.pointerType === "touch" && fingers.current.has(event.pointerId)) {
       fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     }
     // A marking tool lights the midpoint of a segment it would snap to.
-    if (marking && !picking && !grab.current) {
+    if (marking && !picking && !grab.current && event.pointerType !== "touch") {
       const over = positionOf(event);
       const under =
         over && marking !== "angle" ? pathUnder(over, { objects, settled, scale }) : null;
+      const existing = under
+        ? objects.find(
+            (object) =>
+              isMark(object) &&
+              "path" in object &&
+              object.path === under.object.id &&
+              object.form === marking,
+          )
+        : null;
+      setHoverMarkId(existing?.id ?? null);
+      setHoverMark(
+        under && over && !existing && !markUnder(over, { objects, settled, scale })
+          ? tickFor({ path: under.object, along: under.along, spot: over })
+          : null,
+      );
       const snapped =
         under && over && markAlong(under.along, over, scale) === 0.5
           ? spotOnPath(under.along, 0.5)
           : null;
       if (
         (snapped === null) !== (middle === null) ||
-        (snapped && middle && snapped.x !== middle.x)
+        (snapped && middle && (snapped.x !== middle.x || snapped.y !== middle.y))
       ) {
         setMiddle(snapped);
       }
@@ -1164,6 +1223,7 @@ export function Canvas({
       if (!at) return;
       const aim = aimAt(at, aimingNow());
       if (snapKey(aim.found) !== snapKey(snap)) setSnap(aim.found);
+      setHoverPoint(event.pointerType === "touch" || aim.found?.kind === "point" ? null : aim.spot);
       if (pending) setPending({ ...pending, at: aim.spot });
       if (tracing) setTracing({ ...tracing, at: aim.spot });
       return;
@@ -1577,6 +1637,12 @@ export function Canvas({
   function handlePointerLeave(event: PointerEvent<HTMLDivElement>) {
     toolCursor.away(event);
     setSnap(null);
+    setHoverPoint(null);
+    setHoverMark(null);
+    setHoverMarkId(null);
+    setMiddle(null);
+    setOverCorner(null);
+    setUnder(null);
     setOverNamed(false);
     // The ghost letter stands in for the vertex's own label, so leaving the
     // sheet straight off a vertex would leave that label suppressed under it.
@@ -1635,7 +1701,7 @@ export function Canvas({
   const expressionNames = useMemo(() => valueNames(everything, settled), [everything, settled]);
   // Ghost lines hang off ghost points, which are nowhere in the sketch yet.
   const previewPoints = pointsOf(preview);
-  const previewSettled = preview.length ? settle([...objects, ...preview]).settled : settled;
+  const previewSettled = preview.length ? settle([...everything, ...preview]).settled : settled;
   const slack = slackAt(scale);
   // Lines are drawn only as far as the sheet on screen, plus a little, so a ray
   // running to the horizon is a couple of numbers rather than a huge one.
@@ -1929,12 +1995,14 @@ export function Canvas({
   const guide = guideOf({ objects, settled, scale, snapping, travel, pending, tracing });
 
   // A panel with nothing left to be about closes itself.
-  const onPanel = panel ? objects.find((object) => object.id === panel) : undefined;
+  const onPanel = panel ? sketch.state.objects.find((object) => object.id === panel) : undefined;
   const panelMark = onPanel && isMark(onPanel) ? onPanel : null;
   const panelSpot = panelMark ? panelSpotOf(panelMark.id) : null;
   const panelShape = panelMark ? markShape(panelMark, { settled, objects, scale }) : null;
   // The panel on a reading sits just above it, the way a mark's panel does.
-  const onReading = readingPanel ? objects.find((object) => object.id === readingPanel) : undefined;
+  const onReading = readingPanel
+    ? sketch.state.objects.find((object) => object.id === readingPanel)
+    : undefined;
   const readingOpen = onReading && isMeasurement(onReading) ? onReading : null;
   const readingSpot = readingOpen
     ? {
@@ -1973,7 +2041,20 @@ export function Canvas({
               <Loci />
               <Handles />
               <Paths />
-              <Drawing tracing={tracing} pending={pending} middle={middle} />
+              <Drawing tracing={tracing} pending={pending} middle={middle} lineForm={lineForm} />
+              {plotting && !picking && hoverPoint && (tool !== "polygon" || !regularArmed) && (
+                <circle
+                  className="canvas__point canvas__point--preview"
+                  cx={hoverPoint.x}
+                  cy={hoverPoint.y}
+                  r={
+                    radiusOf({ id: "hover", kind: "point", ...hoverPoint, size: pointSize }) / scale
+                  }
+                  vectorEffect="non-scaling-stroke"
+                />
+              )}
+              {marking && !picking && <MarkGhost mark={hoverMark} />}
+              {marking && !picking && hoverMarkId && <Lit ids={[hoverMarkId]} />}
               <Marks />
               <MarkGhost mark={offering.ghost?.mark ?? null} />
               <Arms arming={arming} arcs={armingArcs()} />
@@ -2035,6 +2116,18 @@ export function Canvas({
               places={readingOpen.places ?? placesFor(readingOpen.measure)}
               onPlaces={setPlaces}
               onFormat={setFormat}
+              onPreview={(part) =>
+                appearance.show(
+                  sketch.state.objects.map((object) =>
+                    object.id === readingOpen.id && isMeasurement(object)
+                      ? { ...object, ...part }
+                      : object,
+                  ),
+                )
+              }
+              onPreviewReflex={() =>
+                setReadingReflex(readingOpen.id, readingOpen.reflex !== true, appearance.show)
+              }
             />
           )}
 
@@ -2050,6 +2143,16 @@ export function Canvas({
               canSwap={canSwap(panelMark)}
               onForm={setForm}
               onDelete={dropMark}
+              onPreview={(part) =>
+                appearance.show(
+                  sketch.state.objects.map((object) =>
+                    object.id === panelMark.id && isMark(object)
+                      ? ({ ...object, ...part } as typeof object)
+                      : object,
+                  ),
+                )
+              }
+              onPreviewReflex={() => flipReflex(panelMark.id, measuringNow(), appearance.show)}
             />
           )}
 

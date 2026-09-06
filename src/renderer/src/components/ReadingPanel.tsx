@@ -24,6 +24,8 @@ interface ReadingPanelProps {
   /** An angle read the long way round instead of the short way. */
   onReflex: (id: string, reflex: boolean) => void;
   /** How many places this reading is written to now, its kind's default included. */
+  onPreview?: (part: Partial<SketchMeasurement>) => void;
+  onPreviewReflex?: () => void;
   places: number;
   onPlaces: (id: string, places: number) => void;
   onFormat: (id: string, part: Pick<Partial<SketchMeasurement>, "unit" | "showUnit">) => void;
@@ -59,6 +61,8 @@ export function ReadingPanel({
   places,
   onPlaces,
   onFormat,
+  onPreview,
+  onPreviewReflex,
 }: ReadingPanelProps) {
   const bounds = reading.bounds;
   // Only what the Measure tool wrote is offered the chain. A reading from the
@@ -88,6 +92,7 @@ export function ReadingPanel({
       format={{ places, unit, showUnit: reading.showUnit !== false }}
       units={available}
       unitLabel="Measurement unit"
+      onPreview={onPreview}
       onChange={(part) => {
         if (part.places !== undefined) onPlaces(reading.id, part.places);
         else onFormat(reading.id, part);
@@ -102,6 +107,7 @@ export function ReadingPanel({
       <PanelShell at={at} colour={MEASURE_COLOUR}>
         <PanelButton
           label="Read the reflex angle instead"
+          onPreview={onPreviewReflex}
           on={reading.reflex}
           onClick={() => onReflex(reading.id, reading.reflex !== true)}
         >
@@ -130,6 +136,7 @@ export function ReadingPanel({
       <PanelButton
         label="The number on its own"
         on={bounds === undefined}
+        onPreview={() => onPreview?.({ bounds: undefined })}
         onClick={() => onBounds(reading.id, undefined)}
       >
         <BoundsNoneIcon />
@@ -137,6 +144,7 @@ export function ReadingPanel({
       <PanelButton
         label="Arrows broken by the number"
         on={bounds === "broken"}
+        onPreview={() => onPreview?.({ bounds: "broken" })}
         onClick={() => onBounds(reading.id, "broken")}
       >
         <BoundsBrokenIcon />
@@ -144,6 +152,7 @@ export function ReadingPanel({
       <PanelButton
         label="Arrows running the whole way"
         on={bounds === "full"}
+        onPreview={() => onPreview?.({ bounds: "full" })}
         onClick={() => onBounds(reading.id, "full")}
       >
         <BoundsFullIcon />
@@ -153,6 +162,7 @@ export function ReadingPanel({
         label="Dotted lines out to the segment"
         on={reading.leaders}
         disabled={bounds === undefined}
+        onPreview={() => onPreview?.({ leaders: reading.leaders !== true })}
         onClick={() => onLeaders(reading.id, reading.leaders !== true)}
       >
         <LeadersIcon />

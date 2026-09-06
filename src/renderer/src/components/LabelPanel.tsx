@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { previewEvents, useHoverPreview } from "./HoverPreview";
 import { Switch } from "./Switch";
 import "./LabelPanel.css";
 
@@ -59,15 +60,18 @@ interface LineProps {
  * which turns into the box it is typed in when it is clicked.
  */
 function Line({ row, typing, onTyping, onRename, onShow, onSpot }: LineProps) {
+  const hover = useLabelPreview();
   return (
     <div
       className={`labels__row${row.selected ? " labels__row--selected" : ""}`}
       onPointerEnter={() => onSpot(row.id)}
+      onPointerLeave={() => onSpot(null)}
     >
       <button
         type="button"
         className={`labels__eye${row.shown ? " labels__eye--on" : ""}`}
         aria-label={row.shown ? "Hide this label" : "Show this label"}
+        {...hover([row.id], !row.shown)}
         onClick={(event) => {
           event.stopPropagation();
           onShow([row.id], !row.shown);
@@ -136,6 +140,7 @@ export function LabelPanel({
   labelNew,
   onLabelNew,
 }: LabelPanelProps) {
+  const hover = useLabelPreview();
   /** The row being typed into. Held here so the list stays a plain list. */
   const [typing, setTyping] = useState<Typing | null>(null);
   /**
@@ -177,6 +182,7 @@ export function LabelPanel({
           type="button"
           className="labels__action"
           disabled={rows.length === 0}
+          {...hover(all, true)}
           onClick={() => onShow(all, true)}
         >
           Show
@@ -185,6 +191,7 @@ export function LabelPanel({
           type="button"
           className="labels__action"
           disabled={rows.length === 0}
+          {...hover(all, false)}
           onClick={() => onShow(all, false)}
         >
           Hide
@@ -197,6 +204,7 @@ export function LabelPanel({
           type="button"
           className="labels__action"
           disabled={chosen.length === 0}
+          {...hover(chosen, true)}
           onClick={() => onShow(chosen, true)}
         >
           Show
@@ -205,6 +213,7 @@ export function LabelPanel({
           type="button"
           className="labels__action"
           disabled={chosen.length === 0}
+          {...hover(chosen, false)}
           onClick={() => onShow(chosen, false)}
         >
           Hide
@@ -235,6 +244,7 @@ export function LabelPanel({
                 <button
                   type="button"
                   className="labels__action labels__action--small"
+                  {...hover(ids, showing < group.rows.length)}
                   onClick={() => onShow(ids, showing < group.rows.length)}
                 >
                   {showing < group.rows.length ? "Show" : "Hide"}
@@ -258,4 +268,18 @@ export function LabelPanel({
       </div>
     </div>
   );
+}
+
+function useLabelPreview() {
+  const { source, show, clear } = useHoverPreview();
+  return (ids: string[], shown: boolean) =>
+    previewEvents(
+      () =>
+        show(
+          source.map((object) =>
+            ids.includes(object.id) ? { ...object, label: { ...object.label, shown } } : object,
+          ),
+        ),
+      clear,
+    );
 }

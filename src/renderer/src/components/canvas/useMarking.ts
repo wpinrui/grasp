@@ -34,6 +34,7 @@ import {
   type View,
 } from "../../sketch/model";
 import type { Sketch } from "../../sketch/useSketch";
+import type { ShowPreview } from "../HoverPreview";
 import { angleMarkOn, angleReadingSpot, type Measuring } from "./readings";
 import { ANGLE_ROOM, type LastMark } from "./sheet";
 
@@ -209,7 +210,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
    * An angle marked the other way round. The number on it goes round too where
    * that number is the only one, which is why the readings are handed in.
    */
-  function flipReflex(id: string, hangsOn: Reading) {
+  function flipReflex(id: string, hangsOn: Reading, show?: ShowPreview) {
     const mark = objects.find((object) => object.id === id);
     if (!mark || !isMark(mark) || "path" in mark) return;
     // Turning it round would make it the mark the other side of these arms
@@ -254,7 +255,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
         ? angleReadingSpot({ reading: alone, mark: turned, reflex }, hangsOn)
         : null;
     const before = sketch.read();
-    sketch.commit({
+    (show ? (next: typeof before) => show(next.objects) : sketch.commit)({
       ...before,
       objects: before.objects.map((object) => {
         if (object.id === id) return turned;
@@ -297,20 +298,9 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
    * mark's panel instead of laying a second one, so a click is either making
    * the mark or getting at the one that is there, and never both.
    */
-  function layTick(
-    on: { path: SketchObject; along: PathGeometry; spot: Position },
-    beside?: SketchMark,
-  ) {
+  function tickFor(on: { path: SketchObject; along: PathGeometry; spot: Position }) {
     const { path, along, spot } = on;
     const form = marking as "equal" | "parallel";
-    const already = objects.find(
-      (object) =>
-        isMark(object) && "path" in object && object.path === path.id && object.form === form,
-    );
-    if (already) {
-      setPanel(already.id);
-      return;
-    }
     const at = markAlong(along, spot, scale);
     const way = tangentOnPath(along, at);
     const last = lastMark.current.way;
@@ -322,6 +312,28 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
       strokes: lastMark.current[form],
       flipped,
     });
+    return tick;
+  }
+
+  function layTick(
+    on: { path: SketchObject; along: PathGeometry; spot: Position },
+    beside?: SketchMark,
+  ) {
+    const { path, along } = on;
+    const form = marking as "equal" | "parallel";
+    const already = objects.find(
+      (object) =>
+        isMark(object) && "path" in object && object.path === path.id && object.form === form,
+    );
+    if (already) {
+      setPanel(already.id);
+      return;
+    }
+    const tick = tickFor(on);
+    if (!("path" in tick)) return;
+    const at = tick.at;
+    const way = tangentOnPath(along, at);
+    const flipped = tick.flipped;
     lastMark.current.way = flipped ? { x: -way.x, y: -way.y } : way;
     const before = sketch.read();
     sketch.commit({
@@ -404,6 +416,7 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
     flipMark,
     flipReflex,
     layTick,
+    tickFor,
     markAngle,
     ownMark,
     panelSpotOf,

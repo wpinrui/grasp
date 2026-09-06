@@ -250,6 +250,11 @@ function Row({
         type="button"
         className={`flyout__item${entry.indent ? " flyout__item--indent" : ""}${open ? " flyout__item--open" : ""}`}
         disabled={off}
+        onFocus={() => {
+          onHover();
+          onHoverAction(off ? null : (entry.action ?? null));
+        }}
+        onBlur={() => onHoverAction(null)}
         onClick={entry.action ? () => onAction(entry.action as MenuAction) : undefined}
       >
         {ticked && (

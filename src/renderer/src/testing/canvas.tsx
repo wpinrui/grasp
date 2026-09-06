@@ -11,6 +11,7 @@ import { fireEvent, render } from "@testing-library/react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
 import { Canvas } from "../components/Canvas";
+import { HoverPreview } from "../components/HoverPreview";
 import type { SketchObject, SketchState } from "../sketch/model";
 import { labelClickPick } from "../sketch/picking";
 import { type Sketch, useSketch } from "../sketch/useSketch";
@@ -72,6 +73,7 @@ export interface HarnessProps {
   polygonKind?: string;
   /** What the Arrow is armed with, which is what its cursor is badged by. */
   arrowKind?: string;
+  lineForm?: "segment" | "ray" | "line";
 }
 
 /**
@@ -103,6 +105,7 @@ function Harness({
   onPick = () => {},
   measureKind = "length",
   markForm = "equal",
+  lineForm = "segment",
 }: HarnessProps) {
   const sketch = useSketch();
   const [labelPick, setLabelPick] = useState(labelSelection);
@@ -116,49 +119,51 @@ function Harness({
   report?.(sketch.state);
   reportSketch?.(sketch);
   return (
-    <Canvas
-      activeTool={tool}
-      sketch={sketch}
-      pointSize="medium"
-      tieReadings={false}
-      view={sketch.view}
-      onView={sketch.setView}
-      picking={picking}
-      onPick={onPick}
-      lineForm="segment"
-      polygonKind={polygonKind}
-      preview={preview}
-      marks={marks}
-      onRename={() => {}}
-      labelKind={labelKind}
-      relabelName={relabelName}
-      onRelabelAsk={onRelabelAsk}
-      onRelabelGive={onRelabelGive}
-      onRegularAsk={onRegularAsk}
-      spotlight={spotlight}
-      onToggleLabel={() => {}}
-      labelPick={labelPick}
-      selectAllRef={selectAllRef}
-      onLabelSelection={setLabelPick}
-      onLabelPick={(id, additive) => setLabelPick((was) => labelClickPick(was, id, additive))}
-      onEditValue={() => {}}
-      onCaptureRow={() => {}}
-      onDropRow={() => {}}
-      onMarkMirror={() => {}}
-      editing={null}
-      onEditing={onEditing}
-      onTextTool={onTextTool}
-      editor={{ current: null }}
-      zoomable
-      captionWanted={0}
-      captionLook={CAPTION_LOOK}
-      onViewport={() => {}}
-      snapping={SNAPPING}
-      measureKind={measureKind}
-      arrowKind={arrowKind}
-      markForm={markForm}
-      hiddenKinds={hiddenKinds}
-    />
+    <HoverPreview scope={sketch.state}>
+      <Canvas
+        activeTool={tool}
+        sketch={sketch}
+        pointSize="medium"
+        tieReadings={false}
+        view={sketch.view}
+        onView={sketch.setView}
+        picking={picking}
+        onPick={onPick}
+        lineForm={lineForm}
+        polygonKind={polygonKind}
+        preview={preview}
+        marks={marks}
+        onRename={() => {}}
+        labelKind={labelKind}
+        relabelName={relabelName}
+        onRelabelAsk={onRelabelAsk}
+        onRelabelGive={onRelabelGive}
+        onRegularAsk={onRegularAsk}
+        spotlight={spotlight}
+        onToggleLabel={() => {}}
+        labelPick={labelPick}
+        selectAllRef={selectAllRef}
+        onLabelSelection={setLabelPick}
+        onLabelPick={(id, additive) => setLabelPick((was) => labelClickPick(was, id, additive))}
+        onEditValue={() => {}}
+        onCaptureRow={() => {}}
+        onDropRow={() => {}}
+        onMarkMirror={() => {}}
+        editing={null}
+        onEditing={onEditing}
+        onTextTool={onTextTool}
+        editor={{ current: null }}
+        zoomable
+        captionWanted={0}
+        captionLook={CAPTION_LOOK}
+        onViewport={() => {}}
+        snapping={SNAPPING}
+        measureKind={measureKind}
+        arrowKind={arrowKind}
+        markForm={markForm}
+        hiddenKinds={hiddenKinds}
+      />
+    </HoverPreview>
   );
 }
 

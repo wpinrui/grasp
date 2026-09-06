@@ -1,3 +1,4 @@
+import { previewEvents, useHoverPreview } from "./HoverPreview";
 import { Switch } from "./Switch";
 import "./HiddenPanel.css";
 
@@ -49,6 +50,15 @@ const KINDS: [string, string][] = [
  * select it: the dock never changes what is selected.
  */
 export function HiddenPanel({ rows, onShow, onSpot, kinds, onKinds }: HiddenPanelProps) {
+  const { source, show, clear } = useHoverPreview();
+  const hover = (ids: string[]) =>
+    previewEvents(
+      () =>
+        show(
+          source.map((object) => (ids.includes(object.id) ? { ...object, hidden: false } : object)),
+        ),
+      clear,
+    );
   const groups = KINDS.map(([kind, title]) => ({
     title,
     rows: rows.filter((row) => row.kind === kind),
@@ -73,6 +83,7 @@ export function HiddenPanel({ rows, onShow, onSpot, kinds, onKinds }: HiddenPane
           <Switch
             name={`Hide all ${name.toLowerCase()}`}
             on={kinds[kind]}
+            onPreview={(on) => show(source, { ...kinds, [kind]: on })}
             onChange={(on) => onKinds({ [kind]: on })}
           />
         </div>
@@ -87,6 +98,7 @@ export function HiddenPanel({ rows, onShow, onSpot, kinds, onKinds }: HiddenPane
               <button
                 type="button"
                 className="hidden-panel__action hidden-panel__action--small"
+                {...hover(group.rows.map((row) => row.id))}
                 onClick={() => onShow(group.rows.map((row) => row.id))}
               >
                 Show
@@ -94,11 +106,17 @@ export function HiddenPanel({ rows, onShow, onSpot, kinds, onKinds }: HiddenPane
             </div>
 
             {group.rows.map((row) => (
-              <div key={row.id} className="hidden-panel__row" onPointerEnter={() => onSpot(row.id)}>
+              <div
+                key={row.id}
+                className="hidden-panel__row"
+                onPointerEnter={() => onSpot(row.id)}
+                onPointerLeave={() => onSpot(null)}
+              >
                 <span className="hidden-panel__name">{row.name || "—"}</span>
                 <button
                   type="button"
                   className="hidden-panel__action hidden-panel__action--small"
+                  {...hover([row.id])}
                   onClick={() => onShow([row.id])}
                 >
                   Show
@@ -114,6 +132,7 @@ export function HiddenPanel({ rows, onShow, onSpot, kinds, onKinds }: HiddenPane
           type="button"
           className="hidden-panel__action"
           disabled={rows.length === 0}
+          {...hover(rows.map((row) => row.id))}
           onClick={() => onShow(rows.map((row) => row.id))}
         >
           Show all
