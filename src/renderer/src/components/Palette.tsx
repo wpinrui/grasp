@@ -353,26 +353,6 @@ export function Palette({
 
         <span className="palette__split" />
 
-        <div className="palette__controls palette__common">
-          {COMMON_NOTATION.map((mark) => (
-            <Tooltip key={mark.name} says={mark.name}>
-              <button
-                type="button"
-                className="palette__key"
-                aria-label={mark.name}
-                disabled={!editing}
-                onMouseDown={hold}
-                onClick={() => {
-                  insertAtCaret(editor.current, mark.html);
-                  commit();
-                }}
-              >
-                {mark.sample}
-              </button>
-            </Tooltip>
-          ))}
-        </div>
-
         <div className="palette__openers">
           <Popout name="Notation" sample={"√x"} disabled={!editing}>
             <div className="palette__grid palette__grid--notation">
@@ -421,6 +401,25 @@ export function Palette({
               ))}
             </div>
           </Popout>
+        </div>
+        <div className="palette__controls palette__common">
+          {COMMON_NOTATION.map((mark) => (
+            <Tooltip key={mark.name} says={mark.name}>
+              <button
+                type="button"
+                className="palette__key"
+                aria-label={mark.name}
+                disabled={!editing}
+                onMouseDown={hold}
+                onClick={() => {
+                  insertAtCaret(editor.current, mark.html);
+                  commit();
+                }}
+              >
+                {mark.sample}
+              </button>
+            </Tooltip>
+          ))}
         </div>
         <span className="palette__gap" />
       </div>
