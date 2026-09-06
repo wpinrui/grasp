@@ -8,7 +8,7 @@
  */
 
 import { anglesAt } from "../../../sketch/measure";
-import type { Position } from "../../../sketch/model";
+import type { Position, SketchObject } from "../../../sketch/model";
 import { arcsBetween, type Marking } from "../marks";
 import { useSheet } from "../SheetContext";
 
@@ -21,17 +21,19 @@ export interface AngleDrag {
 
 /** The wedge a drag is asking for, drawn as it will land. */
 export function Arms({ arming, arcs }: { arming: AngleDrag | null; arcs: string[] }) {
-  if (!arming) return null;
+  if (!arming && arcs.length === 0) return null;
   return (
     <g>
-      <line
-        className="canvas__rubber"
-        x1={arming.start.x}
-        y1={arming.start.y}
-        x2={arming.at.x}
-        y2={arming.at.y}
-        vectorEffect="non-scaling-stroke"
-      />
+      {arming && (
+        <line
+          className="canvas__rubber"
+          x1={arming.start.x}
+          y1={arming.start.y}
+          x2={arming.at.x}
+          y2={arming.at.y}
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
       {arcs.map((stroke) => (
         <path
           key={stroke}
@@ -45,6 +47,7 @@ export function Arms({ arming, arcs }: { arming: AngleDrag | null; arcs: string[
 }
 
 interface RestingProps {
+  angleObjects?: SketchObject[];
   /** The corner an angle tool is resting on, or nothing while it is not. */
   corner: string | null;
   /** Whether the Marker is the tool up, since the protractor ghosts its own. */
@@ -59,12 +62,12 @@ interface RestingProps {
  * itself; more than one is drawn as the whole turn, which says a corner is
  * there without claiming which angle is meant.
  */
-export function Resting({ corner, marking, clearOf, marks }: RestingProps) {
+export function Resting({ corner, marking, clearOf, marks, angleObjects }: RestingProps) {
   const { objects, settled, scale } = useSheet();
   if (!corner) return null;
   const spot = settled.points.get(corner);
   if (!spot) return null;
-  const there = anglesAt(corner, objects, settled);
+  const there = anglesAt(corner, angleObjects ?? objects, settled);
   if (there.length === 1) {
     if (!marking) return null;
     return (

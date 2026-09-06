@@ -32,6 +32,7 @@ import {
   withDependents,
 } from "../sketch/model";
 import type { Sketch } from "../sketch/useSketch";
+import { valueNames } from "../sketch/valueNames";
 import type { CalculatorState, Collecting, ParameterState } from "./useDialogs";
 
 export interface ValueContext {
@@ -69,6 +70,7 @@ export function valueActions(context: ValueContext) {
     collecting,
   } = context;
   const { objects, selected } = building;
+  const expressionNames = valueNames(objects, building.geometry);
 
   /** Where a number written by a dialog lands. */
   function valueSpot(): Position {
@@ -90,7 +92,7 @@ export function valueActions(context: ValueContext) {
     return objects
       .filter((object) => isValue(object) && !barred.has(object.id))
       .map((object) => ({
-        name: names.get(object.id) ?? "",
+        name: expressionNames.get(object.id) ?? "",
         says: sayQuantity(readable.value(object.id)),
       }));
   }
@@ -98,7 +100,11 @@ export function valueActions(context: ValueContext) {
   /** A name in the Calculator's text, read back to what it names. */
   const namedInSketch = {
     value: (name: string) => {
-      const found = objects.find((object) => isValue(object) && names.get(object.id) === name);
+      const barred = barredFrom(calculator?.editing);
+      const found = objects.find(
+        (object) =>
+          isValue(object) && !barred.has(object.id) && expressionNames.get(object.id) === name,
+      );
       return found ? found.id : null;
     },
     fn: (name: string) => {
@@ -297,6 +303,7 @@ export function valueActions(context: ValueContext) {
   }
 
   return {
+    expressionNames,
     valueSpot,
     editSelected,
     offeredValues,

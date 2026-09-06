@@ -11,6 +11,7 @@ import {
   type Settled,
   type SketchObject,
 } from "../model";
+import { directionPoints } from "./angleDirections";
 import { TURN } from "./units";
 /** How close to the rim a point has to be to count as on a circle. */
 export function onCircle(round: CircleGeometry, spot: Position): boolean {
@@ -96,28 +97,33 @@ export function armsAt(corner: string, objects: SketchObject[], settled: Settled
   const arms: Arm[] = [];
   const add = (side: string, end: string) => {
     const spot = settled.points.get(end);
-    if (!spot || (spot.x === at.x && spot.y === at.y)) return;
+    if (!spot || distance(spot, at) <= ON_ARM) return;
     arms.push({ side, end, angle: Math.atan2(spot.y - at.y, spot.x - at.x) });
   };
   for (const object of objects) {
-    const ends = endsOf(object);
-    if (!ends) continue;
-    // An end of the object: it runs out of the corner one way, to its far end.
-    if (ends.includes(corner)) {
-      add(object.id, ends[0] === corner ? ends[1] : ends[0]);
-      continue;
-    }
-    // Not an end but standing on it, which is what a crossing is: the object
-    // runs out of the corner both ways, and each way is an arm of its own.
-    // Counting only the ends would leave a crossing looking like no corner at
-    // all, so nothing there could be marked or measured.
+    if (!isLine(object)) continue;
     const along = pathIn(settled, object.id);
-    if (!along || !isLine(object)) continue;
+    if (!along) continue;
     if (distanceToPath(along, at) > ON_ARM) continue;
-    add(object.id, ends[0]);
-    add(object.id, ends[1]);
+    for (const point of directionPoints(corner, object, objects)) {
+      if (point.id === corner) continue;
+      const spot = settled.points.get(point.id);
+      if (spot && distanceToPath(along, spot) <= ON_ARM) add(object.id, point.id);
+    }
   }
-  return arms.sort((one, other) => one.angle - other.angle);
+  const unique: Arm[] = [];
+  for (const arm of arms) {
+    if (
+      !unique.some(
+        (other) =>
+          Math.abs(
+            Math.atan2(Math.sin(arm.angle - other.angle), Math.cos(arm.angle - other.angle)),
+          ) < 1e-9,
+      )
+    )
+      unique.push(arm);
+  }
+  return unique.sort((one, other) => one.angle - other.angle);
 }
 
 /**
@@ -145,6 +151,7 @@ export function anglesAt(
       if (arms[i].side === arms[j].side) continue;
       let turn = Math.abs(arms[i].angle - arms[j].angle);
       if (turn > Math.PI) turn = Math.PI * 2 - turn;
+      if (turn < 1e-9 || Math.abs(turn - Math.PI) < 1e-9) continue;
       out.push({
         arms: [arms[i].end, arms[j].end],
         sides: [arms[i].side, arms[j].side],
@@ -176,6 +183,7 @@ export function angleWanted(
   const one = arms[found];
   const other = arms[(found + 1) % arms.length];
   const sweep = turn(one.angle, other.angle);
+  if (one.side === other.side || sweep < 1e-9 || Math.abs(sweep - Math.PI) < 1e-9) return null;
   return {
     arms: [one.end, other.end],
     sides: [one.side, other.side],

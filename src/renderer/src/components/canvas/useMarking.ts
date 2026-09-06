@@ -10,6 +10,7 @@
  */
 
 import { useRef, useState } from "react";
+import { withAnglePoints } from "../../sketch/measure/angleFigure";
 import {
   ANGLE_RADIUS,
   alongPath,
@@ -385,7 +386,11 @@ export function useMarking({ sketch, objects, settled, scale, view, marking }: M
   /** A new mark lands on the page without disturbing what is selected. */
   function addMark(mark: SketchMark) {
     const before = sketch.read();
-    sketch.commit({ ...before, objects: [...before.objects, mark] });
+    const base =
+      "path" in mark
+        ? before.objects
+        : withAnglePoints(before.objects, objects, [mark.corner, ...mark.arms]);
+    sketch.commit({ ...before, objects: [...base, mark] });
   }
   return {
     panel,

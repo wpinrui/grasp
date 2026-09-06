@@ -7,7 +7,7 @@
  * all of that is handed in rather than read off the window.
  */
 
-import { armsAt, endsOf, frameOf, spotOf } from "../../sketch/measure";
+import { anglesAt, armsAt, endsOf, frameOf, spotOf } from "../../sketch/measure";
 import {
   createAngleMark,
   createMeasurement,
@@ -119,8 +119,8 @@ export function tiedToFigure(written: Written | null, measuring: Measuring): Wri
 
 /** The two straight objects at a corner, as the three points of its angle. */
 function cornerArms(corner: string, measuring: Measuring): [string, string, string] | null {
-  const arms = armsAt(corner, measuring.objects, measuring.settled);
-  return arms.length === 2 ? [arms[0].end, corner, arms[1].end] : null;
+  const angles = anglesAt(corner, measuring.objects, measuring.settled);
+  return angles.length === 1 ? [angles[0].arms[0], corner, angles[0].arms[1]] : null;
 }
 
 /** The point under the pointer, which is what an angle is marked at. */
@@ -131,7 +131,7 @@ export function pointUnder(
   const { objects, scale } = measuring;
   for (let index = objects.length - 1; index >= 0; index -= 1) {
     const point = objects[index];
-    if (!isPoint(point)) continue;
+    if (!isPoint(point) || point.hidden) continue;
     if (distance(point, at) <= radiusOf(point) / scale + slackAt(scale)) return point;
   }
   return null;
@@ -251,6 +251,7 @@ export function angleWritten(
     hit: SketchObject | null;
     /** Set where a drag or the dialog named the arms itself. */
     named?: boolean;
+    reflex?: boolean;
   },
   measuring: Measuring,
 ): Written | null {
@@ -277,7 +278,11 @@ export function angleWritten(
   // Naming an angle is not that: a row picked out of the dialog, or a drag from
   // one side to the other, said which angle it wanted, and the answer to that is
   // the angle it named or the number already on it.
-  const reflex = !named && taken(false) && !taken(true);
+  const reflex =
+    angle.reflex ??
+    (hit && isMark(hit) && !("path" in hit)
+      ? hit.reflex === true
+      : !named && taken(false) && !taken(true));
   // An angle has to be marked before it can be read: the arcs say which of the
   // angles at that corner the number is about. One already there is used as it
   // is, and the number goes outside it.

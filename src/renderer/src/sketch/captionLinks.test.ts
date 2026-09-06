@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { captionReadings } from "./captionLinks";
 import { linkHtml, plainText, withNames } from "./captions";
 import { writeIn } from "./measure";
-import { createMeasurement, createPoint, lineThrough, PX_PER_CM, settle } from "./model";
+import {
+  createCalculation,
+  createMeasurement,
+  createPoint,
+  lineThrough,
+  PX_PER_CM,
+  settle,
+} from "./model";
 import { DEFAULT_PREFS } from "./prefs";
 
 afterEach(() => writeIn(DEFAULT_PREFS.units));
@@ -15,6 +22,21 @@ const length = { ...createMeasurement("length", [segment.id], { x: 0, y: 0 }), i
 const figure = [a, b, c, segment, length];
 
 describe("independent caption measurement formats", () => {
+  it("links a calculation as its result or live equation with vertex references", () => {
+    const calculation = {
+      ...createCalculation({ kind: "value", of: "m" }, { x: 0, y: 0 }),
+      id: "calc",
+    };
+    const objects = [...figure, calculation];
+    const html =
+      '<span data-link="calc" data-equation="true">old</span> / <span data-link="calc">old</span>';
+    const text = (held: typeof objects) =>
+      plainText(withNames(html, new Map(), captionReadings(held, settle(held).settled)));
+    expect(text(objects)).toBe("AB = 1.23 cm / 1.23 cm");
+    expect(
+      text(objects.map((object) => (object.id === "b" ? { ...b, x: PX_PER_CM * 2 } : object))),
+    ).toBe("AB = 2 cm / 2 cm");
+  });
   it("converts and rounds from full precision while leaving other links and the source alone", () => {
     const readings = captionReadings(figure, settle(figure).settled);
     const html =

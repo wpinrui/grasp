@@ -46,6 +46,10 @@ export interface HarnessProps {
   labelSelection?: string[];
   selectAllRef?: RefObject<() => void>;
   hiddenKinds?: { marks: boolean; text: boolean };
+  picking?: boolean;
+  onPick?: (id: string) => void;
+  measureKind?: string;
+  markForm?: "equal" | "angle";
   /** Called on every render with the page as it stands, for a test to read. */
   report?: (state: SketchState) => void;
   reportSketch?: (sketch: Sketch) => void;
@@ -95,6 +99,10 @@ function Harness({
   onRelabelGive = () => {},
   onRegularAsk = () => {},
   polygonKind = "interior-edges",
+  picking = false,
+  onPick = () => {},
+  measureKind = "length",
+  markForm = "equal",
 }: HarnessProps) {
   const sketch = useSketch();
   const [labelPick, setLabelPick] = useState(labelSelection);
@@ -115,8 +123,8 @@ function Harness({
       tieReadings={false}
       view={sketch.view}
       onView={sketch.setView}
-      picking={false}
-      onPick={() => {}}
+      picking={picking}
+      onPick={onPick}
       lineForm="segment"
       polygonKind={polygonKind}
       preview={preview}
@@ -146,9 +154,9 @@ function Harness({
       captionLook={CAPTION_LOOK}
       onViewport={() => {}}
       snapping={SNAPPING}
-      measureKind="length"
+      measureKind={measureKind}
       arrowKind={arrowKind}
-      markForm="equal"
+      markForm={markForm}
       hiddenKinds={hiddenKinds}
     />
   );

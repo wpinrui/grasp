@@ -39,6 +39,7 @@ interface MeasurementBoxProps {
   /** A caption is open, so a press drops a link to this reading into it. */
   linking: boolean;
   onLink: (id: string) => void;
+  onPick?: (id: string) => void;
   onSelect: (id: string, additive: boolean) => void;
   onGrab: (id: string) => void;
   onDrag: (by: Position) => void;
@@ -91,6 +92,7 @@ export function MeasurementBox({
   lit,
   linking,
   onLink,
+  onPick,
   onSelect,
   onGrab,
   onDrag,
@@ -123,6 +125,11 @@ export function MeasurementBox({
     if (event.button !== 0) return;
     // The sheet never sees a press that landed in a measurement.
     event.stopPropagation();
+    if (onPick) {
+      event.preventDefault();
+      onPick(measurement.id);
+      return;
+    }
     // A caption is open: a press drops a link to the value into the sentence
     // rather than doing anything to the measurement itself.
     if (linking) {
@@ -176,7 +183,7 @@ export function MeasurementBox({
   }
 
   // The Measure tool takes hold of a reading too, to open its panel on it.
-  const held = tool === "arrow" || tool === "text" || tool === "measure";
+  const held = !!onPick || linking || tool === "arrow" || tool === "text" || tool === "measure";
   const shown = `reading${selected ? " reading--selected" : ""}${ghost ? " reading--ghost" : ""}${
     lit ? " reading--lit" : ""
   }`;
@@ -195,7 +202,7 @@ export function MeasurementBox({
       }}
       onMouseEnter={ghost ? undefined : () => onHover?.(measurement.id)}
       onMouseLeave={ghost ? undefined : () => onHover?.(null)}
-      onDoubleClick={ghost ? undefined : () => onDoubleClick?.(measurement.id)}
+      onDoubleClick={ghost || onPick ? undefined : () => onDoubleClick?.(measurement.id)}
       onPointerDown={ghost ? undefined : startDrag}
       onPointerMove={ghost ? undefined : pullDrag}
       onPointerUp={ghost ? undefined : dropDrag}
