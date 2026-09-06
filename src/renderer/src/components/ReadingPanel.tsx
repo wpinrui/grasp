@@ -1,16 +1,15 @@
+import { measurementUnits, units } from "../sketch/measure/units";
 import type { Position, SketchMeasurement } from "../sketch/model";
-import { PLACES } from "../sketch/prefs";
 import {
   BoundsBrokenIcon,
   BoundsFullIcon,
   BoundsNoneIcon,
   ChainIcon,
-  FewerPlacesIcon,
   LeadersIcon,
-  MorePlacesIcon,
   ReflexIcon,
 } from "./icons";
 import { PanelButton, PanelShell, PanelSplit } from "./MarkPanelShell";
+import { MeasurementFormatControls } from "./MeasurementFormatControls";
 
 const MEASURE_COLOUR = "var(--color-tool-measure)";
 
@@ -27,6 +26,7 @@ interface ReadingPanelProps {
   /** How many places this reading is written to now, its kind's default included. */
   places: number;
   onPlaces: (id: string, places: number) => void;
+  onFormat: (id: string, part: Pick<Partial<SketchMeasurement>, "unit" | "showUnit">) => void;
 }
 
 /**
@@ -58,10 +58,9 @@ export function ReadingPanel({
   onReflex,
   places,
   onPlaces,
+  onFormat,
 }: ReadingPanelProps) {
   const bounds = reading.bounds;
-  const least = PLACES[0];
-  const most = PLACES[PLACES.length - 1];
   // Only what the Measure tool wrote is offered the chain. A reading from the
   // Measure menu is a row of numbers in the corner of the view rather than a
   // number set down beside a figure, so it has no figure to be tied to.
@@ -77,25 +76,23 @@ export function ReadingPanel({
       <PanelSplit />
     </>
   ) : null;
+  const available = measurementUnits(reading.measure);
+  const unit =
+    reading.unit && available.includes(reading.unit)
+      ? reading.unit
+      : reading.measure === "angle" || reading.measure === "arc-angle"
+        ? units.angle
+        : units.distance;
   const decimals = (
-    <>
-      <PanelButton
-        label="One fewer decimal place"
-        tip={`One fewer decimal place (${places} now)`}
-        disabled={places <= least}
-        onClick={() => onPlaces(reading.id, places - 1)}
-      >
-        <FewerPlacesIcon />
-      </PanelButton>
-      <PanelButton
-        label="One more decimal place"
-        tip={`One more decimal place (${places} now)`}
-        disabled={places >= most}
-        onClick={() => onPlaces(reading.id, places + 1)}
-      >
-        <MorePlacesIcon />
-      </PanelButton>
-    </>
+    <MeasurementFormatControls
+      format={{ places, unit, showUnit: reading.showUnit !== false }}
+      units={available}
+      unitLabel="Measurement unit"
+      onChange={(part) => {
+        if (part.places !== undefined) onPlaces(reading.id, part.places);
+        else onFormat(reading.id, part);
+      }}
+    />
   );
 
   // An angle has one thing to say about it: which way round it is read. The

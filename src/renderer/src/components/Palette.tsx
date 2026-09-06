@@ -1,12 +1,19 @@
 import { type MouseEvent, type RefObject, useEffect, useReducer } from "react";
-import { insertAtCaret } from "../sketch/captions";
+import {
+  type CaptionTextStyle,
+  clearTextStyle,
+  htmlMarks,
+  markCaption,
+  markStyle,
+} from "../sketch/captionFormatting";
+import { clearCaptionColours, insertAtCaret } from "../sketch/captions";
 import type { CaptionAlign, LinePattern, LineWidth, SketchCaption } from "../sketch/model";
 import { LINE_PATTERNS, LINE_WIDTHS } from "../sketch/model";
 import { type LabelMarks, type TextMark, type TextStyling, textBoxes } from "../sketch/text";
 import { PATTERN_SAMPLE, Picker, Popout, Rule, WEIGHT_SAMPLE } from "./PalettePicker";
 import { caretLook, caretMarks, chosenRun, wrapRun } from "./paletteCaret";
 import { Tooltip } from "./Tooltip";
-import { FONTS, INKS, NOTATION, SIZES, SYMBOLS } from "./typeset";
+import { COMMON_NOTATION, FONTS, INKS, NOTATION, SIZES, SYMBOLS } from "./typeset";
 import "./Palette.css";
 
 const WEIGHT_NAMES: Record<LineWidth, string> = {
@@ -76,6 +83,8 @@ interface PaletteProps {
    * rather than following where the next keystroke would land, and a key the
    * picked labels do not agree on reads off.
    */
+  selectionMarks: LabelMarks | null;
+  onSelectionMark: (mark: TextMark, on: boolean) => void;
   labelMarks: LabelMarks | null;
   onLabelMark: (mark: TextMark, on: boolean) => void;
   /**
@@ -101,8 +110,9 @@ interface PaletteProps {
  * keeps its shape and the sheet never changes height under it.
  *
  * The bar reads back as well as writes: while a caption is open it follows the
- * caret, so the face, the size, the ink and the three style keys say how the
- * text under the caret is set rather than how the caption started.
+ * caret, so the face, the size and the three style keys say how the
+ * text under the caret is set rather than how the caption started. Ink always
+ * belongs to the whole caption.
  */
 export function Palette({
   editor,
@@ -111,6 +121,8 @@ export function Palette({
   editing,
   labelMarks,
   onLabelMark,
+  selectionMarks,
+  onSelectionMark,
   armedText,
   onArmText,
   onCaption,
@@ -136,24 +148,22 @@ export function Palette({
     if (element) onCaption({ html: element.innerHTML });
   }
 
-  function setFace(style: Partial<CSSStyleDeclaration>, whole: Partial<SketchCaption>) {
+  function setFace(style: CaptionTextStyle, whole: Partial<SketchCaption>) {
     const run = chosenRun(editor.current);
     if (run) {
       wrapRun(run, style);
       commit();
       return;
     }
-    onCaption(whole);
+    if (editor.current) {
+      clearTextStyle(editor.current, style);
+      onCaption({ ...whole, html: editor.current.innerHTML });
+    } else onCaption(whole);
   }
 
-  /** Colour goes to a chosen run of text, or to everything selected. */
+  /** Colour always reaches the whole caption, even when a run is selected. */
   function pickColour(token: string) {
-    const run = chosenRun(editor.current);
-    if (run) {
-      wrapRun(run, { color: `var(${token})` });
-      commit();
-      return;
-    }
+    if (editor.current) clearCaptionColours(editor.current);
     onStyle({ colour: token });
   }
 
@@ -162,10 +172,25 @@ export function Palette({
       onLabelMark(command, !labelMarks[command]);
       return;
     }
+    if (!editing && selectionMarks) {
+      onSelectionMark(command, !selectionMarks[command]);
+      return;
+    }
+    if (!editing && caption) {
+      onCaption({ html: markCaption(caption.html, command, !htmlMarks(caption.html)[command]) });
+      return;
+    }
     // Nothing open to type into, so the key arms the tool: the next caption
     // starts out written this way.
     if (!editing && armedText) {
       onArmText({ [command]: !armedText[command] });
+      return;
+    }
+    const run = chosenRun(editor.current);
+    if (run) {
+      wrapRun(run, markStyle(command, !caretMarks(editor.current)[command]));
+      commit();
+      redraw();
       return;
     }
     editor.current?.focus();
@@ -179,19 +204,24 @@ export function Palette({
   const here = editing ? caretLook(editor.current) : {};
   const marks =
     labelMarks ??
-    (editing ? caretMarks() : (armedText ?? { bold: false, italic: false, underline: false }));
+    (!editing ? selectionMarks : null) ??
+    (editing
+      ? caretMarks(editor.current)
+      : caption
+        ? htmlMarks(caption.html)
+        : (armedText ?? { bold: false, italic: false, underline: false }));
   /**
    * The three keys go in at the caret, so they want a caption open or a label
    * picked, and failing both a tool armed to write the next caption.
    */
-  const marksOff = !editing && !labelMarks && !armedText;
+  const marksOff = !editing && !caption && !labelMarks && !selectionMarks && !armedText;
   /** The ranging: the caption it is set on, or the one about to be written. */
   const ranged = caption ? caption.align : armedText?.align;
   const rangeOff = !caption && !armedText;
   const boxes = textBoxes(here, text);
   // One ink agreement, worked out over everything a pick would land on, so the
   // bar never lights a colour the selection does not share.
-  const inked = here.colour ?? styling.colour;
+  const inked = styling.colour;
   const colourOff = !styling.canColour;
 
   return (
@@ -380,6 +410,25 @@ export function Palette({
               ))}
             </div>
           </Popout>
+        </div>
+        <div className="palette__controls palette__common">
+          {COMMON_NOTATION.map((mark) => (
+            <Tooltip key={mark.name} says={mark.name}>
+              <button
+                type="button"
+                className="palette__key"
+                aria-label={mark.name}
+                disabled={!editing}
+                onMouseDown={hold}
+                onClick={() => {
+                  insertAtCaret(editor.current, mark.html);
+                  commit();
+                }}
+              >
+                {mark.sample}
+              </button>
+            </Tooltip>
+          ))}
         </div>
         <span className="palette__gap" />
       </div>

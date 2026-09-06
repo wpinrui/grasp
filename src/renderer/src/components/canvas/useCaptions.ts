@@ -9,7 +9,7 @@
  */
 
 import type { RefObject } from "react";
-import { insertAtCaret, linkHtml, plainText } from "../../sketch/captions";
+import { insertAtCaret, linkHtml, plainText, singleColourHtml } from "../../sketch/captions";
 import {
   type CaptionAlign,
   createCaption,
@@ -61,6 +61,7 @@ export function useCaptions({
    * it is finished is taken off the sheet rather than left sitting there empty.
    */
   function settleCaption(id: string, html: string) {
+    html = singleColourHtml(html);
     const before = sketch.read();
     const found = before.objects.find((object) => object.id === id);
     if (!found || !isCaption(found)) return;

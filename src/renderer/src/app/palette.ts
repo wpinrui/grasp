@@ -20,6 +20,7 @@ import {
   takesWeight,
   toolDraws,
 } from "../sketch/armed";
+import { captionTextStyle, htmlMarks, markCaption } from "../sketch/captionFormatting";
 import {
   isArc,
   isCaption,
@@ -27,6 +28,7 @@ import {
   isLine,
   isLocus,
   isMark,
+  isMeasurement,
   isWriting,
   type LabelState,
   type LinePattern,
@@ -41,6 +43,7 @@ import {
   lookOf,
   lookOfLabel,
   marksOfLabels,
+  type TextMark,
   type TextStyling,
   textStyling,
 } from "../sketch/text";
@@ -225,6 +228,37 @@ export function paletteState(context: PaletteContext) {
     ? marksOfLabels(chosenLabels.map((object) => object.label ?? {}))
     : null;
 
+  const markable = editing
+    ? []
+    : selected.filter((object) => isCaption(object) || isMeasurement(object));
+  const selectionMarks = markable.length
+    ? {
+        bold: markable.every((object) =>
+          isCaption(object) ? htmlMarks(object.html).bold : object.bold === true,
+        ),
+        italic: markable.every((object) =>
+          isCaption(object) ? htmlMarks(object.html).italic : object.italic === true,
+        ),
+        underline: markable.every((object) =>
+          isCaption(object) ? htmlMarks(object.html).underline : object.underline === true,
+        ),
+      }
+    : null;
+
+  function styleMark(mark: TextMark, on: boolean) {
+    const wanted = new Set(markable.map((object) => object.id));
+    if (!wanted.size) return;
+    const before = sketch.read();
+    sketch.commit({
+      ...before,
+      objects: before.objects.map((object) => {
+        if (!wanted.has(object.id)) return object;
+        if (isCaption(object)) return { ...object, html: markCaption(object.html, mark, on) };
+        return isMeasurement(object) ? { ...object, [mark]: on } : object;
+      }),
+    });
+  }
+
   /**
    * What the tool that is up draws, which is what the palette arms. The Arrow
    * draws nothing, so under it the bar is on the selection alone.
@@ -368,13 +402,24 @@ export function paletteState(context: PaletteContext) {
     const spread = Object.keys(look).length > 0 ? new Set(writing.map((one) => one.id)) : null;
     if (!chosenCaption && !spread?.size) return;
     const before = sketch.read();
+    const captionStyle = {
+      ...(change.font !== undefined ? { fontFamily: change.font } : {}),
+      ...(change.size !== undefined ? { fontSize: `${change.size}pt` } : {}),
+    };
     sketch.commit({
       ...before,
       objects: before.objects.map((object) => {
         if (chosenCaption && object.id === chosenCaption.id && isCaption(object)) {
-          return { ...object, ...change };
+          return {
+            ...object,
+            ...change,
+            html: captionTextStyle(change.html ?? object.html, captionStyle),
+          };
         }
-        if (spread?.has(object.id) && isWriting(object)) return { ...object, ...look };
+        if (spread?.has(object.id) && isWriting(object))
+          return isCaption(object)
+            ? { ...object, ...look, html: captionTextStyle(object.html, captionStyle) }
+            : { ...object, ...look };
         return object;
       }),
     });
@@ -386,6 +431,8 @@ export function paletteState(context: PaletteContext) {
 
   return {
     chosenCaption,
+    selectionMarks,
+    styleMark,
     labelsPicked,
     chosenText,
     labelMarks,

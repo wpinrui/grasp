@@ -48,13 +48,16 @@ describe("the same reading twice", () => {
   });
 
   it("finds the number already on the sheet rather than laying another", () => {
-    const already = createMeasurement("length", ["seg"], { x: 40, y: -30 });
+    const already = { ...createMeasurement("length", ["seg"], { x: 40, y: -30 }), bare: true };
     const written = {
       reading: createMeasurement("length", ["seg"], { x: 0, y: 0 }) as SketchMeasurement,
       mark: null,
     };
     expect(readingAlready(written, measuring("length", [...FIGURE, already]))?.id).toBe(already.id);
     expect(readingAlready(written, measuring("length"))).toBe(null);
+    expect(
+      readingAlready(written, measuring("length", [...FIGURE, { ...already, bare: false }])),
+    ).toBe(null);
   });
 });
 
@@ -75,6 +78,8 @@ describe("what a click would read", () => {
   it("hangs a length off the segment rather than on it", () => {
     const written = readingFrom({ x: 50, y: 0 }, measuring("length"));
     expect(written?.reading.measure).toBe("length");
+    expect(written?.reading.bounds).toBe("full");
+    expect(written?.reading.leaders).toBe(true);
     expect(written?.reading.of).toEqual(["seg"]);
     expect(Math.abs(written?.reading.y ?? 0)).toBeGreaterThan(0);
     expect(written?.mark).toBe(null);

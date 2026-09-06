@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { captionReadings } from "../sketch/captionLinks";
 import { type Labelling, labelAnchor, labelOff } from "../sketch/labelling";
 import {
   anglesAt,
@@ -216,6 +217,7 @@ interface CanvasProps {
   /** The caption being typed into. It belongs to the window, not to the page. */
   editing: string | null;
   onEditing: (id: string | null) => void;
+  onTextTool: () => void;
   /** Where the text palette reaches the caption being typed into. */
   editor: RefObject<HTMLDivElement | null>;
   /**
@@ -312,6 +314,7 @@ export function Canvas({
   onLabelSelection,
   editing,
   onEditing,
+  onTextTool,
   editor,
   zoomable,
   tieReadings,
@@ -429,7 +432,7 @@ export function Canvas({
   /** An object a Hot Text link is being pointed at, lit up where it sits. */
   const [lit, setLit] = useState<string | null>(null);
   /** What a reading under the pointer is taken from, lit up where it sits. */
-  const [litReading, setLitReading] = useState<string[]>([]);
+  const [litReading, setLitReading] = useState<string | null>(null);
   /** What the Arrow is over and would pick up, lit while the pointer is on it. */
   const [under, setUnder] = useState<string | null>(null);
   /**
@@ -539,6 +542,7 @@ export function Canvas({
     setLeaders,
     setTied,
     setPlaces,
+    setFormat,
     setReflex: setReadingReflex,
   } = useReading(sketch);
 
@@ -1619,6 +1623,14 @@ export function Canvas({
     (object): object is SketchMeasurement | SketchParameter | SketchCalculation | SketchFunction =>
       isValue(object) || isFunction(object),
   );
+  const hoveredReading = readings.find((object) => object.id === litReading);
+  useEffect(() => {
+    if (litReading && !hoveredReading) setLitReading(null);
+  }, [litReading, hoveredReading]);
+  const readingHighlights =
+    hoveredReading && isMeasurement(hoveredReading)
+      ? [...hoveredReading.of, ...litWith(hoveredReading.id, everything)]
+      : [];
 
   /** What every number on the sheet comes to now, the whole page in one pass. */
   const quantities = quantitiesOf(settled);
@@ -1701,6 +1713,7 @@ export function Canvas({
    * a sentence that quotes a measurement reads the number as it stands now.
    */
   const linkNames = new Map(names);
+  const linkReadings = captionReadings(everything, settled);
   for (const measurement of everything.filter(isMeasurement)) {
     linkNames.set(measurement.id, readingFor(measurement).value);
   }
@@ -1906,7 +1919,7 @@ export function Canvas({
               {under && under !== spotlight && !selection.includes(under) && (
                 <Lit ids={litWith(under, everything)} />
               )}
-              <Lit ids={litReading} />
+              <Lit ids={readingHighlights} />
               <Snapped snap={snap} />
               <Holding marks={marks} />
               <Preview
@@ -1949,6 +1962,7 @@ export function Canvas({
               onReflex={setReadingReflex}
               places={readingOpen.places ?? placesFor(readingOpen.measure)}
               onPlaces={setPlaces}
+              onFormat={setFormat}
             />
           )}
 
@@ -1976,9 +1990,14 @@ export function Canvas({
               scale={scale}
               selected={selection.includes(caption.id)}
               editing={editing === caption.id}
-              tool={picking || !takesWriting ? "none" : tool}
+              tool={picking || (tool === "arrow" && !takesWriting) ? "none" : tool}
               editor={editor}
               onEdit={closeCaption}
+              canDoubleEdit={labelPick.length === 0 && selection.every((id) => id === caption.id)}
+              onDoubleEdit={(id) => {
+                onTextTool();
+                closeCaption(id);
+              }}
               onSelect={toggleObject}
               onGrab={grabWriting}
               onDrag={dragWriting}
@@ -1991,6 +2010,7 @@ export function Canvas({
                 settleCaption(id, html);
               }}
               onLit={setLit}
+              readings={linkReadings}
               onMeasure={measureWriting}
             />
           ))}
@@ -2013,14 +2033,7 @@ export function Canvas({
               onDrop={dropWriting}
               onToggleLabel={onToggleLabel}
               onMeasure={measureWriting}
-              onHover={(id) => {
-                const found = id ? everything.find((object) => object.id === id) : null;
-                setLitReading(
-                  found && isMeasurement(found)
-                    ? [...found.of, ...litWith(found.id, everything)]
-                    : [],
-                );
-              }}
+              onHover={setLitReading}
               onOpen={(id) => {
                 const found = everything.find((object) => object.id === id);
                 setReadingPanel(found && isMeasurement(found) && hasPanel(found) ? id : null);
@@ -2088,7 +2101,13 @@ export function Canvas({
 
           {/* Hidden writing pointed at in the dock. Nothing else says where it
             sits, since a hidden object is not drawn at all. */}
-          <GhostCaption caption={ghostAt(spotlight)} names={linkNames} view={view} scale={scale} />
+          <GhostCaption
+            caption={ghostAt(spotlight)}
+            names={linkNames}
+            readings={linkReadings}
+            view={view}
+            scale={scale}
+          />
           {(() => {
             const hidden = ghostReadingAt(spotlight);
             return hidden ? (

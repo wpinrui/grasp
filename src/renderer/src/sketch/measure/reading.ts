@@ -294,6 +294,7 @@ export function readingOf(measurement: SketchMeasurement, page: ReadingOn): Read
   const value = sayQuantity(
     quantityOf(measurement, page.objects, page.settled),
     measurement.places,
+    measurement,
   );
   return readingWith(measurement, page, value);
 }

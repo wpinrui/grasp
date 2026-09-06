@@ -11,6 +11,7 @@
 import { DEFAULT_CAPTION } from "../components/typeset";
 import {
   DEFAULT_LABEL,
+  isMeasurement,
   isWriting,
   type LabelState,
   type SketchObject,
@@ -73,12 +74,28 @@ export function drawnAs(object: SketchWriting): {
   fontFamily: string;
   fontSize: string;
   color: string;
+  fontWeight?: "bold" | "normal";
+  fontStyle?: "italic" | "normal";
+  textDecoration?: "underline" | "none";
 } {
   const look = lookOf(object);
   return {
     fontFamily: `"${look.font}", serif`,
     fontSize: `${look.size}pt`,
     color: `var(${look.colour})`,
+    ...(isMeasurement(object)
+      ? {
+          ...(object.bold !== undefined
+            ? { fontWeight: object.bold ? ("bold" as const) : ("normal" as const) }
+            : {}),
+          ...(object.italic !== undefined
+            ? { fontStyle: object.italic ? ("italic" as const) : ("normal" as const) }
+            : {}),
+          ...(object.underline !== undefined
+            ? { textDecoration: object.underline ? ("underline" as const) : ("none" as const) }
+            : {}),
+        }
+      : {}),
   };
 }
 

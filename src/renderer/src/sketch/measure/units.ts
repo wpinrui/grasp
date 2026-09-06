@@ -1,5 +1,11 @@
 import { type MeasureKind, PX_PER_CM, radiansOf } from "../model";
-import { DEFAULT_PREFS, type DistanceUnit, type Units } from "../prefs";
+import {
+  ANGLE_UNITS,
+  DEFAULT_PREFS,
+  DISTANCE_UNITS,
+  type DistanceUnit,
+  type Units,
+} from "../prefs";
 export const TURN = Math.PI * 2;
 
 /**
@@ -68,4 +74,10 @@ export function placesFor(measure: MeasureKind): number {
   if (measure === "angle" || measure === "arc-angle") return units.anglePlaces;
   if (measure === "ratio" || measure === "value") return units.otherPlaces;
   return units.distancePlaces;
+}
+
+/** Units a measurement can display without changing the sheet's units. */
+export function measurementUnits(measure: MeasureKind): readonly string[] {
+  if (measure === "ratio" || measure === "value") return [];
+  return measure === "angle" || measure === "arc-angle" ? ANGLE_UNITS : DISTANCE_UNITS;
 }

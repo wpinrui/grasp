@@ -53,3 +53,19 @@ describe("what a reading spells out", () => {
     expect(spells).toEqual(expect.arrayContaining([a.id, corner.id, b.id]));
   });
 });
+
+it("converts standalone readings before rounding and can omit units", () => {
+  const a = createPoint({ x: 0, y: 0 }, "medium");
+  const b = createPoint({ x: 96, y: 0 }, "medium");
+  const segment = createLine("segment", { kind: "through", ends: [a.id, b.id] });
+  const measurement = {
+    ...createMeasurement("length", [segment.id], { x: 0, y: 40 }),
+    unit: "in",
+    places: 2,
+  };
+  const objects = [a, b, segment, measurement];
+  const page = { objects, names: namesFor(objects), settled: settle(objects).settled };
+  expect(readingOf(measurement, page).value).toBe("1 in");
+  expect(readingOf({ ...measurement, showUnit: false }, page).value).toBe("1");
+  expect(readingOf({ ...measurement, unit: "mm" }, page).value).toBe("25.4 mm");
+});

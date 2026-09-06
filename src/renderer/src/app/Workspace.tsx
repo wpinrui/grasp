@@ -129,6 +129,10 @@ export function Workspace({
           hiddenKinds={tools.hiddenKinds}
           editing={tools.editing}
           onEditing={tools.setEditing}
+          onTextTool={() => {
+            tools.pickVariant("text", "caption");
+            tools.setActiveTool("text");
+          }}
           editor={tools.editor}
           captionWanted={tools.captionWanted}
           captionLook={palette.captionLook}
@@ -139,6 +143,8 @@ export function Workspace({
             caption={palette.chosenCaption}
             text={palette.chosenText ?? palette.armedWriting}
             editing={tools.editing !== null}
+            selectionMarks={palette.selectionMarks}
+            onSelectionMark={palette.styleMark}
             labelMarks={palette.labelMarks}
             onLabelMark={(mark, on) => palette.styleLabel({ [mark]: on })}
             armedText={palette.armedMarks}

@@ -86,22 +86,41 @@ function raised(power: number): string {
  * and a plain number with nothing after it. Anything stranger says its unit
  * with the exponent it carries rather than pretending to be one of those.
  */
-export function sayQuantity(quantity: Quantity | null, places?: number): string {
+export function sayQuantity(
+  quantity: Quantity | null,
+  places?: number,
+  format?: { unit?: string; showUnit?: boolean },
+): string {
   if (!quantity) return "—";
-  const { value, length, angle } = quantity;
+  const { length, angle } = quantity;
+  let value = quantity.value;
+  const distance =
+    format?.unit && Object.hasOwn(PER_CM, format.unit)
+      ? (format.unit as keyof typeof PER_CM)
+      : units.distance;
+  const angleUnit =
+    format?.unit === "degrees" || format?.unit === "radians" ? format.unit : units.angle;
+  value *= (PER_CM[distance] / PER_CM[units.distance]) ** length;
+  if (angleUnit !== units.angle)
+    value *= (angleUnit === "radians" ? Math.PI / 180 : 180 / Math.PI) ** angle;
+  if (format?.showUnit === false)
+    return said(
+      value,
+      places ?? (length ? units.distancePlaces : angle ? units.anglePlaces : units.otherPlaces),
+    );
   const to = (asked: number) => places ?? asked;
   if (length === 0 && angle === 0) return said(value, to(units.otherPlaces));
   if (length === 0 && angle === 1) {
-    return `${said(value, to(units.anglePlaces))}${units.angle === "radians" ? " rad" : "°"}`;
+    return `${said(value, to(units.anglePlaces))}${angleUnit === "radians" ? " rad" : "°"}`;
   }
   if (angle === 0 && (length === 1 || length === 2)) {
-    return `${said(value, to(units.distancePlaces))} ${units.distance}${length === 2 ? "²" : ""}`;
+    return `${said(value, to(units.distancePlaces))} ${distance}${length === 2 ? "²" : ""}`;
   }
   const parts = [
-    length === 0 ? "" : `${units.distance}${length === 1 ? "" : raised(length)}`,
+    length === 0 ? "" : `${distance}${length === 1 ? "" : raised(length)}`,
     angle === 0
       ? ""
-      : `${units.angle === "radians" ? "rad" : "deg"}${angle === 1 ? "" : raised(angle)}`,
+      : `${angleUnit === "radians" ? "rad" : "deg"}${angle === 1 ? "" : raised(angle)}`,
   ].filter(Boolean);
   return `${said(value, to(units.otherPlaces))} ${parts.join(" ")}`;
 }

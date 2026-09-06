@@ -7,6 +7,7 @@
  * at all, so pointing at its row in the dock is the only way to find it again.
  */
 
+import type { CaptionReading } from "../../../sketch/captionLinks";
 import { withNames } from "../../../sketch/captions";
 import type { SketchCaption, View } from "../../../sketch/model";
 import { drawnAs } from "../../../sketch/text";
@@ -18,11 +19,12 @@ interface GhostCaptionProps {
   caption: SketchCaption | null;
   /** The readings a link in the caption stands for, by id. */
   names: Map<string, string>;
+  readings: Map<string, CaptionReading>;
   view: View;
   scale: number;
 }
 
-export function GhostCaption({ caption, names, view, scale }: GhostCaptionProps) {
+export function GhostCaption({ caption, names, readings, view, scale }: GhostCaptionProps) {
   if (!caption) return null;
   return (
     <div
@@ -37,7 +39,7 @@ export function GhostCaption({ caption, names, view, scale }: GhostCaptionProps)
       <div
         className="caption__body"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: the caption's own markup, written here
-        dangerouslySetInnerHTML={{ __html: withNames(caption.html, names) }}
+        dangerouslySetInnerHTML={{ __html: withNames(caption.html, names, readings) }}
       />
     </div>
   );

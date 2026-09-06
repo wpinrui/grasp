@@ -58,6 +58,10 @@
   gap: 5px;
 }
 
+.palette__common {
+  margin-left: 8px;
+}
+
 /* Between two runs of controls, and inside one that holds two ideas. */
 .palette__split {
   flex: none;

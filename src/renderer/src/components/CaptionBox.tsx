@@ -4,12 +4,16 @@ import {
   type RefObject,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
 } from "react";
-import { withNames } from "../sketch/captions";
+import { markStyle } from "../sketch/captionFormatting";
+import type { CaptionReading } from "../sketch/captionLinks";
+import { clearCaptionColours, refreshLinks, withNames } from "../sketch/captions";
 import type { CaptionAlign, Position, SketchCaption, View } from "../sketch/model";
 import { drawnAs } from "../sketch/text";
-import { SLOT } from "./typeset";
+import { CaptionLinkPanel, selectCaptionLink } from "./CaptionLinkPanel";
+import { caretMarks, chosenRun, wrapRun } from "./paletteCaret";
 import "./CaptionBox.css";
 
 /** The least a caption can be dragged down to, in screen pixels. */
@@ -22,6 +26,7 @@ interface CaptionBoxProps {
   caption: SketchCaption;
   /** What everything on the page is called, for the links to read. */
   names: Map<string, string>;
+  readings: Map<string, CaptionReading>;
   view: View;
   scale: number;
   selected: boolean;
@@ -31,6 +36,8 @@ interface CaptionBoxProps {
   /** Where the palette reaches the caption being typed into. */
   editor: RefObject<HTMLDivElement | null>;
   onEdit: (id: string | null) => void;
+  canDoubleEdit: boolean;
+  onDoubleEdit: (id: string) => void;
   onSelect: (id: string, additive: boolean) => void;
   /**
    * A drag is starting. The sheet decides what it moves, since a caption in the
@@ -53,13 +60,19 @@ interface CaptionBoxProps {
 
 /** Put the caret in the slot after the one it is in, or the one before it. */
 function stepSlot(root: HTMLElement, back: boolean): boolean {
-  const slots = [...root.querySelectorAll(".cap-slot")];
-  if (slots.length === 0) return false;
   const selection = window.getSelection();
   const here = selection?.anchorNode ?? null;
+  const element = here?.nodeType === Node.ELEMENT_NODE ? (here as Element) : here?.parentElement;
+  const notation = element?.closest(NOTATION);
+  const slots = [...(notation ?? root).querySelectorAll(".cap-slot")];
+  if (slots.length === 0) return false;
   const at = slots.findIndex((slot) => here !== null && slot.contains(here));
   const next = at === -1 ? (back ? slots.length - 1 : 0) : at + (back ? -1 : 1);
-  const wanted = slots[(next + slots.length) % slots.length];
+  if (notation && (next < 0 || next >= slots.length)) {
+    placeOutside(notation, !back);
+    return true;
+  }
+  const wanted = slots[next];
   const range = document.createRange();
   range.selectNodeContents(wanted);
   selection?.removeAllRanges();
@@ -82,6 +95,42 @@ function caretAt(x: number, y: number): Range | null {
  */
 const NOTATION = ".cap-frac, .cap-root, .cap-bar, .cap-group, sup, sub";
 
+/** Give the caret a real text position outside the notation's layout box. */
+function placeOutside(piece: Element, forward: boolean) {
+  let text = forward ? piece.nextSibling : piece.previousSibling;
+  if (text?.nodeType !== Node.TEXT_NODE) {
+    text = document.createTextNode("\u200b");
+    if (forward) piece.after(text);
+    else piece.before(text);
+  }
+  const range = document.createRange();
+  range.setStart(
+    text,
+    forward ? (text.textContent?.startsWith("\u200b") ? 1 : 0) : (text.textContent?.length ?? 0),
+  );
+  range.collapse(true);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function exitAtEdge(editor: HTMLElement, forward: boolean): boolean {
+  const at = caretSpot();
+  if (!at || !editor.contains(at.node)) return false;
+  const element =
+    at.node.nodeType === Node.ELEMENT_NODE ? (at.node as Element) : at.node.parentElement;
+  const piece = element?.closest(NOTATION);
+  if (!piece || !editor.contains(piece)) return false;
+  const part = element?.closest(".cap-slot, .cap-frac__top, .cap-frac__bottom") ?? piece;
+  const rest = document.createRange();
+  rest.selectNodeContents(part);
+  if (forward) rest.setStart(at.node, at.offset);
+  else rest.setEnd(at.node, at.offset);
+  if (rest.toString().replace(/\u200b/g, "") !== "") return false;
+  placeOutside(piece, forward);
+  return true;
+}
+
 /** Where the caret is now, as something two moments apart can be compared by. */
 function caretSpot(): { node: Node; offset: number } | null {
   const selection = window.getSelection();
@@ -98,13 +147,7 @@ function stepOutOfNotation(editor: HTMLElement, forward: boolean): boolean {
     at.node.nodeType === Node.ELEMENT_NODE ? (at.node as Element) : at.node.parentElement;
   const piece = from?.closest(NOTATION);
   if (!piece || !editor.contains(piece)) return false;
-  const next = document.createRange();
-  if (forward) next.setStartAfter(piece);
-  else next.setStartBefore(piece);
-  next.collapse(true);
-  const selection = window.getSelection();
-  selection?.removeAllRanges();
-  selection?.addRange(next);
+  placeOutside(piece, forward);
   return true;
 }
 
@@ -139,6 +182,7 @@ function freeTheCaret(editor: HTMLElement, forward: boolean): void {
 export function CaptionBox({
   caption,
   names,
+  readings,
   view,
   scale,
   selected,
@@ -146,6 +190,8 @@ export function CaptionBox({
   tool,
   editor,
   onEdit,
+  canDoubleEdit,
+  onDoubleEdit,
   onSelect,
   onGrab,
   onDrag,
@@ -171,7 +217,7 @@ export function CaptionBox({
   useLayoutEffect(() => {
     const element = body.current;
     if (!editing || !element) return;
-    element.innerHTML = withNames(caption.html, names);
+    element.innerHTML = withNames(caption.html, names, readings);
     editor.current = element;
     element.focus();
     const spot = opened.current;
@@ -192,6 +238,10 @@ export function CaptionBox({
     };
   }, [editing]);
 
+  useLayoutEffect(() => {
+    if (editing && body.current) refreshLinks(body.current, names, readings);
+  }, [editing, names, readings]);
+
   useEffect(() => {
     const element = root.current;
     if (!element) return;
@@ -207,7 +257,15 @@ export function CaptionBox({
     // The sheet never sees a press that landed in a caption. Open, the press is
     // the browser's: it moves the caret and selects text.
     event.stopPropagation();
-    if (editing) return;
+    if (editing) {
+      const link = (event.target as HTMLElement).closest("[data-link]");
+      if (link && body.current?.contains(link)) {
+        event.preventDefault();
+        body.current.focus();
+        selectCaptionLink(link);
+      }
+      return;
+    }
     // The Text tool writes in a caption rather than carrying it about, so a
     // press with it goes straight to the caret.
     if (tool === "text") {
@@ -216,7 +274,6 @@ export function CaptionBox({
       return;
     }
     if (tool !== "arrow") return;
-    event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = { from: { x: event.clientX, y: event.clientY }, moved: false };
   }
 
@@ -227,6 +284,9 @@ export function CaptionBox({
     const dy = event.clientY - held.from.y;
     if (!held.moved) {
       if (Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD) return;
+      // Capturing on the initial press retargets the release away from an
+      // atomic link, which makes Chromium suppress its click and double-click.
+      event.currentTarget.setPointerCapture(event.pointerId);
       held.moved = true;
       onGrab(caption.id);
     }
@@ -273,6 +333,16 @@ export function CaptionBox({
   function keyed(event: ReactKeyboardEvent<HTMLDivElement>) {
     const element = body.current;
     if (!element) return;
+    const mark = ({ b: "bold", i: "italic", u: "underline" } as const)[
+      event.key.toLowerCase() as "b" | "i" | "u"
+    ];
+    const run = chosenRun(element);
+    if ((event.ctrlKey || event.metaKey) && mark && run) {
+      event.preventDefault();
+      wrapRun(run, markStyle(mark, !caretMarks(element)[mark]));
+      onCommit(caption.id, element.innerHTML);
+      return;
+    }
     if (event.key === "Escape") {
       event.preventDefault();
       onCommit(caption.id, element.innerHTML);
@@ -297,10 +367,19 @@ export function CaptionBox({
     // A caret that cannot get past a fraction or a square root is stuck inside
     // it, and nothing can be typed after one.
     if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      if (
+        !event.shiftKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        exitAtEdge(element, event.key === "ArrowRight")
+      ) {
+        event.preventDefault();
+        return;
+      }
       freeTheCaret(element, event.key === "ArrowRight");
       return;
     }
-    if (event.key === "Tab" && element.textContent?.includes(SLOT)) {
+    if (event.key === "Tab") {
       if (stepSlot(element, event.shiftKey)) event.preventDefault();
     }
   }
@@ -313,6 +392,10 @@ export function CaptionBox({
 
   const held = tool === "arrow" || tool === "text";
   const shown = `caption${selected ? " caption--selected" : ""}${editing ? " caption--editing" : ""}`;
+  const displayed = editing ? "" : withNames(caption.html, names, readings);
+  // Keep live-link nodes in place across selection/hover renders. Replacing
+  // innerHTML between pointerup and mouseup destroys the browser's click target.
+  const markup = useMemo(() => ({ __html: displayed }), [displayed]);
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a caption is written in, not pressed
@@ -331,11 +414,16 @@ export function CaptionBox({
       onPointerDown={startDrag}
       onPointerMove={pullDrag}
       onPointerUp={dropDrag}
+      onPointerLeave={(event) => {
+        // Keep tracking a press that crosses the edge before the first move
+        // reaches the drag threshold.
+        if (drag.current) event.currentTarget.setPointerCapture(event.pointerId);
+      }}
       onDoubleClick={(event) => {
-        if (editing) return;
+        if (editing || !canDoubleEdit) return;
         event.stopPropagation();
         opened.current = { x: event.clientX, y: event.clientY };
-        onEdit(caption.id);
+        onDoubleEdit(caption.id);
       }}
       onPointerOver={overLink}
       onPointerOut={() => onLit(null)}
@@ -351,13 +439,21 @@ export function CaptionBox({
           tabIndex={0}
           aria-label="Caption"
           onKeyDown={keyed}
+          onInput={(event) => clearCaptionColours(event.currentTarget)}
           onBlur={() => onCommit(caption.id, body.current?.innerHTML ?? caption.html)}
         />
       ) : (
         <div
           className="caption__body"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: the caption's own markup, written here
-          dangerouslySetInnerHTML={{ __html: withNames(caption.html, names) }}
+          dangerouslySetInnerHTML={markup}
+        />
+      )}
+      {editing && (
+        <CaptionLinkPanel
+          editor={body}
+          readings={readings}
+          onCommit={() => onCommit(caption.id, body.current?.innerHTML ?? caption.html)}
         />
       )}
       {(selected || editing) && (

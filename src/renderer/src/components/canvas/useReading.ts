@@ -148,6 +148,7 @@ export function useReading(sketch: Sketch) {
     setTied,
     setPanel,
     setPlaces,
+    setFormat: change,
     setReflex,
   };
 }

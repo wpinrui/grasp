@@ -14,6 +14,7 @@ function panel(part: Partial<SketchMeasurement>) {
     ...part,
   } as SketchMeasurement;
   const onTie = vi.fn();
+  const onFormat = vi.fn();
   render(
     <ReadingPanel
       reading={reading}
@@ -24,9 +25,10 @@ function panel(part: Partial<SketchMeasurement>) {
       onReflex={() => {}}
       places={2}
       onPlaces={() => {}}
+      onFormat={onFormat}
     />,
   );
-  return { reading, onTie };
+  return { reading, onTie, onFormat };
 }
 
 /**
@@ -63,4 +65,22 @@ describe("the chain on a reading's panel", () => {
     fireEvent.click(screen.getByRole("button", { name: CHAIN }));
     expect(tied.onTie).toHaveBeenCalledWith(tied.reading.id, false);
   });
+});
+
+it("changes a reading's unit and hides its suffix independently", () => {
+  const shown = panel({ unit: "mm" });
+  expect(
+    (screen.getByRole("combobox", { name: "Measurement unit" }) as HTMLSelectElement).value,
+  ).toBe("mm");
+  fireEvent.change(screen.getByRole("combobox", { name: "Measurement unit" }), {
+    target: { value: "in" },
+  });
+  expect(shown.onFormat).toHaveBeenCalledWith(shown.reading.id, { unit: "in" });
+  fireEvent.click(screen.getByRole("button", { name: "Show units" }));
+  expect(shown.onFormat).toHaveBeenCalledWith(shown.reading.id, { showUnit: false });
+});
+
+it("does not offer units for scalar readings", () => {
+  panel({ measure: "ratio" });
+  expect(screen.queryByRole("combobox", { name: "Measurement unit" })).toBeNull();
 });
