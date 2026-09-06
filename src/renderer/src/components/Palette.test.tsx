@@ -145,3 +145,26 @@ it("enables style controls for standalone measurements and reports toggles", () 
     expect(onSelectionMark).toHaveBeenCalledWith(mark, true);
   }
 });
+
+it("removes underline from a link within an underlined sentence without changing its neighbours", () => {
+  const shown = palette(`<u><b>Before ${linkHtml("m", "12 cm")} after</b></u>`);
+  const link = shown.field.querySelector("[data-link]");
+  if (!link) throw new Error("Missing link");
+  act(() => {
+    const range = document.createRange();
+    range.selectNode(link);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(range);
+    document.dispatchEvent(new Event("selectionchange"));
+  });
+  fireEvent.click(shown.getByRole("button", { name: "Underline" }));
+  const changed = shown.field.querySelector("[data-link]");
+  expect(changed?.closest("u")).toBeNull();
+  expect(changed?.closest("b")).not.toBeNull();
+  expect([...shown.field.querySelectorAll("u")].map((one) => one.textContent)).toEqual([
+    "Before ",
+    " after",
+  ]);
+  expect(shown.field.textContent).toBe("Before 12 cm after");
+  expect(shown.field.querySelectorAll("[data-link]")).toHaveLength(1);
+});

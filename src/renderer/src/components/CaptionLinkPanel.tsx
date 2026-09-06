@@ -1,8 +1,7 @@
 import { type RefObject, useEffect, useState } from "react";
 import { type CaptionReading, type LinkFormat, linkFormat } from "../sketch/captionLinks";
-import { PLACES } from "../sketch/prefs";
-import { FewerPlacesIcon, MorePlacesIcon } from "./icons";
-import { PanelButton, PanelShell } from "./MarkPanelShell";
+import { PanelShell } from "./MarkPanelShell";
+import { MeasurementFormatControls } from "./MeasurementFormatControls";
 
 /** Select a whole atomic link so both the text palette and its panel address it. */
 export function selectCaptionLink(link: Element) {
@@ -64,46 +63,12 @@ export function CaptionLinkPanel({ editor, readings, onCommit }: CaptionLinkPane
       at={{ x: box.left - parent.left + box.width / 2, y: box.top - parent.top - 8 }}
       colour="var(--color-tool-measure)"
     >
-      {reading.units.length > 0 && (
-        <>
-          <PanelButton
-            label="Show units"
-            on={format.showUnit}
-            onClick={() => change({ showUnit: !format.showUnit })}
-          >
-            u
-          </PanelButton>
-          <select
-            className="caption-link-unit"
-            aria-label="Link unit"
-            value={format.unit}
-            onMouseDown={(event) => event.stopPropagation()}
-            onChange={(event) => change({ unit: event.target.value })}
-          >
-            {reading.units.map((unit) => (
-              <option key={unit} value={unit}>
-                {unit}
-              </option>
-            ))}
-          </select>
-        </>
-      )}
-      <PanelButton
-        label="One fewer decimal place"
-        tip={`One fewer decimal place (${format.places} now)`}
-        disabled={format.places <= PLACES[0]}
-        onClick={() => change({ places: format.places - 1 })}
-      >
-        <FewerPlacesIcon />
-      </PanelButton>
-      <PanelButton
-        label="One more decimal place"
-        tip={`One more decimal place (${format.places} now)`}
-        disabled={format.places >= PLACES[PLACES.length - 1]}
-        onClick={() => change({ places: format.places + 1 })}
-      >
-        <MorePlacesIcon />
-      </PanelButton>
+      <MeasurementFormatControls
+        format={format}
+        units={reading.units}
+        unitLabel="Link unit"
+        onChange={change}
+      />
     </PanelShell>
   );
 }

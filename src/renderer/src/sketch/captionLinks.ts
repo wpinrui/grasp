@@ -1,7 +1,7 @@
-import { quantityOf } from "./measure";
-import { PER_CM, placesFor, said, units } from "./measure/units";
+import { quantityOf, sayQuantity } from "./measure";
+import { measurementUnits, placesFor, units } from "./measure/units";
 import { isMeasurement, type Settled, type SketchObject } from "./model";
-import { ANGLE_UNITS, DISTANCE_UNITS, type DistanceUnit, PLACES } from "./prefs";
+import { PLACES } from "./prefs";
 
 export interface LinkFormat {
   places: number;
@@ -42,26 +42,12 @@ export function captionReadings(
     const angle = object.measure === "angle" || object.measure === "arc-angle";
     const scalar = object.measure === "ratio" || object.measure === "value";
     const unit = scalar ? "" : angle ? units.angle : units.distance;
-    const available = scalar ? [] : angle ? ANGLE_UNITS : DISTANCE_UNITS;
+    const available = measurementUnits(object.measure);
     readings.set(object.id, {
       places: object.places ?? placesFor(object.measure),
       unit,
       units: available,
-      value: (format) => {
-        if (!quantity) return "—";
-        let value = quantity.value;
-        let suffix = "";
-        if (angle) {
-          if (format.unit !== unit)
-            value *= format.unit === "radians" ? Math.PI / 180 : 180 / Math.PI;
-          suffix = format.unit === "radians" ? " rad" : "°";
-        } else if (!scalar) {
-          value *=
-            (PER_CM[format.unit as DistanceUnit] / PER_CM[unit as DistanceUnit]) ** quantity.length;
-          suffix = ` ${format.unit}${quantity.length === 2 ? "²" : ""}`;
-        }
-        return `${said(value, format.places)}${format.showUnit ? suffix : ""}`;
-      },
+      value: (format) => sayQuantity(quantity, format.places, format),
     });
   }
   return readings;

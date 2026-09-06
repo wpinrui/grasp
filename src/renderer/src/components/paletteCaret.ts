@@ -28,11 +28,61 @@ export function chosenRun(editor: HTMLDivElement | null): Range | null {
   return whole;
 }
 
+/** Split underlined ancestors: a descendant's decoration:none cannot cancel their line. */
+function withoutInheritedUnderline(range: Range): DocumentFragment {
+  let ancestor =
+    range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+      ? (range.commonAncestorContainer as HTMLElement)
+      : range.commonAncestorContainer.parentElement;
+  const chain: HTMLElement[] = [];
+  let top = -1;
+  while (
+    ancestor &&
+    ancestor.contentEditable !== "true" &&
+    !ancestor.classList.contains("caption__body")
+  ) {
+    chain.push(ancestor);
+    if (
+      ancestor.tagName === "U" ||
+      ancestor.style.textDecoration.includes("underline") ||
+      ancestor.style.textDecorationLine.includes("underline")
+    )
+      top = chain.length - 1;
+    ancestor = ancestor.parentElement;
+  }
+  if (top < 0) return range.extractContents();
+  const outer = chain[top];
+  const before = document.createRange();
+  before.selectNodeContents(outer);
+  before.setEnd(range.startContainer, range.startOffset);
+  const after = document.createRange();
+  after.selectNodeContents(outer);
+  after.setStart(range.endContainer, range.endOffset);
+  const prefix = outer.cloneNode(false);
+  prefix.appendChild(before.cloneContents());
+  const suffix = outer.cloneNode(false);
+  suffix.appendChild(after.cloneContents());
+  let selected: Node = range.cloneContents();
+  for (const element of chain.slice(0, top + 1)) {
+    const wrapper = element.cloneNode(false);
+    wrapper.appendChild(selected);
+    selected = wrapper;
+  }
+  const content = document.createDocumentFragment();
+  content.appendChild(selected);
+  const marker = document.createTextNode("");
+  outer.replaceWith(prefix, marker, suffix);
+  range.selectNode(marker);
+  range.deleteContents();
+  return content;
+}
+
 /** Set the chosen run in its own type, and leave it chosen. */
 export function wrapRun(range: Range, style: CaptionTextStyle) {
   const span = document.createElement("span");
   Object.assign(span.style, style);
-  const content = range.extractContents();
+  const content =
+    style.textDecoration === "none" ? withoutInheritedUnderline(range) : range.extractContents();
   clearTextStyle(content, style);
   span.appendChild(content);
   range.insertNode(span);
