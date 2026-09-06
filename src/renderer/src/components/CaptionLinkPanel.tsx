@@ -51,6 +51,7 @@ export function CaptionLinkPanel({ editor, readings, onCommit }: CaptionLinkPane
     if (part.places !== undefined) link.dataset.places = String(part.places);
     if (part.unit !== undefined) link.dataset.unit = part.unit;
     if (part.showUnit !== undefined) link.dataset.showUnit = String(part.showUnit);
+    if (part.equation !== undefined) link.dataset.equation = String(part.equation);
     link.textContent = reading.value(linkFormat(link, reading));
     editor.current?.focus();
     selectCaptionLink(link);
@@ -63,6 +64,19 @@ export function CaptionLinkPanel({ editor, readings, onCommit }: CaptionLinkPane
       at={{ x: box.left - parent.left + box.width / 2, y: box.top - parent.top - 8 }}
       colour="var(--color-tool-measure)"
     >
+      {reading.calculation && (
+        <label>
+          Display
+          <select
+            aria-label="Calculation display"
+            value={format.equation ? "equation" : "answer"}
+            onChange={(event) => change({ equation: event.target.value === "equation" })}
+          >
+            <option value="answer">Final answer</option>
+            <option value="equation">Full equation</option>
+          </select>
+        </label>
+      )}
       <MeasurementFormatControls
         format={format}
         units={reading.units}

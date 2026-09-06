@@ -47,6 +47,7 @@ import {
   transformed,
 } from "../sketch/transforms";
 import type { Sketch } from "../sketch/useSketch";
+import { valueNames } from "../sketch/valueNames";
 
 export interface TransformContext {
   sketch: Sketch;
@@ -73,7 +74,6 @@ export function useTransforms(context: TransformContext) {
     objects,
     selection,
     geometry,
-    names,
     pointSize,
     hovered,
     calculating,
@@ -288,7 +288,7 @@ export function useTransforms(context: TransformContext) {
     // The Calculator takes numbers off the sheet, which is quicker than
     // spelling their names and is how the reference app does it too.
     if (calculating) {
-      if (isValue(hit)) setInsert(names.get(hit.id) ?? null);
+      if (isValue(hit)) setInsert(valueNames(objects, geometry).get(hit.id) ?? null);
       return;
     }
     // Reflect wants a straight object to mirror across; everything else wants

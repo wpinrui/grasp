@@ -5,6 +5,7 @@ import { htmlMarks } from "../sketch/captionFormatting";
 import { captionReadings } from "../sketch/captionLinks";
 import { linkHtml, plainText } from "../sketch/captions";
 import {
+  createCalculation,
   createCaption,
   createMeasurement,
   createPoint,
@@ -89,6 +90,29 @@ it("edits only the clicked link, commits its settings, and keeps trailing text",
   expect(shown.container.querySelector(".caption__body")?.textContent).toBe(
     "12.346 + 1.23 cm trailing",
   );
+});
+
+it("switches a calculation link between its full equation and final answer", () => {
+  const calculation = createCalculation({ kind: "value", of: "m" }, { x: 0, y: 0 });
+  const figure = [...objects, calculation];
+  const given = {
+    ...props(linkHtml(calculation.id, "old")),
+    readings: captionReadings(figure, settle(figure).settled),
+  };
+  const shown = render(<CaptionBox {...given} />);
+  const link = shown.container.querySelector("[data-link]");
+  if (!link) throw new Error("Missing calculation link");
+  fireEvent.pointerDown(link, { button: 0 });
+  fireEvent.change(shown.getByRole("combobox", { name: "Calculation display" }), {
+    target: { value: "equation" },
+  });
+  expect(link.textContent).toBe("AB = 1.23 cm");
+  expect(link.getAttribute("data-equation")).toBe("true");
+  fireEvent.change(shown.getByRole("combobox", { name: "Calculation display" }), {
+    target: { value: "answer" },
+  });
+  expect(link.textContent).toBe("1.23 cm");
+  expect(given.onCommit).toHaveBeenCalled();
 });
 
 it("clears legacy link colours while preserving other text formatting", () => {

@@ -84,7 +84,7 @@ export function Dialogs({
           functions={numbers.offeredFunctions()}
           named={numbers.namedInSketch}
           sheet={readable}
-          names={names}
+          names={numbers.expressionNames}
           insert={dialogs.insert}
           onInserted={() => dialogs.setInsert(null)}
           onNewParameter={() => dialogs.setParameterDialog({ fromCalculator: true })}

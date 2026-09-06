@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -15,7 +16,6 @@ import {
   anglesAt,
   angleWanted,
   armsAt,
-  cornerOf,
   fromSheetTerms,
   placesFor,
   quantitiesOf,
@@ -23,6 +23,8 @@ import {
   readingOfValue,
   sayQuantity,
 } from "../sketch/measure";
+import { angleFigure, withAnglePoints } from "../sketch/measure/angleFigure";
+import { angleGesture } from "../sketch/measure/angleGesture";
 import {
   type CaptionAlign,
   centreOf,
@@ -87,6 +89,7 @@ import {
 import { demotedUnder } from "../sketch/overlaps";
 import { togglePick } from "../sketch/picking";
 import type { Sketch } from "../sketch/useSketch";
+import { valueNames } from "../sketch/valueNames";
 import { type AngleChoice, AngleChoiceDialog } from "./AngleChoiceDialog";
 import { CaptionBox } from "./CaptionBox";
 import { guideOf } from "./canvas/guides";
@@ -373,6 +376,8 @@ export function Canvas({
     // land a mark on it.
     setArming(null);
     armFrom.current = null;
+    armTrail.current = [];
+    setSweeping(null);
     // A marquee selects as it sweeps, so one abandoned leaves nothing selected
     // rather than whatever it had got as far as.
     if (tool === "arrow" && dropped?.marquee) clearSelection();
@@ -423,6 +428,8 @@ export function Canvas({
    * to be chosen.
    */
   const armFrom = useRef<string | null>(null);
+  const armTrail = useRef<Position[]>([]);
+  const [sweeping, setSweeping] = useState<ReturnType<typeof angleGesture>>(null);
   /** The midpoint a marking tool would snap to, lit while the pointer is near. */
   const [middle, setMiddle] = useState<Position | null>(null);
   /** Whether the Text tool is over something it could put a label on. */
@@ -455,14 +462,22 @@ export function Canvas({
   // in its own right, or one of the kinds being kept away wholesale. Neither
   // knows about the other, so putting every marking away and bringing them back
   // leaves whatever was hidden one at a time exactly as it was.
-  const objects = everything.filter(
-    (object) =>
-      object.hidden !== true &&
-      !(hiddenKinds.marks && isMark(object)) &&
-      !(hiddenKinds.text && isWriting(object)),
+  const objects = useMemo(
+    () =>
+      everything.filter(
+        (object) =>
+          object.hidden !== true &&
+          !(hiddenKinds.marks && isMark(object)) &&
+          !(hiddenKinds.text && isWriting(object)),
+      ),
+    [everything, hiddenKinds.marks, hiddenKinds.text],
   );
   // Where every line runs, worked out once for drawing, picking and marquees.
-  const settled = settle(everything).settled;
+  const anglePage = useMemo(
+    () => angleFigure(objects, everything, settle(everything).settled),
+    [objects, everything],
+  );
+  const settled = anglePage.settled;
   // Space pans whatever tool is up, and hands it back on release. Panning has
   // no tool of its own: space and the right button are how the sheet is moved.
   const tool = spaceHeld ? "hand" : activeTool;
@@ -530,7 +545,7 @@ export function Canvas({
     setForm,
     setSquare,
     setStrokes,
-  } = useMarking({ sketch, objects, settled, scale, view, marking });
+  } = useMarking({ sketch, objects: anglePage.objects, settled, scale, view, marking });
 
   const {
     panel: readingPanel,
@@ -820,6 +835,8 @@ export function Canvas({
     if (event.button !== 0) return;
     const at = positionOf(event);
     if (!at) return;
+    armTrail.current = [at];
+    setSweeping(null);
     // A caption is open: clicking an object drops a link to it into what is
     // being written, and clicking bare sheet finishes the caption. The default
     // is stopped so the caret is not lost on the way.
@@ -950,9 +967,11 @@ export function Canvas({
   function armingArcs(): string[] {
     // Nothing is aimed at yet, so nothing is drawn: arcs here would show a
     // wedge the release is not going to take.
-    if (!arming || distance(arming.at, arming.start) < ANGLE_AIM / scale) return [];
-    const corner = settled.points.get(arming.corner);
-    const wanted = angleAsked(arming.corner, arming.at);
+    if (!sweeping && (!arming || distance(arming.at, arming.start) < ANGLE_AIM / scale)) return [];
+    const cornerId = sweeping?.corner ?? arming?.corner;
+    if (!cornerId) return [];
+    const corner = settled.points.get(cornerId);
+    const wanted = sweeping ?? (arming ? angleAsked(arming.corner, arming.at) : null);
     if (!corner || !wanted) return [];
     const ends = wanted.arms.map((id) => settled.points.get(id));
     if (ends.some((end) => end === undefined)) return [];
@@ -967,7 +986,7 @@ export function Canvas({
         from,
         sweep,
         strokes: lastMark.current.angle,
-        radius: clearOfCorner(arming.corner),
+        radius: clearOfCorner(cornerId),
         // A right angle previews as the square it will land as.
         square: isRightAngle(sweep),
       },
@@ -980,13 +999,13 @@ export function Canvas({
     const spot = settled.points.get(corner);
     if (!spot) return null;
     const bearing = Math.atan2(at.y - spot.y, at.x - spot.x);
-    return angleWanted(armsAt(corner, objects, settled), bearing);
+    return angleWanted(armsAt(corner, anglePage.objects, settled), bearing);
   }
 
   /** Write the number for one angle, by the two arms it runs between. */
-  function readAngle(corner: string, arms: [string, string]) {
+  function readAngle(corner: string, arms: [string, string], reflex = false) {
     const written = tiedToFigure(
-      angleWritten({ corner, arms, hit: null, named: true }, measuringNow()),
+      angleWritten({ corner, arms, hit: null, named: true, reflex }, measuringNow()),
       measuringNow(),
     );
     if (!written) return;
@@ -1000,7 +1019,11 @@ export function Canvas({
     const before = sketch.read();
     sketch.commit({
       ...before,
-      objects: [...before.objects, ...(written.mark ? [written.mark] : []), written.reading],
+      objects: [
+        ...withAnglePoints(before.objects, anglePage.objects, written.reading.of),
+        ...(written.mark ? [written.mark] : []),
+        written.reading,
+      ],
     });
   }
 
@@ -1039,7 +1062,7 @@ export function Canvas({
    */
   function measuringNow(): Measuring {
     return {
-      objects,
+      objects: anglePage.objects,
       settled,
       scale,
       measure: measuring,
@@ -1103,7 +1126,8 @@ export function Canvas({
     if ((marking === "angle" || measuring === "angle") && !picking && !grab.current) {
       const over = positionOf(event);
       const spot = over ? pointUnder(over, measuringNow()) : null;
-      const corner = spot && anglesAt(spot.id, objects, settled).length > 0 ? spot.id : null;
+      const corner =
+        spot && anglesAt(spot.id, anglePage.objects, settled).length > 0 ? spot.id : null;
       if (corner !== overCorner) setOverCorner(corner);
     } else if (overCorner !== null) {
       setOverCorner(null);
@@ -1155,6 +1179,21 @@ export function Canvas({
 
     // A press that took hold of a mark drags the mark and nothing else, under
     // every tool. The tool a mark does not belong to leaves it alone.
+    if (armFrom.current && (marking === "angle" || measuring === "angle")) {
+      armTrail.current.push(at);
+      const landed = lineUnder(at, { objects, settled, scale });
+      setSweeping(
+        landed
+          ? angleGesture(
+              armFrom.current,
+              landed.object.id,
+              armTrail.current,
+              anglePage.objects,
+              settled,
+            )
+          : null,
+      );
+    }
     const heldMark = state.hitId ? objects.find((object) => object.id === state.hitId) : undefined;
     if (heldMark && isMark(heldMark)) {
       // A marking tool lays marks and opens them. Moving one is the Arrow's
@@ -1266,16 +1305,22 @@ export function Canvas({
     // is left to guess however many sides run out of the point.
     const fromSide = armFrom.current;
     armFrom.current = null;
+    setSweeping(null);
     if (fromSide && state.moved && (marking === "angle" || measuring === "angle")) {
-      const side = objects.find((object) => object.id === fromSide);
       const landed = lineUnder(at, { objects, settled, scale });
-      const pair =
-        side && landed && landed.object.id !== fromSide ? cornerOf(side, landed.object) : null;
+      const pair = landed
+        ? angleGesture(
+            fromSide,
+            landed.object.id,
+            [...armTrail.current, at],
+            anglePage.objects,
+            settled,
+          )
+        : null;
       if (pair) {
-        const [from, corner, to] = pair;
         setArming(null);
-        if (marking === "angle") markAngle({ corner, arms: [from, to] });
-        else readAngle(corner, [from, to]);
+        if (marking === "angle") markAngle(pair);
+        else readAngle(pair.corner, pair.arms, pair.reflex);
         return;
       }
     }
@@ -1293,7 +1338,7 @@ export function Canvas({
     // press is on the corner, and a corner with several angles is asked about.
     if (measuring === "angle" && distance(at, state.origin) < ANGLE_AIM / scale) {
       const spot = objectAt(at, { objects: objects, scale, settled });
-      if (spot && isPoint(spot) && anglesAt(spot.id, objects, settled).length > 1) {
+      if (spot && isPoint(spot) && anglesAt(spot.id, anglePage.objects, settled).length > 1) {
         setChoosing({
           corner: spot.id,
           way: "read",
@@ -1324,7 +1369,11 @@ export function Canvas({
       const before = sketch.read();
       sketch.commit({
         ...before,
-        objects: [...before.objects, ...(written.mark ? [written.mark] : []), written.reading],
+        objects: [
+          ...withAnglePoints(before.objects, anglePage.objects, written.reading.of),
+          ...(written.mark ? [written.mark] : []),
+          written.reading,
+        ],
       });
       return;
     }
@@ -1356,7 +1405,7 @@ export function Canvas({
         // out of it, so it asks which angle instead of taking one.
         const aimed = armed !== null && distance(at, armed.start) >= ANGLE_AIM / scale;
         if (armed && !aimed) {
-          const there = anglesAt(armed.corner, objects, settled);
+          const there = anglesAt(armed.corner, anglePage.objects, settled);
           if (there.length === 0) {
             setPanel(null);
             return;
@@ -1549,6 +1598,9 @@ export function Canvas({
   }
 
   function handlePointerCancel(event?: PointerEvent<HTMLDivElement>) {
+    armFrom.current = null;
+    armTrail.current = [];
+    setSweeping(null);
     if (event?.pointerType === "touch") fingers.current.delete(event.pointerId);
     const state = grab.current;
     grab.current = null;
@@ -1571,6 +1623,7 @@ export function Canvas({
   // the automatic names of the rest and leave the sheet saying one thing while
   // the labels panel says another.
   const names = namesFor(everything);
+  const expressionNames = useMemo(() => valueNames(everything, settled), [everything, settled]);
   // Ghost lines hang off ghost points, which are nowhere in the sketch yet.
   const previewPoints = pointsOf(preview);
   const previewSettled = preview.length ? settle([...objects, ...preview]).settled : settled;
@@ -1643,7 +1696,10 @@ export function Canvas({
   ) =>
     isMeasurement(value)
       ? readingOf(value, { objects: everything, names, settled })
-      : readingOfValue(value, quantities.get(value.id) ?? null, { names, objects: everything });
+      : readingOfValue(value, quantities.get(value.id) ?? null, {
+          names: expressionNames,
+          objects: everything,
+        });
 
   function toggleObject(id: string) {
     sketch.select(togglePick(sketch.read().selection, id));
@@ -1714,6 +1770,12 @@ export function Canvas({
    */
   const linkNames = new Map(names);
   const linkReadings = captionReadings(everything, settled);
+  for (const [id, reading] of linkReadings) {
+    linkNames.set(
+      id,
+      reading.value({ places: reading.places, unit: reading.unit, showUnit: true }),
+    );
+  }
   for (const measurement of everything.filter(isMeasurement)) {
     linkNames.set(measurement.id, readingFor(measurement).value);
   }
@@ -1909,6 +1971,7 @@ export function Canvas({
               <Resting
                 corner={choosing ? null : overCorner}
                 marking={marking === "angle"}
+                angleObjects={anglePage.objects}
                 clearOf={clearOfCorner}
                 marks={markingNow()}
               />
@@ -2020,6 +2083,7 @@ export function Canvas({
               key={measurement.id}
               measurement={measurement}
               reading={readingFor(measurement)}
+              onPick={picking ? onPick : undefined}
               view={view}
               scale={scale}
               selected={selection.includes(measurement.id)}
@@ -2184,8 +2248,8 @@ export function Canvas({
         {choosing && (
           <AngleChoiceDialog
             corner={choosing.corner}
-            nameOf={(id) => names.get(id) ?? "?"}
-            choices={anglesAt(choosing.corner, objects, settled).map(
+            nameOf={(id) => anglePage.names.get(id) ?? "Unnamed point"}
+            choices={anglesAt(choosing.corner, anglePage.objects, settled).map(
               (one): AngleChoice => ({ arms: one.arms, turn: one.turn }),
             )}
             way={choosing.way}
