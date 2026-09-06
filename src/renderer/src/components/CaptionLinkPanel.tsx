@@ -65,17 +65,16 @@ export function CaptionLinkPanel({ editor, readings, onCommit }: CaptionLinkPane
       colour="var(--color-tool-measure)"
     >
       {reading.calculation && (
-        <label>
-          Display
-          <select
-            aria-label="Calculation display"
-            value={format.equation ? "equation" : "answer"}
-            onChange={(event) => change({ equation: event.target.value === "equation" })}
-          >
-            <option value="answer">Final answer</option>
-            <option value="equation">Full equation</option>
-          </select>
-        </label>
+        <select
+          className="caption-link-unit"
+          aria-label="Calculation display"
+          value={format.equation ? "equation" : "answer"}
+          onMouseDown={(event) => event.stopPropagation()}
+          onChange={(event) => change({ equation: event.target.value === "equation" })}
+        >
+          <option value="answer">Final answer</option>
+          <option value="equation">Full equation</option>
+        </select>
       )}
       <MeasurementFormatControls
         format={format}

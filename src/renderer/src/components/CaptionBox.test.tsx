@@ -103,6 +103,8 @@ it("switches a calculation link between its full equation and final answer", () 
   const link = shown.container.querySelector("[data-link]");
   if (!link) throw new Error("Missing calculation link");
   fireEvent.pointerDown(link, { button: 0 });
+  const display = shown.getByRole("combobox", { name: "Calculation display" });
+  expect(fireEvent.mouseDown(display, { button: 0 })).toBe(true);
   fireEvent.change(shown.getByRole("combobox", { name: "Calculation display" }), {
     target: { value: "equation" },
   });
