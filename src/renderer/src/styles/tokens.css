@@ -101,6 +101,7 @@
   --color-glass-on-dark: rgba(28, 31, 36, 0.86);
   --color-glass-border-on-dark: #3a414c;
   --color-glass-hover-on-dark: #2c313a;
+  --color-selection-shade-on-dark: #ffffff;
   --color-slot: #eef1f6;
   --color-canvas-text: #4a5058;
   --color-canvas-text-strong: #1c1f23;
@@ -122,7 +123,7 @@
   --color-path: var(--color-object);
   --color-object-edge: rgba(24, 28, 33, 0.18);
   --color-selection: #0b7ec4;
-  --color-selection-paper: #ffffff;
+  --color-selection-paper: var(--color-canvas);
   --color-selection-shade: #000000;
   --color-selection-halo: rgba(11, 126, 196, 0.16);
   /* Points a transform dialog is holding, and what it would make */

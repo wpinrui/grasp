@@ -145,6 +145,7 @@ const ON_DARK = [
   "--color-canvas-divider",
   "--color-canvas-accent",
   "--color-object-edge",
+  "--color-selection-shade",
   "--color-slot",
   "--color-scroll-track",
   "--color-scroll-thumb",
