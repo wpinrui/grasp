@@ -1644,31 +1644,33 @@ export function Canvas({
 
   function selectMarquee(rect: Rect) {
     sketch.select(caughtBy(rect));
+    onLabelSelection(caughtLabels(rect));
+  }
+
+  /**
+   * Which labels a marquee ran over. A label is written into the page rather
+   * than drawn, so how much room it takes is measured off the element and its
+   * placement read back from the same offset the element is hung at.
+   */
+  function caughtLabels(rect: Rect): string[] {
+    if (!takesWriting) return [];
+    const named = new Map(labels.map((label) => [label.id, label]));
     const caught: string[] = [];
-    if (takesWriting) {
-      const named = new Map(labels.map((label) => [label.id, label]));
-      for (const element of sheet.current?.querySelectorAll<HTMLElement>(
-        ".canvas__label[data-id]",
-      ) ?? []) {
-        const label = named.get(element.dataset.id ?? "");
-        if (!label) continue;
-        const width = element.offsetWidth / scale;
-        const height = element.offsetHeight / scale;
-        if (
-          overlaps(
-            {
-              x: label.at.x + label.off.x / scale - width / 2,
-              y: label.at.y + label.off.y / scale - height / 2,
-              width,
-              height,
-            },
-            rect,
-          )
-        )
-          caught.push(label.id);
-      }
+    const written = sheet.current?.querySelectorAll<HTMLElement>(".canvas__label[data-id]") ?? [];
+    for (const element of written) {
+      const label = named.get(element.dataset.id ?? "");
+      if (!label) continue;
+      const width = element.offsetWidth / scale;
+      const height = element.offsetHeight / scale;
+      const covers = {
+        x: label.at.x + label.off.x / scale - width / 2,
+        y: label.at.y + label.off.y / scale - height / 2,
+        width,
+        height,
+      };
+      if (overlaps(covers, rect)) caught.push(label.id);
     }
-    onLabelSelection(caught);
+    return caught;
   }
 
   /**
