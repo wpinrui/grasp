@@ -35,11 +35,11 @@ describe("caption links", () => {
     expect(element.querySelector("[data-link]")?.getAttribute("contenteditable")).toBe("false");
   });
 
-  it("makes existing links atomic and preserves their colour", () => {
+  it("makes existing links atomic and removes their separate colour", () => {
     const html = '<span style="color: red"><span data-link="m">old</span></span> trailing';
     const updated = withNames(html, new Map([["m", "new"]]));
     expect(updated).toContain('contenteditable="false"');
-    expect(updated).toContain('style="color: red"');
+    expect(updated).not.toContain("color: red");
     expect(plainText(updated)).toBe("new trailing");
   });
 

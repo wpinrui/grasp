@@ -1,5 +1,5 @@
 import { type MouseEvent, type RefObject, useEffect, useReducer } from "react";
-import { insertAtCaret } from "../sketch/captions";
+import { clearCaptionColours, insertAtCaret } from "../sketch/captions";
 import type { CaptionAlign, LinePattern, LineWidth, SketchCaption } from "../sketch/model";
 import { LINE_PATTERNS, LINE_WIDTHS } from "../sketch/model";
 import { type LabelMarks, type TextMark, type TextStyling, textBoxes } from "../sketch/text";
@@ -101,8 +101,9 @@ interface PaletteProps {
  * keeps its shape and the sheet never changes height under it.
  *
  * The bar reads back as well as writes: while a caption is open it follows the
- * caret, so the face, the size, the ink and the three style keys say how the
- * text under the caret is set rather than how the caption started.
+ * caret, so the face, the size and the three style keys say how the
+ * text under the caret is set rather than how the caption started. Ink always
+ * belongs to the whole caption.
  */
 export function Palette({
   editor,
@@ -146,14 +147,9 @@ export function Palette({
     onCaption(whole);
   }
 
-  /** Colour goes to a chosen run of text, or to everything selected. */
+  /** Colour always reaches the whole caption, even when a run is selected. */
   function pickColour(token: string) {
-    const run = chosenRun(editor.current);
-    if (run) {
-      wrapRun(run, { color: `var(${token})` });
-      commit();
-      return;
-    }
+    if (editor.current) clearCaptionColours(editor.current);
     onStyle({ colour: token });
   }
 
@@ -191,7 +187,7 @@ export function Palette({
   const boxes = textBoxes(here, text);
   // One ink agreement, worked out over everything a pick would land on, so the
   // bar never lights a colour the selection does not share.
-  const inked = here.colour ?? styling.colour;
+  const inked = styling.colour;
   const colourOff = !styling.canColour;
 
   return (

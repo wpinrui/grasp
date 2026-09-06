@@ -7,7 +7,7 @@ import {
   useRef,
 } from "react";
 import type { CaptionReading } from "../sketch/captionLinks";
-import { refreshLinks, withNames } from "../sketch/captions";
+import { clearCaptionColours, refreshLinks, withNames } from "../sketch/captions";
 import type { CaptionAlign, Position, SketchCaption, View } from "../sketch/model";
 import { drawnAs } from "../sketch/text";
 import { CaptionLinkPanel, selectCaptionLink } from "./CaptionLinkPanel";
@@ -366,6 +366,7 @@ export function CaptionBox({
           tabIndex={0}
           aria-label="Caption"
           onKeyDown={keyed}
+          onInput={(event) => clearCaptionColours(event.currentTarget)}
           onBlur={() => onCommit(caption.id, body.current?.innerHTML ?? caption.html)}
         />
       ) : (

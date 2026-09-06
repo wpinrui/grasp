@@ -9,6 +9,21 @@
 
 import { type CaptionReading, linkFormat } from "./captionLinks";
 
+/** A caption has one ink, including pasted text and older per-run formatting. */
+export function clearCaptionColours(root: HTMLElement) {
+  for (const element of root.querySelectorAll<HTMLElement>("[style], [color]")) {
+    element.style.removeProperty("color");
+    element.style.removeProperty("-webkit-text-fill-color");
+    element.removeAttribute("color");
+  }
+}
+
+export function singleColourHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  clearCaptionColours(doc.body);
+  return doc.body.innerHTML;
+}
+
 /** A Hot Text link to an object, ready to drop into a caption. */
 export function linkHtml(id: string, name: string): string {
   const span = document.createElement("span");
@@ -25,7 +40,6 @@ export function withNames(
   names: Map<string, string>,
   readings?: Map<string, CaptionReading>,
 ): string {
-  if (!html.includes("data-link")) return html;
   const doc = new DOMParser().parseFromString(html, "text/html");
   refreshLinks(doc.body, names, readings);
   return doc.body.innerHTML;
@@ -37,6 +51,7 @@ export function refreshLinks(
   names: Map<string, string>,
   readings?: Map<string, CaptionReading>,
 ) {
+  clearCaptionColours(root);
   for (const span of root.querySelectorAll("[data-link]")) {
     span.setAttribute("contenteditable", "false");
     const id = span.getAttribute("data-link") ?? "";

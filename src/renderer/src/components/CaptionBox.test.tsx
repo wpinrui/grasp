@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { captionReadings } from "../sketch/captionLinks";
@@ -12,7 +12,6 @@ import {
   settle,
 } from "../sketch/model";
 import { CaptionBox } from "./CaptionBox";
-import { wrapRun } from "./paletteCaret";
 import { NOTATION } from "./typeset";
 
 beforeEach(() => {
@@ -89,17 +88,15 @@ it("edits only the clicked link, commits its settings, and keeps trailing text",
   );
 });
 
-it("lets palette formatting wrap an atomic link without losing its colour on a value update", () => {
-  const given = props(linkHtml("m", "old"));
+it("clears legacy link colours while preserving other text formatting", () => {
+  const given = props(`<span style="color: red; font-weight: bold">${linkHtml("m", "old")}</span>`);
   const shown = render(<CaptionBox {...given} />);
   const link = shown.container.querySelector("[data-link]");
   if (!link) throw new Error("Missing link");
   fireEvent.pointerDown(link, { button: 0 });
-  const range = window.getSelection()?.getRangeAt(0);
-  if (!range) throw new Error("Missing selection");
-  act(() => wrapRun(range, { color: "var(--color-ink-red)" }));
   fireEvent.click(shown.getByRole("button", { name: "One more decimal place" }));
-  expect(link.parentElement?.style.color).toBe("var(--color-ink-red)");
+  expect(link.parentElement?.style.color).toBe("");
+  expect(link.parentElement?.style.fontWeight).toBe("bold");
   expect(link.textContent).toBe("1.235 cm");
 });
 
