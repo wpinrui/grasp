@@ -135,11 +135,6 @@
   fill-opacity: 0.25;
 }
 
-.canvas__interior--selected {
-  fill: var(--color-interior-selected);
-  fill-opacity: 1;
-}
-
 .canvas__interior--preview {
   fill: var(--color-interior-preview);
   fill-opacity: 1;
@@ -181,12 +176,6 @@
   stroke-width: 1.5;
 }
 
-.canvas__circle-halo {
-  fill: none;
-  stroke: var(--color-selection-band);
-  stroke-width: 7;
-}
-
 .canvas__circle--preview {
   stroke: var(--color-preview-line);
 }
@@ -194,13 +183,6 @@
 .canvas__line {
   stroke: var(--color-path);
   stroke-width: 1.5;
-  stroke-linecap: round;
-}
-
-/* Selection reads the same on a line as on a point: a band around it. */
-.canvas__line-halo {
-  stroke: var(--color-selection-band);
-  stroke-width: 7;
   stroke-linecap: round;
 }
 

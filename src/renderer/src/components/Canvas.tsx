@@ -104,6 +104,7 @@ import { MarkGhost, Marks } from "./canvas/layers/Marks";
 import { Paths } from "./canvas/layers/Paths";
 import { Points } from "./canvas/layers/Points";
 import { Preview } from "./canvas/layers/Preview";
+import { Selection } from "./canvas/layers/Selection";
 import { Handles, Marquee, Snapped } from "./canvas/layers/Snapping";
 import { litWith } from "./canvas/lighting";
 import { type Marking, markUnder } from "./canvas/marks";
@@ -1849,6 +1850,7 @@ export function Canvas({
                 marks={markingNow()}
               />
               <Showing corner={choosing?.corner ?? null} arms={showingArms} marks={markingNow()} />
+              <Selection />
               <Points />
               {spotlight && <Lit ids={litWith(spotlight, everything)} />}
               {lit && lit !== spotlight && <Lit ids={litWith(lit, everything)} />}

@@ -122,10 +122,11 @@
   --color-path: var(--color-object);
   --color-object-edge: rgba(24, 28, 33, 0.18);
   --color-selection: #0b7ec4;
+  --color-selection-paper: #ffffff;
+  --color-selection-ink: #18212b;
   --color-selection-halo: rgba(11, 126, 196, 0.16);
   /* Points a transform dialog is holding, and what it would make */
   --color-interior: #0b7ec4;
-  --color-interior-selected: rgba(11, 126, 196, 0.34);
   --color-interior-preview: rgba(229, 72, 77, 0.16);
   /* A locus: the curve, its many samples, and the arrowhead on an open end */
   --color-locus: rgba(123, 97, 217, 0.8);

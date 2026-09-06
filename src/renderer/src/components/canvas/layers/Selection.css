@@ -1,0 +1,21 @@
+.canvas__selection-paper,
+.canvas__selection-ink {
+  fill: none;
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+}
+
+.canvas__selection-paper {
+  stroke: var(--color-selection-paper);
+}
+
+.canvas__selection-ink {
+  stroke: var(--color-selection-ink);
+  stroke-dasharray: 6 4;
+}
+
+.canvas__selection-corner {
+  fill: var(--color-selection-paper);
+  stroke: var(--color-selection-ink);
+  stroke-width: 1.5;
+}
