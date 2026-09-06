@@ -97,6 +97,27 @@ function withCursor(cursor: boolean) {
   return sheet;
 }
 
+/** A sheet with one short line on it, selected or not. */
+function withSelection(selected: boolean) {
+  document.body.innerHTML = [
+    '<div class="app__canvas"><div class="canvas__sheet">',
+    `<svg class="canvas__objects" width="${SHEET.width}" height="${SHEET.height}">`,
+    selected
+      ? '<g class="canvas__selection">' +
+        '<line class="canvas__selection-paper" x1="0" y1="0" x2="20" y2="20"/>' +
+        '<line class="canvas__selection-dashes" x1="0" y1="0" x2="20" y2="20"/>' +
+        "</g>"
+      : "",
+    '<g data-id="line"><line class="canvas__line" x1="0" y1="0" x2="20" y2="20"/></g>',
+    "</svg></div></div>",
+  ].join("");
+  const sheet = document.querySelector(".canvas__sheet") as HTMLElement;
+  for (const drawn of document.querySelectorAll("line")) {
+    boxed(drawn, { x: 0, y: 0, size: 20 });
+  }
+  return sheet;
+}
+
 describe("what a picture leaves out", () => {
   it("comes out the same size whether or not the cursor is on the sheet", () => {
     // The cursor's marks are paths on the sheet like any other, so without the
@@ -117,6 +138,25 @@ describe("what a picture leaves out", () => {
     withCursor(true);
     const drawn = pictureSvg(DEFAULT_PICTURE, null);
     expect(drawn?.svg).not.toContain("tool-cursor");
+    expect(drawn?.svg).toContain("canvas__line");
+  });
+
+  it("leaves the selection overlay out of the drawing", () => {
+    // What is held is the window talking, not part of the figure, so a picture
+    // of a selected object comes out the same as one of the object on its own.
+    withSelection(true);
+    const held = pictureSvg(DEFAULT_PICTURE, null);
+    withSelection(false);
+    const alone = pictureSvg(DEFAULT_PICTURE, null);
+    expect(held?.svg).not.toContain("canvas__selection");
+    expect(held?.svg).toContain("canvas__line");
+    expect(held?.svg).toBe(alone?.svg);
+  });
+
+  it("leaves the selection overlay out even when only the selection is asked for", () => {
+    withSelection(true);
+    const drawn = pictureSvg(DEFAULT_PICTURE, new Set(["line"]));
+    expect(drawn?.svg).not.toContain("canvas__selection");
     expect(drawn?.svg).toContain("canvas__line");
   });
 });
