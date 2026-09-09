@@ -47,7 +47,7 @@
     "netlify-cli": "^27.4.3",
     "typescript": "^5.7.3",
     "vite": "^8.2.2",
-    "vitest": "^4.0.0"
+    "vitest": "^5.0.0"
   },
   "resolutions": {
     "vite": "^8.2.2"
